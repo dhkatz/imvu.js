@@ -28,7 +28,7 @@
     "gulp-ts-alias": "^0.2.0",
     "gulp-tslint": "^8.1.4",
     "gulp-typescript": "^5.0.1",
-    "nodemon": "^1.18.9",
+    "nodemon": "^1.18.10",
     "reflect-metadata": "^0.1.13",
     "tslint": "^5.14.0",
     "tslint-eslint-rules": "^5.4.0",
