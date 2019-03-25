@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    /* Module/Target Options */
+    "target": "es2017",
+    "module": "commonjs",
+    "lib": ["es6"],
+
+    /* Basic Options */
+    "sourceMap": true,
+    "declaration": false,
+    "removeComments": true,
+
+    /* Strict Type-Checking Options */
+    "alwaysStrict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+
+    /* Extra Options */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    "outDir": "./lib",
+    "rootDir": "./src",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    }
+  },
+  "include": [
+    "./src/**/*.ts"
+  ],
+  "exclude": [
+    "./build/*",
+    "./node_modules/*",
+    "./dist/*"
+  ]
+}
