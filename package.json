@@ -24,7 +24,7 @@
     "del": "^4.0.0",
     "gulp": "^4.0.0",
     "gulp-nodemon": "^2.4.2",
-    "gulp-sourcemaps": "^2.6.4",
+    "gulp-sourcemaps": "^2.6.5",
     "gulp-ts-alias": "^0.1.5",
     "gulp-tslint": "^8.1.4",
     "gulp-typescript": "^5.0.0",
