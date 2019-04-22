@@ -22,7 +22,7 @@
   "devDependencies": {
     "@types/axios": "^0.14.0",
     "del": "^4.1.0",
-    "gulp": "^4.0.0",
+    "gulp": "^4.0.1",
     "gulp-nodemon": "^2.4.2",
     "gulp-sourcemaps": "^2.6.5",
     "gulp-ts-alias": "^0.2.0",
