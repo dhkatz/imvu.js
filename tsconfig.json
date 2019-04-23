@@ -1,23 +1,21 @@
 {
   "compilerOptions": {
     /* Module/Target Options */
-    "target": "es2017",
+    "target": "es5",
     "module": "commonjs",
-    "lib": ["es6"],
+    "lib": ["es6", "es2017"],
 
     /* Basic Options */
-    "sourceMap": true,
-    "declaration": false,
     "removeComments": true,
 
     /* Strict Type-Checking Options */
     "alwaysStrict": true,
     "noImplicitAny": true,
-    "strictNullChecks": true,
 
     /* Extra Options */
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
 
     "outDir": "./lib",
     "rootDir": "./src",
@@ -27,11 +25,10 @@
     }
   },
   "include": [
-    "./src/**/*.ts"
+    "src"
   ],
   "exclude": [
-    "./build/*",
-    "./node_modules/*",
-    "./dist/*"
+    "lib/**",
+    "node_modules/**",
   ]
 }

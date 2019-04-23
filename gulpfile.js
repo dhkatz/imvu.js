@@ -1,5 +1,6 @@
 const del = require('del');
 const path = require('path');
+const merge = require('merge2');
 
 const { src, dest, watch, series, parallel } = require('gulp');
 
@@ -13,7 +14,7 @@ const project = typescript.createProject('tsconfig.json');
 const linter = require('tslint').Linter.createProgram('tsconfig.json');
 
 function lint() {
-  return src('./src/**/*.ts')
+  return src(['./src/**/*.ts', './typings/**/*.ts'])
     .pipe(tslint({ configuration: 'tslint.json', formatter: 'verbose', program: linter }))
     .pipe(tslint.report());
 }
@@ -21,17 +22,18 @@ function lint() {
 function build() {
   del.sync(['./build/**/*.*']);
 
-  src('./src/**/*.json')
-    .pipe(dest('build/'));
-
-  const compiled = src('./src/**/*.ts')
+  const compiled = src(['./src/**/*.ts', './typings/**/*.ts'])
     .pipe(alias({ configuration: project.config.compilerOptions }))
     .pipe(sourcemaps.init())
     .pipe(project());
 
-  return compiled.js
+  return merge([
+    compiled.js
     .pipe(sourcemaps.write({ sourceRoot: file => path.relative(path.join(file.cwd, file.path), file.base) }))
+    .pipe(dest('build/')),
+    compiled.dts
     .pipe(dest('build/'))
+  ]);
 }
 
 function update() {

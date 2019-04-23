@@ -1,45 +1,62 @@
 import { JsonProperty } from 'json-typescript-mapper';
 
-export default class Product {
+export class Product {
   @JsonProperty('product_id')
-  public Id?: number;
+  public id: number;
 
   @JsonProperty('product_name')
-  public name?: string;
+  public name: string;
 
   @JsonProperty('creator_cid')
-  public creatorId?: number;
+  public creatorId: number;
 
   @JsonProperty('creator_name')
-  public creatorName?: string;
+  public creatorName: string;
 
   @JsonProperty('rating')
-  public rating?: string; // TODO Add interface/enum/class
+  public rating: string; // TODO Add interface/enum/class
 
   @JsonProperty('product_price')
-  public price?: number;
+  public price: number;
 
   @JsonProperty('discount_price')
-  public discountPrice?: number;
+  public discountPrice: number;
 
   @JsonProperty('product_page')
-  public page?: string;
+  public page: string;
 
   @JsonProperty('creator_page')
-  public creatorPage?: string;
+  public creatorPage: string;
 
   @JsonProperty('is_bundle')
-  public isBundle?: boolean;
+  public isBundle: boolean;
 
   @JsonProperty('product_image')
-  public image?: string;
+  public image: string;
 
   @JsonProperty('gender')
-  public gender?: string; // TODO: Update to interface/enum/class
+  public gender: string | null; // TODO: Update to interface/enum/class
 
   @JsonProperty('categories')
-  public categories?: string[];
+  public categories: string[];
 
   @JsonProperty('is')
-  public types?: string[];
+  public types: string[];
+
+  constructor() {
+    this.id = void 0;
+    this.name = void 0;
+    this.creatorId = void 0;
+    this.creatorName = void 0;
+    this.rating = void 0;
+    this.price = void 0;
+    this.discountPrice = void 0;
+    this.page = void 0;
+    this.creatorPage = void 0;
+    this.isBundle = void 0;
+    this.image = void 0;
+    this.gender = void 0;
+    this.categories = void 0;
+    this.types = void 0;
+  }
 }

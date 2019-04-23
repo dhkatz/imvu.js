@@ -1,26 +1,19 @@
-import { deserialize } from 'json-typescript-mapper';
+import { User } from '@/models';
+import { Controller } from '.';
 
-import { User, UserQueryParams } from '@/models';
-import BaseController from './BaseController';
-
-export class UserAPI extends BaseController {
-  constructor() {
-    super('/user');
-  }
-
-  public async get(params: UserQueryParams): Promise<User | null> {
-    try {
-      if (params.id) {
-        const response = await this.http.get(`/user-${params.id}`);
-
-        return deserialize(User, response.data);
-      } else {
-        const response = await this.http.get('', { params });
-
-        return deserialize(User, response.data);
-      }
-    } catch (err) {
-      return null;
-    }
-  }
+export interface UserQueryParams {
+  id?: number | string | Array<number | string>;
+  username?: string;
 }
+
+export const UserController = Controller<User, UserQueryParams>(User, {
+  params: (params: UserQueryParams) => {
+    if (Array.isArray(params.id)) {
+      return { ...params, ...{ id: params.id.map((value) => `https://api.imvu.com/user/user-${value}`).join(',')} };
+    }
+
+    return params;
+  },
+});
+
+export type UserController = InstanceType<typeof UserController>;

@@ -2,6 +2,10 @@
   "name": "imvu.js",
   "version": "1.0.0",
   "description": "Get data from IMVU's available endpoints.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dhkatz/imvu.js"
+  },
   "main": "src/index.js",
   "scripts": {
     "build": "tsc -p .",
@@ -16,11 +20,13 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^0.18.0",
-    "defiant.js": "^2.2.4",
-    "json-typescript-mapper": "^1.1.3"
+    "json-typescript-mapper": "github:luciorubeens/json-typescript-mapper"
   },
   "devDependencies": {
     "@types/axios": "^0.14.0",
+    "@types/gulp": "^4.0.6",
+    "@types/gulp-sourcemaps": "0.0.32",
+    "@types/merge2": "^1.1.4",
     "del": "^4.1.0",
     "gulp": "^4.0.1",
     "gulp-nodemon": "^2.4.2",
@@ -30,6 +36,7 @@
     "gulp-typescript": "^5.0.1",
     "nodemon": "^1.18.11",
     "reflect-metadata": "^0.1.13",
+    "ts-node": "^8.1.0",
     "tslint": "^5.16.0",
     "tslint-eslint-rules": "^5.4.0",
     "typescript": "^3.4.4"

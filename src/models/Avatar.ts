@@ -1,7 +1,7 @@
 import { JsonProperty } from 'json-typescript-mapper';
 
-import Product from './Product';
-import User from './User';
+import { Product } from './Product';
+import { User } from './User';
 
 export default class Avatar extends User {
   @JsonProperty('look_url')
