@@ -1,6 +1,8 @@
 import { JsonProperty } from 'json-typescript-mapper';
 
-export class User {
+import { BaseModel } from './BaseModel';
+
+export class User extends BaseModel {
   @JsonProperty('created')
   public created: Date;
 
@@ -47,6 +49,8 @@ export class User {
   public isStaff: boolean;
 
   public constructor() {
+    super();
+
     this.created = void 0;
     this.registered = void 0;
     this.gender = void 0;

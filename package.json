@@ -1,44 +1,138 @@
 {
   "name": "imvu.js",
   "version": "0.1.0-dev",
-  "description": "Get data from IMVU's available endpoints.",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/dhkatz/imvu.js"
-  },
-  "main": "src/index.js",
-  "scripts": {
-    "build": "tsc -p .",
-    "lint": "tslint --project tsconfig.json",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "clean": "rm lib && rm dist"
-  },
+  "description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
   "keywords": [
-    "imvu"
+    "imvu",
+    "imvu.js",
+    "imvu api",
+    "typescript"
   ],
   "author": "Doctor Jew",
   "license": "MIT",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "files": [
+    "lib/**/*",
+    "typings/**/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhkatz/imvu.git"
+  },
+  "scripts": {
+    "build": "npm run build:types && npm run build:js",
+    "build:types": "tsc --emitDeclarationOnly",
+    "build:js": "babel src --out-dir lib --extensions \".ts,.tsx\" --source-maps inline",
+    "lint": "eslint src/**/* && tsc --noEmit",
+    "test": "jest --verbose --forceExit --detectOpenHandles",
+    "coverage": "jest --coverage --ci --verbose --forceExit --detectOpenHandles && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
+    "clean": "rm -rf lib && rm -rf typings",
+    "prepublishOnly": "npm run build"
+  },
+  "babel": {
+    "presets": [
+      [
+        "@babel/env",
+        {
+          "useBuiltIns": "entry",
+          "corejs": "3"
+        }
+      ],
+      "@babel/typescript"
+    ],
+    "plugins": [
+      [
+        "@babel/plugin-proposal-decorators",
+        {
+          "legacy": true
+        }
+      ],
+      [
+        "@babel/proposal-class-properties",
+        {
+          "loose": true
+        }
+      ],
+      "@babel/proposal-object-rest-spread"
+    ]
+  },
+  "jest": {
+    "roots": [
+      "<rootDir>/test"
+    ],
+    "testRegex": "(/test/.*|(\\.|/)(test|spec))\\.(tsx?)$",
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    }
+  },
+  "eslintConfig": {
+    "env": {
+      "node": true,
+      "es6": true
+    },
+    "parser": "@typescript-eslint/parser",
+    "parserOptions": {
+      "project": "./tsconfig.json"
+    },
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended"
+    ],
+    "rules": {
+      "semi": [
+        "error",
+        "always"
+      ],
+      "@typescript-eslint/indent": [
+        "error",
+        2
+      ],
+      "@typescript-eslint/no-explicit-any": 0,
+      "@typescript-eslint/array-type": [
+        "error",
+        "array-simple"
+      ],
+      "@typescript-eslint/explicit-function-return-type": [
+        "error",
+        {
+          "allowExpressions": true
+        }
+      ],
+      "@typescript-eslint/no-use-before-define": [
+        "error",
+        {
+          "functions": false
+        }
+      ]
+    }
+  },
   "dependencies": {
     "axios": "^0.18.0",
-    "json-typescript-mapper": "github:luciorubeens/json-typescript-mapper"
+    "core-js": "^3.0.1",
+    "json-typescript-mapper": "github:luciorubeens/json-typescript-mapper",
+    "reflect-metadata": "^0.1.13",
+    "regenerator-runtime": "^0.13.2"
   },
   "devDependencies": {
+    "@babel/cli": "^7.4.3",
+    "@babel/core": "^7.4.3",
+    "@babel/plugin-proposal-class-properties": "^7.4.0",
+    "@babel/plugin-proposal-decorators": "^7.4.0",
+    "@babel/plugin-proposal-object-rest-spread": "^7.4.3",
+    "@babel/preset-env": "^7.4.3",
+    "@babel/preset-typescript": "^7.3.3",
     "@types/axios": "^0.14.0",
-    "@types/gulp": "^4.0.6",
-    "@types/gulp-sourcemaps": "0.0.32",
-    "@types/merge2": "^1.1.4",
-    "del": "^4.1.0",
-    "gulp": "^4.0.1",
-    "gulp-nodemon": "^2.4.2",
-    "gulp-sourcemaps": "^2.6.5",
-    "gulp-ts-alias": "^0.2.0",
-    "gulp-tslint": "^8.1.4",
-    "gulp-typescript": "^5.0.1",
-    "nodemon": "^1.18.11",
-    "reflect-metadata": "^0.1.13",
-    "ts-node": "^8.1.0",
-    "tslint": "^5.16.0",
-    "tslint-eslint-rules": "^5.4.0",
-    "typescript": "^3.4.4"
+    "@types/jest": "^24.0.11",
+    "@typescript-eslint/eslint-plugin": "^1.7.0",
+    "@typescript-eslint/parser": "^1.7.0",
+    "coveralls": "^3.0.3",
+    "eslint": "^5.16.0",
+    "jest": "^24.7.1",
+    "typescript": "^3.4.5"
   }
 }

@@ -1,9 +1,10 @@
-import { JsonProperty } from 'json-typescript-mapper';
+import { deserialize, JsonProperty } from 'json-typescript-mapper';
 
+import { Memoize } from '@/util';
 import { Product } from './Product';
 import { User } from './User';
 
-export default class Avatar extends User {
+export class Avatar extends User {
   @JsonProperty('look_url')
   public lookUrl?: string;
 
@@ -11,5 +12,23 @@ export default class Avatar extends User {
   public assetUrl?: string;
 
   @JsonProperty({ clazz: Product, name: 'products'})
-  public products?: Product[];
+  // tslint:disable-next-line:variable-name
+  private _products?: Product[];
+
+  public constructor() {
+    super();
+  }
+
+  @Memoize(() => Math.round(new Date().getTime() / 3600000 ) * 3600000)
+  public products(): Promise<Product[]> {
+    return Promise.all(this._products.map(async (product: Product): Promise<Product | null> => {
+      try {
+        const { data } = await this.http.get(`/product/product-${product.id}`);
+
+        return deserialize(Product, (Object.values(data.denormalized)[0] as any).data);
+      } catch {
+        return null;
+      }
+    }));
+  }
 }

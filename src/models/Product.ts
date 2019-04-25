@@ -1,6 +1,8 @@
 import { JsonProperty } from 'json-typescript-mapper';
 
-export class Product {
+import { BaseModel } from './BaseModel';
+
+export class Product extends BaseModel {
   @JsonProperty('product_id')
   public id: number;
 
@@ -43,7 +45,9 @@ export class Product {
   @JsonProperty('is')
   public types: string[];
 
-  constructor() {
+  public constructor() {
+    super();
+
     this.id = void 0;
     this.name = void 0;
     this.creatorId = void 0;

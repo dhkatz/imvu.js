@@ -1,6 +1,8 @@
 import { JsonProperty } from 'json-typescript-mapper';
 
-export class GetMatched {
+import { BaseModel } from './BaseModel';
+
+export class GetMatched extends BaseModel {
   @JsonProperty('avatarname')
   public username: string;
 

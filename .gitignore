@@ -98,5 +98,7 @@ jspm_packages/
 .vscode
 
 build/
+lib/
+test/*.js
 
 # End of https://www.gitignore.io/api/node,visualstudiocode
