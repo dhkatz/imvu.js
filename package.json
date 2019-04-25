@@ -11,7 +11,7 @@
   "author": "Doctor Jew",
   "license": "MIT",
   "main": "lib/index.js",
-  "typings": "lib/index.d.ts",
+  "typings": "typings/index.d.ts",
   "files": [
     "lib/**/*",
     "typings/**/*"
@@ -26,7 +26,8 @@
     "build:js": "babel src --out-dir lib --extensions \".ts,.tsx\" --source-maps inline",
     "lint": "eslint src/**/* && tsc --noEmit",
     "test": "jest --verbose --forceExit --detectOpenHandles",
-    "coverage": "jest --coverage --ci --verbose --forceExit --detectOpenHandles && cat ./coverage/lcov.info | ./node_modules/coveralls/bin/coveralls.js && rm -rf ./coverage",
+    "coverage:test": "jest --coverage --ci --verbose --forceExit --detectOpenHandles && rm -rf /coverage",
+    "coverage": "jest --coverage --ci --verbose --forceExit --detectOpenHandles && cat ./coverage/lcov.info | coveralls && rm -rf /coverage",
     "clean": "rm -rf lib && rm -rf typings",
     "prepublishOnly": "npm run build"
   },
@@ -65,7 +66,11 @@
     "testEnvironment": "node",
     "moduleNameMapper": {
       "^@/(.*)$": "<rootDir>/src/$1"
-    }
+    },
+    "collectCoverageFrom": [
+      "!<rootDir>/src/util/**/*",
+      "<rootDir>/src/**/*.{ts,tsx}"
+    ]
   },
   "eslintConfig": {
     "env": {

@@ -12,6 +12,7 @@ export class Client {
   public matched: GetMatchedController;
   public product: ProductController;
 
+  /* istanbul ignore next */ 
   public constructor(username: string, password: string) {
     this.username = username;
     this.password = password;

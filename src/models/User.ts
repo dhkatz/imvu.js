@@ -30,6 +30,9 @@ export class User extends BaseModel {
   @JsonProperty('avatar_portrait_image')
   public avatarPortraitImage: string;
 
+  @JsonProperty('username')
+  public username: string;
+
   @JsonProperty('is_vip')
   public isVip: boolean;
 
@@ -66,5 +69,6 @@ export class User extends BaseModel {
     this.isAdult = void 0;
     this.isAgeVerified = void 0;
     this.isStaff = void 0;
+    this.username = void 0;
   }
 }

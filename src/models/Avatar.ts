@@ -20,7 +20,7 @@ export class Avatar extends User {
   }
 
   @Memoize(() => Math.round(new Date().getTime() / 3600000 ) * 3600000)
-  public products(): Promise<Product[]> {
+  public async products(): Promise<Product[]> {
     return Promise.all(this._products.map(async (product: Product): Promise<Product | null> => {
       try {
         const { data } = await this.http.get(`/product/product-${product.id}`);
