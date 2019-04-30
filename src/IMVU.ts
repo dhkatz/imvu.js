@@ -2,6 +2,9 @@ import axios, { AxiosInstance } from 'axios';
 
 import { GetMatchedController, ProductController, UserController } from './controllers';
 
+/**
+ * The main client for interacting with the IMVU API controllers.
+ */
 export class Client {
   public username: string; 
   public password: string;
@@ -19,9 +22,9 @@ export class Client {
 
     this.http = axios.create({ baseURL: 'https://api.imvu.com' });
 
-    this.user = new UserController();
-    this.product = new ProductController();
-    this.matched = new GetMatchedController();
+    this.user = new UserController(this);
+    this.product = new ProductController(this);
+    this.matched = new GetMatchedController(this);
   }
 }
 

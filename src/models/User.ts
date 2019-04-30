@@ -1,8 +1,13 @@
 import { JsonProperty } from 'json-typescript-mapper';
 
-import { BaseModel } from './BaseModel';
+import { BaseModel, ModelOptions } from './BaseModel';
+import { Client } from '../IMVU';
+import { Product } from './Product';
 
 export class User extends BaseModel {
+  @JsonProperty('legacy_cid')
+  public id: number;
+
   @JsonProperty('created')
   public created: Date;
 
@@ -51,24 +56,30 @@ export class User extends BaseModel {
   @JsonProperty('is_staff')
   public isStaff: boolean;
 
-  public constructor() {
-    super();
+  public constructor(client: Client, options?: ModelOptions) {
+    super(client, options);
 
-    this.created = void 0;
-    this.registered = void 0;
-    this.gender = void 0;
-    this.displayName = void 0;
-    this.age = void 0;
-    this.country = void 0;
-    this.state = void 0;
-    this.avatarImage = void 0;
-    this.avatarPortraitImage = void 0;
-    this.isVip = void 0;
-    this.isAp = void 0;
-    this.isCreator = void 0;
-    this.isAdult = void 0;
-    this.isAgeVerified = void 0;
-    this.isStaff = void 0;
-    this.username = void 0;
+    this.created = undefined;
+    this.registered = undefined;
+    this.gender = undefined;
+    this.displayName = undefined;
+    this.age = undefined;
+    this.country = undefined;
+    this.state = undefined;
+    this.avatarImage = undefined;
+    this.avatarPortraitImage = undefined;
+    this.isVip = undefined;
+    this.isAp = undefined;
+    this.isCreator = undefined;
+    this.isAdult = undefined;
+    this.isAgeVerified = undefined;
+    this.isStaff = undefined;
+    this.username = undefined;
+  }
+
+  public async products(): Promise<Product[]> {
+    const products = await this.client.product.fetch({ creator: this.username });
+
+    return products != null ? products : [];
   }
 }

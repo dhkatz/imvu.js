@@ -1,6 +1,8 @@
 import { JsonProperty } from 'json-typescript-mapper';
 
-import { BaseModel } from './BaseModel';
+import { BaseModel, ModelOptions } from './BaseModel';
+import { User } from './User';
+import { Client } from '../IMVU';
 
 export class Product extends BaseModel {
   @JsonProperty('product_id')
@@ -45,22 +47,28 @@ export class Product extends BaseModel {
   @JsonProperty('is')
   public types: string[];
 
-  public constructor() {
-    super();
+  public constructor(client: Client, options?: ModelOptions) {
+    super(client, options);
 
-    this.id = void 0;
-    this.name = void 0;
-    this.creatorId = void 0;
-    this.creatorName = void 0;
-    this.rating = void 0;
-    this.price = void 0;
-    this.discountPrice = void 0;
-    this.page = void 0;
-    this.creatorPage = void 0;
-    this.isBundle = void 0;
-    this.image = void 0;
-    this.gender = void 0;
-    this.categories = void 0;
-    this.types = void 0;
+    this.id = undefined;
+    this.name = undefined;
+    this.creatorId = undefined;
+    this.creatorName = undefined;
+    this.rating = undefined;
+    this.price = undefined;
+    this.discountPrice = undefined;
+    this.page = undefined;
+    this.creatorPage = undefined;
+    this.isBundle = undefined;
+    this.image = undefined;
+    this.gender = undefined;
+    this.categories = undefined;
+    this.types = undefined;
+  }
+
+  public async creator(): Promise<User> {
+    const [user] = await this.client.user.fetch({ id: this.creatorId });
+
+    return user;
   }
 }
