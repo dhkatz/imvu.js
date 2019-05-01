@@ -22,7 +22,7 @@ export abstract class BaseController<T extends BaseModel, U extends BaseQuery = 
     this.base = base;
   }
 
-  public abstract async fetch(query: U): Promise<T[] | null>;
+  public abstract async fetch(query: U, cache: boolean): Promise<T[] | null>;
 }
 
 export interface ControllerOptions<T> {
@@ -40,21 +40,26 @@ export function Controller<T extends BaseModel, U extends { id?: any } = { id: n
       this.ttl = options.ttl || 60000;
     }
 
-    public async fetch(params: U): Promise<T[] | null> {
-      const hash = JSON.stringify(params);
+    /**
+     * Retrieve instances of resource from IMVU's API
+     * @param query Request query
+     * @param cache Whether to cache the new object if it isn't already
+     */
+    public async fetch(query: U, cache: boolean = true): Promise<T[] | null> {
+      const hash = JSON.stringify(query);
       if (this.cache.has(hash) && this.cache.get(hash).ttl > Date.now()) {
         return this.cache.get(hash).value;
       }
 
-      const p = options.transform ? options.transform(params) : params;
+      const p = options.transform ? options.transform(query) : query;
 
       try {
-        const id = typeof params.id === 'number';
+        const id = typeof query.id === 'number';
         const { data } = id ? await this.http.get(`${this.base}-${p.id}`) : await this.http.get('', { params: p });
 
         let objects: T[];
         if (id) {
-          const json: JSONObject = data.denormalized[`https://api.imvu.com${this.base}${this.base}-${params.id}`].data;
+          const json: JSONObject = data.denormalized[`https://api.imvu.com${this.base}${this.base}-${query.id}`].data;
           objects = [deserialize(cls, json, this.client, this.http)];
 
         } else {
@@ -65,7 +70,9 @@ export function Controller<T extends BaseModel, U extends { id?: any } = { id: n
           }, []);
         }
 
-        this.cache.set(hash, { ttl: Date.now() + this.ttl, value: objects });
+        if (cache) {
+          this.cache.set(hash, { ttl: Date.now() + this.ttl, value: objects });
+        }
 
         return objects.length > 0 ? objects : null;
       } catch (err) {
