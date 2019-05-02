@@ -39,7 +39,8 @@ export class OutfitViewer {
 
       // End of ugly hack, 'avatar' should now be an instance of Avatar with all the properties from 'user'.
 
-      avatar._products = products.map((value) => { return { product_id: value }; }) as any;
+      avatar._products = products.map((value) => { return { product_id: value, owned: true }; }) as any;
+      avatar.lookUrl = `https://api.imvu.com/look/${products.join('%2C')}`;
 
       return avatar;
     }));
