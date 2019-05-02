@@ -1,6 +1,7 @@
 import axios, { AxiosInstance } from 'axios';
 
 import { GetMatchedController, ProductController, UserController } from './controllers';
+import { OutfitViewer } from './util';
 
 /**
  * The main client for interacting with the IMVU API controllers.
@@ -15,6 +16,8 @@ export class Client {
   public matched: GetMatchedController;
   public product: ProductController;
 
+  public viewer: OutfitViewer;
+
   /* istanbul ignore next */ 
   public constructor(username: string, password: string) {
     this.username = username;
@@ -25,6 +28,8 @@ export class Client {
     this.user = new UserController(this);
     this.product = new ProductController(this);
     this.matched = new GetMatchedController(this);
+
+    this.viewer = new OutfitViewer(this);
   }
 }
 

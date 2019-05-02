@@ -11,9 +11,11 @@ export class BaseModel {
   public client: Client;
   public http: AxiosInstance;
   public ref: string;
+  public options: ModelOptions;
 
   /* istanbul ignore next */ 
   public constructor(client?: Client, options: ModelOptions = {}) {
+    this.options = options;
     this.ref = options.ref || '';
     this.client = client;
 

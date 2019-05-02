@@ -13,7 +13,7 @@ export abstract class BaseController<T extends BaseModel, U extends BaseQuery = 
   public http: AxiosInstance;
   public base: string;
 
-  public cache: Map<string, { ttl: number, value: T[] }> = new Map();
+  public cache: Map<string, { ttl: number; value: T[]; }> = new Map();
   public ttl: number = 60000;
 
   public constructor(client: Client, base: string = '') {

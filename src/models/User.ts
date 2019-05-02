@@ -77,7 +77,7 @@ export class User extends BaseModel {
     this.username = undefined;
   }
 
-  public async products(): Promise<Product[]> {
+  public async shop(): Promise<Product[]> {
     const products = await this.client.product.fetch({ creator: this.username });
 
     return products != null ? products : [];

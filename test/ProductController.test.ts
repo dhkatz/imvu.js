@@ -26,7 +26,7 @@ describe('ProductController.test.ts', () => {
   test('Product creator retrieves User instance', async (done) => {
     const controller = new ProductController(client);
 
-    const [product]: Product[] = await controller.fetch({ id: 44714453 });
+    const [product]: Product[] = await controller.fetch({ id: 33773936 });
 
     const creator = await product.creator();
 
