@@ -6,7 +6,7 @@ describe('UserController.test.ts', () => {
   test('Invalid ID Returns null', async (done) => {
     const controller = new UserController(client);
 
-    const user = await controller.fetch({ id: 1 });
+    const user = await controller.fetch(1);
 
     expect(user).toBe(null);
 
@@ -16,9 +16,9 @@ describe('UserController.test.ts', () => {
   test('Invalid Username Returns Null', async (done) => {
     const controller = new UserController(client);
 
-    const user = await controller.fetch({ username: 'x124za' })
+    const user = await controller.search({ username: 'x124za' })
 
-    expect(user).toBe(null);
+    expect(user).toHaveLength(0);
 
     done();
   });

@@ -6,9 +6,9 @@ describe('ProductController.test.ts', () => {
   test('Invalid ID Returns null', async (done) => {
     const controller = new ProductController(client);
 
-    const user = await controller.fetch({ id: 1 });
+    const product = await controller.fetch(1);
 
-    expect(user).toBe(null);
+    expect(product).toBe(null);
 
     done();
   });
@@ -16,9 +16,9 @@ describe('ProductController.test.ts', () => {
   test('Invalid Creator Returns Null', async (done) => {
     const controller = new ProductController(client);
 
-    const user = await controller.fetch({ creator: 'x124za' })
+    const products = await controller.search({ creator: 'x124za' })
 
-    expect(user).toBe(null);
+    expect(products).toHaveLength(0);
 
     done();
   });
@@ -26,9 +26,9 @@ describe('ProductController.test.ts', () => {
   test('Product creator retrieves User instance', async (done) => {
     const controller = new ProductController(client);
 
-    const [product]: Product[] = await controller.fetch({ id: 33773936 });
+    const product: Product = await controller.fetch(33773936);
 
-    const creator = await product.creator();
+    const creator = product.creator;
 
     expect(creator).toBeInstanceOf(User);
 
