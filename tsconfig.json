@@ -2,6 +2,7 @@
   "compilerOptions": {
     /* Module/Target Options */
     "target": "esnext",
+    "lib": ["es2017"],
     "module": "commonjs",
 
     "declaration": true,

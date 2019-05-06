@@ -119,6 +119,7 @@
   },
   "dependencies": {
     "axios": "^0.18.0",
+    "axios-cookiejar-support": "^0.4.2",
     "core-js": "^3.0.1",
     "json-typescript-mapper": "github:dhkatz/json-typescript-mapper",
     "reflect-metadata": "^0.1.13",

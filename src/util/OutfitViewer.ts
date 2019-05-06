@@ -1,5 +1,9 @@
 import { Client } from '../IMVU';
-import { Scene, Avatar } from '../models';
+import { Scene } from '../models';
+
+export interface OutfitViewerOptions {
+  load?: boolean;
+}
 
 export class OutfitViewer {
   public static AVATAR_PATTERN: RegExp = /avatar(\d+)=(?:(\d+)(?:(?:(?:%3B)|;))?)+/mig;
@@ -11,7 +15,12 @@ export class OutfitViewer {
     this.client = client;
   }
 
-  public async parse(url: string): Promise<Scene> {
+  /**
+   * Parse a 'Products in Scene' URL and return a `Scene`
+   * Large scenes may need longer to retrieve all `Product` information
+   * @param url A 'Products In Scene' URL
+   */
+  public async parse(url: string, options: OutfitViewerOptions = {}): Promise<Scene> {
     const data = url.match(OutfitViewer.AVATAR_PATTERN);
 
     // The separator might be URL encoded or not
@@ -19,37 +28,30 @@ export class OutfitViewer {
 
     const scene = new Scene(this.client);
 
-    scene.avatars = await Promise.all(data.map(async (value: string) => {
+    const avatars = new Map(data.map((value: string) => {
       const split = value.split('=');
       const id = parseInt(split[0].replace('avatar', ''));
       const products = split[1]
         .split(separator)
         .map((value) => parseInt(value, 10));
 
-      // This is what I consider an "ugly hack" to create an Avatar instance using methods that exit on the client.
-      // Without this, I'd probably have to write a way to create Avatars separately even though they aren't
-      // provided by the API.
-      const [user] = await this.client.user.fetch({ id });
+      return [id, products];
+    }))
 
-      const avatar = new (Function.bind.apply(Avatar, [user, user.client, user.options])) as Avatar;
+    const furniture = (OutfitViewer.ROOM_PATTERN.exec(url) || [''])[0]
+    .replace('room=', '')
+    .replace(/x\d+/g, '')
+    .split(separator)
+    .map((value) => parseInt(value));
 
-      for (const key of Object.keys(user)) {
-        avatar[key] = user[key];
-      }
+    scene.data = {
+      avatars,
+      furniture,
+    };
 
-      // End of ugly hack, 'avatar' should now be an instance of Avatar with all the properties from 'user'.
-
-      avatar._products = products.map((value) => { return { product_id: value, owned: true }; }) as any;
-      avatar.lookUrl = `https://api.imvu.com/look/${products.join('%2C')}`;
-
-      return avatar;
-    }));
-
-    scene._furniture = (OutfitViewer.ROOM_PATTERN.exec(url) || [''])[0]
-      .replace('room=', '')
-      .replace(/x\d+/g, '')
-      .split(separator)
-      .map((value) => { return { product_id: parseInt(value, 10)}; });
+    if (options.load !== false) {
+      await scene.load();
+    }
 
     return scene;
   }

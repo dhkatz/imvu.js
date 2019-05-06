@@ -1,7 +1,7 @@
 import { UserController, Client } from '../src';
 
 describe('UserController.test.ts', () => {
-  const client = new Client('', '');
+  const client = new Client();
 
   test('Invalid ID Returns null', async (done) => {
     const controller = new UserController(client);

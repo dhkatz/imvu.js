@@ -3,9 +3,9 @@ import { JsonProperty } from 'json-typescript-mapper';
 import { BaseModel, ModelOptions } from './BaseModel';
 import { Client } from '../IMVU';
 import { Product } from './Product';
-
+import { GetMatched } from './GetMatched';
 export class User extends BaseModel {
-  @JsonProperty('legacy_cid')
+  @JsonProperty({ type: Number, name: 'legacy_cid' } )
   public id: number;
 
   @JsonProperty('created')
@@ -56,9 +56,12 @@ export class User extends BaseModel {
   @JsonProperty('is_staff')
   public isStaff: boolean;
 
+  public matched: GetMatched;
+
   public constructor(client: Client, options?: ModelOptions) {
     super(client, options);
 
+    this.id = undefined;
     this.created = undefined;
     this.registered = undefined;
     this.gender = undefined;
@@ -77,9 +80,63 @@ export class User extends BaseModel {
     this.username = undefined;
   }
 
-  public async shop(): Promise<Product[]> {
-    const products = await this.client.product.fetch({ creator: this.username });
+  public async load(): Promise<void> {
+    const profile = await this.client.matched.fetch(this.id);
 
-    return products != null ? products : [];
+    this.matched = profile;
+  }
+
+  public async * shop(): AsyncIterableIterator<Product> {
+    let offset = 0;
+    while (true) {
+      try {
+        const products = await this.client.products.search({ creator: this.username, start_index: 0, limit: 25, offset });
+        
+        if (!products.length) {
+          return;
+        }
+
+        offset += 25;
+
+        for (const product of products) {
+          if (product === null) {
+            continue;
+          }
+
+          yield product;
+        }
+      } catch (err) {
+        return;
+      }
+    }
+  }
+
+  public async * wishlist(): AsyncIterableIterator<Product> {
+    let offset = 0;
+    while (true) {
+      try {
+        const { data } = await this.client.http.get(`/user/user-${this.id}/wishlist`, { params: { start_index: offset, limit: 25 } })
+
+        const products: Product[] = await Promise.all((Object.values(data.denormalized).pop() as any).data.items
+          .map((url: string) => parseInt(url.split('-').pop()))
+          .map((id: number) => this.client.products.fetch(id)));
+        
+        if (!products.length) {
+          return;
+        }
+
+        offset += 25;
+
+        for (const product of products) {
+          if (product === null) {
+            continue;
+          }
+
+          yield product;
+        }
+      } catch (err) {
+        return;
+      }
+    }
   }
 }

@@ -5,7 +5,7 @@ import { User } from './User';
 import { Client } from '../IMVU';
 
 export class Product extends BaseModel {
-  @JsonProperty('product_id')
+  @JsonProperty({ type: Number, name: 'product_id' })
   public id: number;
 
   @JsonProperty('product_name')
@@ -47,6 +47,8 @@ export class Product extends BaseModel {
   @JsonProperty('is')
   public types: string[];
 
+  public creator: User;
+
   public constructor(client: Client, options?: ModelOptions) {
     super(client, options);
 
@@ -66,9 +68,9 @@ export class Product extends BaseModel {
     this.types = undefined;
   }
 
-  public async creator(): Promise<User> {
-    const [user] = await this.client.user.fetch({ id: this.creatorId });
+  public async load(): Promise<void> {
+    const creator = await this.client.users.fetch(this.creatorId);
 
-    return user;
+    this.creator = creator;
   }
 }
