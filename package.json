@@ -140,7 +140,7 @@
     "coveralls": "^3.0.3",
     "docsify-cli": "^4.3.0",
     "eslint": "^5.16.0",
-    "jest": "^24.7.1",
+    "jest": "^24.8.0",
     "ts-node": "^8.1.0",
     "typescript": "^3.4.5"
   }
