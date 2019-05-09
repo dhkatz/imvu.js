@@ -72,13 +72,13 @@ export class Client {
 
     avatar._products = json.products;
 
-    await avatar.load();
-
     const clientUser = new (Function.bind.apply(ClientUser, [avatar, avatar.client, avatar.options])) as ClientUser;
 
     for (const key of Object.keys(avatar)) {
       clientUser[key] = avatar[key];
     }
+
+    await clientUser.load();
 
     this._user = clientUser;
 

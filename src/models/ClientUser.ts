@@ -1,37 +1,33 @@
 import { Avatar } from './Avatar';
 import { User } from './User';
+import { URLPaginator, Paginators } from '../util/Paginator';
 
 export class ClientUser extends Avatar {
+  /**
+   * An asynchronous generator which yields each `User` on the client's blocklist.
+   */
   public async * blocklist(): AsyncIterableIterator<User> {
-    let offset = 0;
-    while (true) {
-      try {
-        const { data } = await this.client.http.get(`/user/user-${this.id}/blocked`, { params: { start_index: offset, limit: 10 } })
-
-        const users: User[] = await Promise.all((Object.values(data.denormalized).pop() as any).data.items
-          .map((url: string) => parseInt(url.split('-').pop()))
-          .map((id: number) => this.client.users.fetch(id)));
-        
-        if (!users.length) {
-          return;
-        }
-
-        offset += 10;
-
-        for (const user of users) {
-          if (user === null) {
-            continue;
-          }
-
-          yield user;
-        }
-      } catch (err) {
-        return;
-      }
+    if (!this.client.authenticated) {
+      throw new Error('Cannot retrieve data without user authentication!');
     }
+
+    yield * new URLPaginator(this.client, Paginators.User, `/user/user-${this.id}/blocked`);
   }
 
+  /**
+   * An asynchronous generator which yields each `User` on the client's friends list.
+   */
   public async * friends(): AsyncIterableIterator<User> {
+    if (!this.client.authenticated) {
+      throw new Error('Cannot retrieve data without user authentication!');
+    }
 
+    yield * new URLPaginator(this.client, Paginators.User, `/user/user-${this.id}/friends`);
+  }
+
+  public async load(): Promise<void> {
+    await super.load();
+
+    
   }
 }

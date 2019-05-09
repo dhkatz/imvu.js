@@ -15,7 +15,7 @@ export class Avatar extends User {
   @JsonProperty('products')
   public _products?: Array<{ id: string; product_id: number; owned: boolean; rating: string; }>;
 
-  public outfit: Product[] = [];
+  public outfit: Product[];
 
   public constructor(client: Client, options?: ModelOptions) {
     super(client, options);
@@ -23,11 +23,14 @@ export class Avatar extends User {
     this.lookUrl = undefined;
     this.assetUrl = undefined;
     this._products = undefined;
+    this.outfit = undefined;
   }
 
   public async load(): Promise<void> {
     await super.load();
 
-    this.outfit = await Promise.all(this._products.map((product) => this.client.products.fetch(product.product_id)));
+    if (!this.outfit) {
+      this.outfit = await Promise.all(this._products.map((product) => this.client.products.fetch(product.product_id)));
+    }
   }
 }
