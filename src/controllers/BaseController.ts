@@ -1,5 +1,3 @@
-import { AxiosInstance } from 'axios';
-
 import { BaseModel } from '../models';
 import { Client } from '../IMVU';
 import { deserialize, JSONObject } from 'json-typescript-mapper';

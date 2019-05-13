@@ -5,6 +5,7 @@ import { CookieJar } from 'tough-cookie';
 import { GetMatchedController, ProductController, UserController } from './controllers';
 import { OutfitViewer } from './util';
 import { Avatar, ClientUser } from './models';
+import { IMQStream } from './socket';
 
 cookies(axios);
 
@@ -17,10 +18,11 @@ export class Client {
 
   public authenticated: boolean;
 
-  public _user: ClientUser;
+  public user: ClientUser;
 
   public http: AxiosInstance;
   public cookies: CookieJar;
+  public stream: IMQStream;
 
   public users: UserController;
   public matched: GetMatchedController;
@@ -38,14 +40,6 @@ export class Client {
     this.matched = new GetMatchedController(this);
 
     this.viewer = new OutfitViewer(this);
-  }
-
-  public get user(): ClientUser {
-    if (!this.authenticated) {
-      throw new Error('The client user cannot be accessed without authentication! (Please call the login() method)');
-    }
-
-    return this._user;
   }
 
   public async login(username: string, password: string) {
@@ -80,9 +74,15 @@ export class Client {
 
     await clientUser.load();
 
-    this._user = clientUser;
+    this.user = clientUser;
 
     this.authenticated = true;
+
+    this.stream = new IMQStream(this);
+
+    this.stream.on('message', (message) => {
+      console.log(message);
+    })
   }
 }
 

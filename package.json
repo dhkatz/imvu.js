@@ -31,6 +31,34 @@
     "clean": "rm -rf lib && rm -rf typings && rm -rf coverage",
     "bundle": "webpack"
   },
+  "dependencies": {
+    "axios": "^0.18.0",
+    "axios-cookiejar-support": "^0.4.2",
+    "core-js": "^3.0.1",
+    "json-typescript-mapper": "github:dhkatz/json-typescript-mapper",
+    "reflect-metadata": "^0.1.13",
+    "regenerator-runtime": "^0.13.2",
+    "ws": "^7.0.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.4.4",
+    "@babel/core": "^7.4.4",
+    "@babel/plugin-proposal-class-properties": "^7.4.4",
+    "@babel/plugin-proposal-decorators": "^7.4.4",
+    "@babel/plugin-proposal-object-rest-spread": "^7.4.4",
+    "@babel/preset-env": "^7.4.4",
+    "@babel/preset-typescript": "^7.3.3",
+    "@types/axios": "^0.14.0",
+    "@types/jest": "^24.0.12",
+    "@typescript-eslint/eslint-plugin": "^1.7.0",
+    "@typescript-eslint/parser": "^1.7.0",
+    "coveralls": "^3.0.3",
+    "docsify-cli": "^4.3.0",
+    "eslint": "^5.16.0",
+    "jest": "^24.8.0",
+    "ts-node": "^8.1.0",
+    "typescript": "^3.4.5"
+  },
   "babel": {
     "presets": [
       [
@@ -116,33 +144,5 @@
         }
       ]
     }
-  },
-  "dependencies": {
-    "axios": "^0.18.0",
-    "axios-cookiejar-support": "^0.4.2",
-    "core-js": "^3.0.1",
-    "json-typescript-mapper": "github:dhkatz/json-typescript-mapper",
-    "reflect-metadata": "^0.1.13",
-    "regenerator-runtime": "^0.13.2",
-    "ws": "^7.0.0"
-  },
-  "devDependencies": {
-    "@babel/cli": "^7.4.4",
-    "@babel/core": "^7.4.4",
-    "@babel/plugin-proposal-class-properties": "^7.4.4",
-    "@babel/plugin-proposal-decorators": "^7.4.4",
-    "@babel/plugin-proposal-object-rest-spread": "^7.4.4",
-    "@babel/preset-env": "^7.4.4",
-    "@babel/preset-typescript": "^7.3.3",
-    "@types/axios": "^0.14.0",
-    "@types/jest": "^24.0.12",
-    "@typescript-eslint/eslint-plugin": "^1.7.0",
-    "@typescript-eslint/parser": "^1.7.0",
-    "coveralls": "^3.0.3",
-    "docsify-cli": "^4.3.0",
-    "eslint": "^5.16.0",
-    "jest": "^24.8.0",
-    "ts-node": "^8.1.0",
-    "typescript": "^3.4.5"
   }
 }
