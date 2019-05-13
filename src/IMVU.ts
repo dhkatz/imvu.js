@@ -1,3 +1,5 @@
+import { EventEmitter } from 'events';
+
 import axios, { AxiosInstance } from 'axios';
 import cookies from 'axios-cookiejar-support';
 import { CookieJar } from 'tough-cookie';
@@ -9,10 +11,14 @@ import { IMQStream } from './socket';
 
 cookies(axios);
 
+export interface Client extends EventEmitter {
+  on(event: 'ready', listener: () => void): this;
+}
+
 /**
  * The main client for interacting with the IMVU API controllers.
  */
-export class Client {
+export class Client extends EventEmitter {
   public username: string; 
   public password: string;
 
@@ -32,6 +38,8 @@ export class Client {
 
   /* istanbul ignore next */ 
   public constructor() {
+    super();
+
     this.cookies = new CookieJar();
     this.http = axios.create({ baseURL: 'https://api.imvu.com', jar: this.cookies, withCredentials: true });
 
@@ -80,9 +88,7 @@ export class Client {
 
     this.stream = new IMQStream(this);
 
-    this.stream.on('message', (message) => {
-      console.log(message);
-    })
+    this.stream.on('authenticated', () => this.emit('ready'));
   }
 }
 
