@@ -89,6 +89,8 @@ export class Client extends EventEmitter {
     this.stream = new IMQStream(this);
 
     this.stream.on('authenticated', () => this.emit('ready'));
+
+    this.stream.on('message', (message) => console.log(message));
   }
 }
 

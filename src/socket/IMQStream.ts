@@ -1,5 +1,7 @@
-import WebSocket from 'ws';
 import { EventEmitter } from 'events';
+import { format } from 'util';
+
+import WebSocket from 'ws';
 
 import { Client } from '../IMVU';
 import { ClientEvent, GatewayEvent, encode, decode } from '../socket';
@@ -91,8 +93,13 @@ export class IMQStream extends EventEmitter {
       }, 15000)
 
       this.send({ record: 'msg_c2g_open_floodgates' });
-      this.send({ record: 'msg_c2g_subscribe', queues: [`/user/${this.client.user.id}`] });
-      this.send({ record: 'msg_c2g_subscribe', queues: [`inv:/profile/${this.client.user.id}`] });
+
+      [
+        'inv:/user/user-%d',
+        'private:/user/user-%d',
+        '/user/%d',
+        'inv:/profile/%d',
+      ].forEach((queue: string) => this.send({ record: 'msg_c2g_subscribe', queues: [format(queue, this.client.user.id)] }));
     });
 
   }
