@@ -90,7 +90,7 @@ export class Client extends EventEmitter {
 
     this.stream.on('authenticated', () => this.emit('ready'));
 
-    this.stream.on('message', (message) => console.log(message));
+    this.stream.on('send_message', (message) => console.log(message));
   }
 }
 

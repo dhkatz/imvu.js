@@ -74,7 +74,7 @@ const responses: Record<string, (data: IMQEvent) => IMQEvent> = {
     return {
       ...data,
       user_id: Buffer.from(data.user_id, 'base64').toString(),
-      message: Buffer.from(data.message, 'base64').toString()
+      message: JSON.parse(Buffer.from(data.message, 'base64').toString()),
     };
   },
   msg_g2c_state_change: (data: StateChangedEvent): StateChangedEvent => {

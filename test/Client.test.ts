@@ -27,15 +27,15 @@ describe('Client.test.ts', () => {
     await client.login(USERNAME, PASSWORD);
 
     expect(client.user).toBeInstanceOf(ClientUser);
-    expect(client.user.username.toLowerCase()).toEqual(USERNAME);
+    expect(client.user.username.toLowerCase()).toEqual(USERNAME.toLowerCase());
 
     done();
   });
 
-  test('Client throws when retrieving ClientUser without authentication', async(done) => {
+  test('ClientUser unset when retrieving ClientUser without authentication', async(done) => {
     const client = new Client();
 
-    expect(client.user).toThrow();
+    expect(client.user).toBeUndefined();
 
     done();
   });

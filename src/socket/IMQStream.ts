@@ -5,7 +5,7 @@ import WebSocket from 'ws';
 
 import { Client } from '../IMVU';
 import { ClientEvent, GatewayEvent, encode, decode } from '../socket';
-import { ResultEvent, JoinedQueueEvent } from './Gateway';
+import { ResultEvent, JoinedQueueEvent, SentMessageEvent } from './Gateway';
 
 export enum IMQState {
   CLOSED,
@@ -20,6 +20,7 @@ export interface IMQStream extends EventEmitter {
   on(event: 'message', listener: (message: GatewayEvent) => void): this;
   on(event: 'result', listener: (message: ResultEvent) => void): this;
   on(event: 'joined_queue', listener: (message: JoinedQueueEvent) => void): this;
+  on(event: 'send_message', listener: (message: SentMessageEvent) => void): this;
 }
 
 export class IMQStream extends EventEmitter {
