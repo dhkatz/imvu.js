@@ -1,4 +1,4 @@
-import { Client } from '../IMVU';
+import { Client } from '@/client';
 
 export interface ModelOptions {
 

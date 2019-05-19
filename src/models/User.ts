@@ -1,10 +1,11 @@
 import { JsonProperty } from 'json-typescript-mapper';
 
+import { Client } from '@/client';
+import { Paginator, URLPaginator, Paginators } from '@/util/Paginator';
 import { BaseModel, ModelOptions } from './BaseModel';
-import { Client } from '../IMVU';
 import { Product } from './Product';
 import { GetMatched } from './GetMatched';
-import { Paginator, URLPaginator, Paginators } from '../util/Paginator';
+
 export class User extends BaseModel {
   @JsonProperty({ type: Number, name: 'legacy_cid' } )
   public id: number;

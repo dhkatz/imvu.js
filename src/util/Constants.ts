@@ -1,0 +1,7 @@
+export enum Status {
+  DISCONNECTED,
+  CONNECTING,
+  AUTHENTICATING,
+  READY,
+  IDLE
+}

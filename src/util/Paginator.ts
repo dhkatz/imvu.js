@@ -1,5 +1,5 @@
-import { Client } from '../IMVU';
-import { BaseModel } from '../models';
+import { Client } from '@/client';
+import { BaseModel } from '@/models';
 
 /**
  * Instances of this class generate instances of T.
@@ -14,7 +14,7 @@ export class Paginator<T extends BaseModel> {
     this.next = next;
   }
 
-  async * [Symbol.asyncIterator](): AsyncIterableIterator<T> {
+  public async * [Symbol.asyncIterator](): AsyncIterableIterator<T> {
     let offset = 0;
     while (true) {
       try {
@@ -48,11 +48,11 @@ export enum Paginators {
 export class URLPaginator<T extends BaseModel> extends Paginator<T> {
   public constructor(client: Client, type: Paginators, url: string) {
     super(client, async (client, offset) => {
-      const { data } = await client.http.get(url, { params: { start_index: offset, limit: 25 } })
+      const { data } = await client.http.get(url, { params: { start_index: offset, limit: 25 } });
 
       return Promise.all((Object.values(data.denormalized).pop() as any).data.items
         .map((url: string) => parseInt(url.split('-').pop()))
         .map((id: number) => client[type].fetch(id)));
-    })
+    });
   }
 }

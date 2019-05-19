@@ -100,7 +100,7 @@ jspm_packages/
 build/
 lib/
 test/*.js
-typings/
+/typings/
 /index.ts
 
 # End of https://www.gitignore.io/api/node,visualstudiocode

@@ -1,6 +1,7 @@
-import { BaseModel } from '../models';
-import { Client } from '../IMVU';
 import { deserialize, JSONObject } from 'json-typescript-mapper';
+
+import { BaseModel } from '../models';
+import { Client } from '../client/Client';
 
 export interface BaseQuery {
   id?: any;
@@ -10,7 +11,7 @@ export abstract class BaseController<T extends BaseModel, U extends BaseQuery = 
   public client: Client;
   public base: string;
 
-  public cache: Map<number, { ttl: number; value: T; }> = new Map();
+  public cache: Map<number, { ttl: number; value: T }> = new Map();
   public ttl: number = 60000;
 
   public constructor(client: Client, base: string = '') {

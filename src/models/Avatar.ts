@@ -1,8 +1,8 @@
 import { JsonProperty } from 'json-typescript-mapper';
 
+import { Client } from '@/client';
 import { Product } from './Product';
 import { User } from './User';
-import { Client } from '../IMVU';
 import { ModelOptions } from './BaseModel';
 
 export class Avatar extends User {

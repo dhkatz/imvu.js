@@ -1,8 +1,8 @@
 import { JsonProperty } from 'json-typescript-mapper';
 
+import { Client } from '@/client';
 import { BaseModel, ModelOptions } from './BaseModel';
 import { User } from './User';
-import { Client } from '../IMVU';
 
 export class Product extends BaseModel {
   @JsonProperty({ type: Number, name: 'product_id' })

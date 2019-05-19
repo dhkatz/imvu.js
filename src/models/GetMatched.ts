@@ -1,7 +1,7 @@
 import { JsonProperty } from 'json-typescript-mapper';
 
+import { Client } from '@/client';
 import { BaseModel, ModelOptions } from './BaseModel';
-import { Client } from '../IMVU';
 import { User } from './User';
 
 export class GetMatched extends BaseModel {
