@@ -1,8 +1,20 @@
-import { Avatar } from './Avatar';
-import { User } from './User';
-import { URLPaginator, Paginators } from '../util/Paginator';
+import { FriendManager, RouletteManager } from '@/managers';
+import { Avatar, User, ModelOptions } from '@/models';
+import { URLPaginator, Paginators } from '@/util/Paginator';
+import { Client } from '@/client';
+
 
 export class ClientUser extends Avatar {
+  public friends: FriendManager;
+  public roulette: RouletteManager;
+
+  public constructor(client: Client, options?: ModelOptions) {
+    super(client, options);
+
+    this.friends = new FriendManager(this.client);
+    this.roulette = new RouletteManager(this.client);
+  }
+
   /**
    * An asynchronous generator which yields each `User` on the client's blocklist.
    */
@@ -12,22 +24,5 @@ export class ClientUser extends Avatar {
     }
 
     yield * new URLPaginator(this.client, Paginators.User, `/user/user-${this.id}/blocked`);
-  }
-
-  /**
-   * An asynchronous generator which yields each `User` on the client's friends list.
-   */
-  public async * friends(): AsyncIterableIterator<User> {
-    if (!this.client.authenticated) {
-      throw new Error('Cannot retrieve data without user authentication!');
-    }
-
-    yield * new URLPaginator(this.client, Paginators.User, `/user/user-${this.id}/friends`);
-  }
-
-  public async load(): Promise<void> {
-    await super.load();
-
-    
   }
 }

@@ -1,4 +1,4 @@
-import { BaseExtension } from './BaseExtenstion';
+import { BaseManager } from './BaseManager';
 
 export interface RouletteData {
   available: boolean;
@@ -13,7 +13,7 @@ export interface RouletteData {
   };
 }
 
-export class Roulette extends BaseExtension {
+export class RouletteManager extends BaseManager {
   public async status(): Promise<RouletteData> {
     const { data } = await this.client.http.get(`/roulette/roulette-${this.client.user.id}`);
 
