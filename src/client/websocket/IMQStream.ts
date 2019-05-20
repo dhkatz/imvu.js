@@ -3,7 +3,7 @@ import { format } from 'util';
 
 import WebSocket from 'ws';
 
-import { Status } from '@/util/Constants';
+import { Status, Subscriptions } from '@/util/Constants';
 import { WebSocketManager } from './WebSocketManager';
 import { GatewayEvent, ClientEvent, encode, decode, ResultEvent, JoinedQueueEvent, SentMessageEvent } from './Events';
 
@@ -64,12 +64,9 @@ export class IMQStream extends EventEmitter {
 
         this.send({ record: 'msg_c2g_open_floodgates' });
 
-        [
-          'inv:/user/user-%d',
-          'private:/user/user-%d',
-          '/user/%d',
-          'inv:/profile/%d',
-        ].forEach((queue: string) => this.send({ record: 'msg_c2g_subscribe', queues: [format(queue, this.manager.client.user.id)] }));
+        Subscriptions.forEach((queue: string) => {
+          this.send({ record: 'msg_c2g_subscribe', queues: [format(queue, this.manager.client.user.id)] });
+        });
         
         resolve();
       };

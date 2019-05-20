@@ -1,8 +1,7 @@
 import { EventEmitter } from 'events';
 
 import { Status } from '@/util/Constants';
-import { Client } from '../';
-import { IMQStream } from './IMQStream';
+import { Client, IMQStream, GatewayEvent } from '@/client';
 
 const sleep = (ms: number): Promise<any> => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -28,6 +27,17 @@ export class WebSocketManager extends EventEmitter {
     this.queue.clear();
 
     this.streams.forEach((stream) => stream.destroy());
+  }
+
+  public handle(message: GatewayEvent): void {
+    switch (message.record) {
+      case 'msg_g2c_send_message':
+        
+        break;
+    
+      default:
+        break;
+    }
   }
 
   public async connect(): Promise<void> {

@@ -4,7 +4,7 @@ import { CookieJar } from 'tough-cookie';
 
 import { BaseClient } from '@/client';
 import { GetMatchedController, ProductController, UserController } from '@/controllers';
-import { OutfitViewer } from '@/extensions';
+import { OutfitViewer, Roulette } from '@/extensions';
 import { Avatar, ClientUser } from '@/models';
 import { WebSocketManager, GatewayMessage } from '@/client/websocket';
 
@@ -38,6 +38,7 @@ export class Client extends BaseClient {
   public products: ProductController;
 
   public viewer: OutfitViewer;
+  public roulette: Roulette;
 
   /* istanbul ignore next */ 
   public constructor() {
@@ -53,6 +54,7 @@ export class Client extends BaseClient {
     this.matched = new GetMatchedController(this);
 
     this.viewer = new OutfitViewer(this);
+    this.roulette = new Roulette(this);
   }
 
   public destroy(): void {
