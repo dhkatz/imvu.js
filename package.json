@@ -136,6 +136,7 @@
         "always"
       ],
       "no-console": "off",
+      "no-dupe-class-members": "off",
       "@typescript-eslint/indent": [
         "error",
         2

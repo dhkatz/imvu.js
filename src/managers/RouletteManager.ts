@@ -33,15 +33,19 @@ export class RouletteManager extends BaseManager {
     };
   }
 
-  public async spin(): Promise<boolean> {
+  /**
+   * Spin the roulette wheel.
+   * @returns 
+   */
+  public async spin(): Promise<RouletteData | null> {
     try {
       await this.client.http.post(`/roulette/roulette-${this.client.user.id}`, {
         status: 'redeemed',
       });
     } catch {
-      return false;
+      null;
     }
 
-    return true;
+    return this.status();
   }
 }

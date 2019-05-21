@@ -71,7 +71,7 @@ export class Client extends BaseClient {
    * @example
    * client.login('username', 'password');
    */
-  public async login(username: string, password: string): Promise<string> {
+  public async login(username: string, password: string, options: any = {}): Promise<void> {
     if (typeof username !== 'string' && typeof password !== 'string') {
       throw new Error('Cannot call login with incorrect username or password types!');
     }
@@ -108,6 +108,12 @@ export class Client extends BaseClient {
     await clientUser.load();
 
     this.user = clientUser;
+
+    if (options.socket === false) {
+      this.authenticated = true;
+      this.emit('ready');
+      return;
+    }
 
     return new Promise(async (resolve, reject) => {
       try {
