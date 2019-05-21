@@ -9,6 +9,6 @@ export interface ProductQuery extends BaseQuery {
   offset?: number;
 }
 
-export const ProductController = Controller<Product, ProductQuery>(Product);
+export const ProductController = Controller<Product, ProductQuery>(Product, { ttl: 60000 * 5 });
 
 export type ProductController = InstanceType<typeof ProductController>;

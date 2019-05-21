@@ -1,4 +1,4 @@
-import { FriendManager, RouletteManager } from '@/managers';
+import { FriendManager, RouletteManager, WalletManager } from '@/managers';
 import { Avatar, User, ModelOptions } from '@/models';
 import { URLPaginator, Paginators } from '@/util/Paginator';
 import { Client } from '@/client';
@@ -7,12 +7,14 @@ import { Client } from '@/client';
 export class ClientUser extends Avatar {
   public friends: FriendManager;
   public roulette: RouletteManager;
+  public wallet: WalletManager;
 
   public constructor(client: Client, options?: ModelOptions) {
     super(client, options);
 
     this.friends = new FriendManager(this.client);
     this.roulette = new RouletteManager(this.client);
+    this.wallet = new WalletManager(this.client);
   }
 
   /**

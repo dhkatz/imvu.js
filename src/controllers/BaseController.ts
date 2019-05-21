@@ -1,7 +1,7 @@
 import { deserialize, JSONObject } from 'json-typescript-mapper';
 
-import { BaseModel } from '../models';
-import { Client } from '../client/Client';
+import { BaseModel } from '@/models';
+import { Client } from '@/client';
 
 export interface BaseQuery {
   id?: any;
