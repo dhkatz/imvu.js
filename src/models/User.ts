@@ -2,9 +2,8 @@ import { JsonProperty } from 'json-typescript-mapper';
 
 import { Client } from '@/client';
 import { Paginator, URLPaginator, Paginators } from '@/util/Paginator';
-import { BaseModel, ModelOptions } from './BaseModel';
-import { Product } from './Product';
-import { GetMatched } from './GetMatched';
+import { BaseModel, GetMatched, ModelOptions, Product } from '@/models';
+import { authenticated } from '@/util/Decorators';
 
 export class User extends BaseModel {
   @JsonProperty({ type: Number, name: 'legacy_cid' } )
@@ -94,5 +93,22 @@ export class User extends BaseModel {
 
   public async * wishlist(): AsyncIterableIterator<Product> {
     yield * new URLPaginator(this.client, Paginators.User, `/user/user-${this.id}/wishlist`);
+  }
+
+  /**
+   * Add a friend to the client's friends list.
+   * @returns {Promise<boolean>} If the operation was successful or not
+   */
+  @authenticated()
+  public async add(): Promise<boolean> {
+    return this.client.user.friends.add(this);
+  }
+
+  /**
+   * Remove a friend from client's friends list.
+   * @returns {Promise<boolean>} If the operation was successful or not
+   */
+  public async remove(): Promise<boolean> {
+    return this.client.user.friends.remove(this);
   }
 }
