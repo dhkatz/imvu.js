@@ -60,7 +60,7 @@
     "jest": "^24.8.0",
     "ts-node": "^8.2.0",
     "tsconfig-paths": "^3.8.0",
-    "typescript": "^3.5.1"
+    "typescript": "^3.5.2"
   },
   "babel": {
     "presets": [
