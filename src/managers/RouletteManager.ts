@@ -35,15 +35,16 @@ export class RouletteManager extends BaseManager {
 
   /**
    * Spin the roulette wheel.
-   * @returns 
+   * @returns
    */
   public async spin(): Promise<RouletteData | null> {
     try {
       await this.client.http.post(`/roulette/roulette-${this.client.user.id}`, {
         status: 'redeemed',
       });
-    } catch {
-      null;
+    } catch (error) {
+      console.log(error);
+      return null;
     }
 
     return this.status();

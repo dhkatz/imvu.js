@@ -1,8 +1,8 @@
-import { JsonProperty } from 'json-typescript-mapper';
+import {JsonProperty} from '@dhkatz/json-ts';
 
-import { Client } from '@/client';
-import { BaseModel, ModelOptions } from './BaseModel';
-import { User } from './User';
+import {Client} from '@/client';
+import {BaseModel, ModelOptions} from './BaseModel';
+import {User} from './User';
 
 export class Product extends BaseModel {
   @JsonProperty({ type: Number, name: 'product_id' })
@@ -41,10 +41,10 @@ export class Product extends BaseModel {
   @JsonProperty('gender')
   public gender: string | null; // TODO: Update to interface/enum/class
 
-  @JsonProperty('categories')
+  @JsonProperty({ name: 'categories', type: String })
   public categories: string[];
 
-  @JsonProperty('is')
+  @JsonProperty({ name: 'is', type: String })
   public types: string[];
 
   public creator: User;
@@ -69,8 +69,6 @@ export class Product extends BaseModel {
   }
 
   public async load(): Promise<void> {
-    const creator = await this.client.users.fetch(this.creatorId);
-
-    this.creator = creator;
+    this.creator = await this.client.users.fetch(this.creatorId);
   }
 }

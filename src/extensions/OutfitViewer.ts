@@ -1,4 +1,4 @@
-import { Scene } from '@/models';
+import {PartialProduct, Scene} from '@/models';
 import { BaseExtension } from './BaseExtenstion';
 
 export interface OutfitViewerOptions {
@@ -6,8 +6,8 @@ export interface OutfitViewerOptions {
 }
 
 export class OutfitViewer extends BaseExtension {
-  public static AVATAR_PATTERN: RegExp = /avatar(\d+)=(?:(\d+)(?:(?:(?:%3B)|;))?)+/mig;
-  public static ROOM_PATTERN: RegExp = /room=((\d+)(?:x\d)?(?:(?:(?:%3B)|;))?)+/mi;
+  public static AVATAR_PATTERN = /avatar(\d+)=(?:(\d+)(?:(?:%3B)|;)?)+/mig;
+  public static ROOM_PATTERN = /room=((\d+)(?:x\d)?(?:(?:%3B)|;)?)+/mi;
 
   /**
    * Parse a 'Products in Scene' URL and return a `Scene`
@@ -17,7 +17,7 @@ export class OutfitViewer extends BaseExtension {
    * @returns {Promise<Scene>} Returns a promise that resolves to the parsed `Scene`
    */
   public async parse(url: string, options: OutfitViewerOptions = {}): Promise<Scene> {
-    const data = url.match(OutfitViewer.AVATAR_PATTERN);
+    const data = url.match(OutfitViewer.AVATAR_PATTERN) || [];
 
     // The separator might be URL encoded or not
     const separator = url.includes('%3B') ? '%3B' : ';';
@@ -27,9 +27,15 @@ export class OutfitViewer extends BaseExtension {
     const avatars = new Map(data.map((value: string) => {
       const split = value.split('=');
       const id = parseInt(split[0].replace('avatar', ''));
-      const products = split[1]
+      const products: PartialProduct[] = split[1]
         .split(separator)
-        .map((value) => parseInt(value, 10));
+        .map((value) => parseInt(value, 10))
+        .map((value) => ({
+          id: `https://api.imvu.com/product/product-${value}`,
+          product_id: value ,
+          owned: true,
+          rating: ''
+        }));
 
       return [id, products];
     }));
@@ -38,7 +44,8 @@ export class OutfitViewer extends BaseExtension {
       .replace('room=', '')
       .replace(/x\d+/g, '')
       .split(separator)
-      .map((value) => parseInt(value));
+      .map((value) => parseInt(value))
+      .filter(p => !isNaN(p));
 
     scene.data = {
       avatars,

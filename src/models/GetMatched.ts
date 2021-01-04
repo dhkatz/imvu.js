@@ -1,4 +1,4 @@
-import { JsonProperty } from 'json-typescript-mapper';
+import { JsonProperty } from '@dhkatz/json-ts';
 
 import { Client } from '@/client';
 import { BaseModel, ModelOptions } from './BaseModel';
@@ -11,7 +11,7 @@ export class GetMatched extends BaseModel {
   @JsonProperty('story')
   public story: string;
 
-  @JsonProperty('progress')
+  @JsonProperty({ name: 'progress', type: Number })
   public progress: number[];
 
   @JsonProperty('status')
@@ -33,7 +33,7 @@ export class GetMatched extends BaseModel {
   }
 
   public async load(): Promise<void> {
-    const [user] = await this.client.users.search({ username: this.username })
+    const [user] = await this.client.users.search({ username: this.username });
 
     this.user = user;
   }

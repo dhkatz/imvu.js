@@ -1,27 +1,10 @@
-import { deserialize, JSONObject } from 'json-typescript-mapper';
+import { deserialize } from '@dhkatz/json-ts';
 
 import { BaseModel } from '@/models';
 import { Client } from '@/client';
 
 export interface BaseQuery {
   id?: any;
-}
-
-export abstract class BaseController<T extends BaseModel, U extends BaseQuery = BaseQuery> {
-  public client: Client;
-  public base: string;
-
-  public cache: Map<number, { ttl: number; value: T }> = new Map();
-  public ttl: number = 60000;
-
-  public constructor(client: Client, base: string = '') {
-    this.client = client;
-    this.base = base;
-  }
-
-  public abstract async fetch(id: number, cache: boolean): Promise<T | null>;
-  
-  public abstract async search(query: U, cache: boolean): Promise<T[]>;
 }
 
 export interface ControllerOptions<T, U> {
@@ -31,65 +14,74 @@ export interface ControllerOptions<T, U> {
   ttl?: number;
 }
 
-// eslint-disable-next-line
-export function Controller<T extends BaseModel, U extends BaseQuery = { id: number }>(cls: new (...args: any[]) => T, options: ControllerOptions<T, U> = {}) {
-  const DerivedController = class extends BaseController<T, U> {
-    public constructor(client: Client) {
-      super(client, options.name || `/${cls.name.split(/(?=[A-Z])/).join('_').toLowerCase()}`);
+export abstract class BaseController<T extends BaseModel, U extends BaseQuery = BaseQuery> {
+  public client: Client;
+  public model: new (...args: any[]) => T;
+  public options: ControllerOptions<T, U>;
+  public base: string;
 
-      this.ttl = options.ttl || 60000;
+  public cache: Map<number, { ttl: number; value: T }> = new Map();
+  public ttl = 60000;
+
+  protected constructor(client: Client, model: new (...args: any[]) => T, options: ControllerOptions<T, U> = {}) {
+    this.client = client;
+    this.model = model;
+    this.options = options;
+
+    this.ttl = options.ttl || 60000;
+
+    this.base = options.name || `/${model.name.split(/(?=[A-Z])/).join('_').toLowerCase()}`;
+  }
+
+  /**
+   * Retrieve instances of resource from IMVU's API
+   * This is a lot faster than searching, so fetch with an ID if you can.
+   * @param id Request ID
+   * @param cache Whether to cache the new object if it isn't already
+   */
+  public async fetch(id: number, cache = true): Promise<T | null> {
+    if (this.cache.has(id) && this.cache.get(id).ttl > Date.now()) {
+      return this.cache.get(id).value;
     }
 
-    /**
-     * Retrieve instances of resource from IMVU's API
-     * This is a lot faster than searching, so fetch with an ID if you can.
-     * @param id Request ID
-     * @param cache Whether to cache the new object if it isn't already
-     */
-    public async fetch(id: number, cache: boolean = true): Promise<T | null> {
-      if (this.cache.has(id) && this.cache.get(id).ttl > Date.now()) {
-        return this.cache.get(id).value;
+    try {
+      const {data} = await this.client.http.get(`${this.base}-${id}`, {baseURL: `https://api.imvu.com${this.base}`});
+
+      const cls = this.model;
+      const json: any = data.denormalized[data.id].data;
+      const instance = new cls(this.client);
+      const object = deserialize(instance, json);
+
+      if (cache) {
+        this.cache.set(id, {ttl: Date.now() + this.ttl, value: object});
       }
 
-      try {
-        const { data } = await this.client.http.get(`${this.base}-${id}`, { baseURL: `https://api.imvu.com${this.base}` });
+      await object.load();
 
-        const json: JSONObject = data.denormalized[`https://api.imvu.com${this.base}${this.base}-${id}`].data;
-        const object = deserialize(cls, json, this.client);
-
-        if (cache) {
-          this.cache.set(id, { ttl: Date.now() + this.ttl, value: object });
-        }
-
-        await object.load();
-
-        return options.process ? options.process(object) : object;
-      } catch (err) {
-        if (cache) {
-          this.cache.set(id, { ttl: Date.now() + this.ttl, value: null });
-        }
-
-        return options.process ? options.process(null) : null;
+      return this.options.process ? this.options.process(object) : object;
+    } catch (err) {
+      if (cache) {
+        this.cache.set(id, {ttl: Date.now() + this.ttl, value: null});
       }
+
+      return this.options.process ? this.options.process(null) : null;
     }
+  }
 
-    /**
-     * Search for and retrieve objects based on a given query
-     * @param query Request query to search for
-     * @param cache Whether to cache the results or not
-     */
-    public async search(query: U, cache: boolean = true): Promise<T[]> {
-      const params = options.transform ? options.transform(query) : query;
+  /**
+   * Search for and retrieve objects based on a given query
+   * @param query Request query to search for
+   * @param cache Whether to cache the results or not
+   */
+  public async search(query: U, cache = true): Promise<T[]> {
+    const params = this.options.transform ? this.options.transform(query) : query;
 
-      const { data } = await this.client.http.get('', { params, baseURL: `https://api.imvu.com${this.base}` });
-      
-      const ids: string[] = data.hasOwnProperty('data') ? 
-        data.data.items.map((url: string) => url.split('-')[-1]) :
-        (Object.values(data.denormalized).pop() as any).data.items.map((url: string) => url.split('-').pop());
+    const {data} = await this.client.http.get('', {params, baseURL: `https://api.imvu.com${this.base}`});
 
-      return Promise.all(ids.map((id: string) => this.fetch(parseInt(id, 10), cache)));
-    }
-  };
+    const ids: string[] = 'data' in data ?
+      data.data.items.map((url: string) => url.split('-').pop()) :
+      data.denormalized[data.id].data.items.map((url: string) => url.split("-").pop());
 
-  return DerivedController;
+    return Promise.all(ids.map((id: string) => this.fetch(parseInt(id, 10), cache)));
+  }
 }

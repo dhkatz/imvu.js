@@ -1,5 +1,6 @@
 import { Product } from '../models';
-import { Controller, BaseQuery } from './BaseController';
+import { BaseQuery, BaseController} from './BaseController';
+import {Client} from "@/client";
 
 export interface ProductQuery extends BaseQuery {
   id?: number | string | number[];
@@ -9,6 +10,9 @@ export interface ProductQuery extends BaseQuery {
   offset?: number;
 }
 
-export const ProductController = Controller<Product, ProductQuery>(Product, { ttl: 60000 * 5 });
+export class ProductController extends BaseController<Product, ProductQuery> {
+  public constructor(client: Client) {
+    super(client, Product, { ttl: 60000 * 5 });
+  }
 
-export type ProductController = InstanceType<typeof ProductController>;
+}

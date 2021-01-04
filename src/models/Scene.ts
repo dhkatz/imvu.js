@@ -1,15 +1,16 @@
 import { BaseModel } from './BaseModel';
-import { Avatar } from './Avatar';
+import {Avatar, PartialProduct} from './Avatar';
 import { Product } from './Product';
+import {deserialize} from "@dhkatz/json-ts";
 
 export interface SceneData {
-  avatars: Map<number, number[]>;
+  avatars: Map<number, PartialProduct[]>;
   furniture: number[];
 }
 
 /**
  * Object containing information about a "Products in Scene" URL
- * This object does not come from the API and is instead contructed by the OutfitViewer class.
+ * This object does not come from the API and is instead constructed by the OutfitViewer class.
  */
 export class Scene extends BaseModel {
   public data: SceneData = { avatars: new Map(), furniture: [] };
@@ -22,25 +23,23 @@ export class Scene extends BaseModel {
    * Load the `Avatar` and `Product` objects from the `Scene` data.
    */
   public async load(): Promise<void> {
-    this.avatars = await Promise.all([...this.data.avatars].map(async ([id, products]: [number, number[]]) => {
-
-      // This is what I consider an "ugly hack" to create an Avatar instance using methods that exit on the client.
-      // Without this, I'd probably have to write a way to create Avatars separately even though they aren't
-      // provided by the API.
+    this.avatars = await Promise.all([...this.data.avatars].map(async ([id, products]: [number, PartialProduct[]]) => {
       const user = await this.client.users.fetch(id);
 
-      const avatar = new (Function.bind.apply(Avatar, [user, user.client, user.options])) as Avatar;
+      const avatar = new Avatar(this.client, user.options);
 
-      for (const key of Object.keys(user)) {
-        avatar[key] = user[key];
-      }
+      const ids = products.map(p => p.product_id);
 
-      // End of ugly hack, 'avatar' should now be an instance of Avatar with all the properties from 'user'.
-
-      avatar._products = products.map((value) => { return { product_id: value, owned: true }; }) as any;
-      avatar.lookUrl = `https://api.imvu.com/look/${products.join('%2C')}`;
+      deserialize(avatar, {
+        look_url: `https://api.imvu.com/look/${ids.join('%2C')}`,
+        asset_url: '',
+        legacy_message: `*putOnOutfit ${ids.join(' ')}`,
+        products
+      });
 
       await avatar.load();
+
+      avatar.user = user;
 
       return avatar;
     }));

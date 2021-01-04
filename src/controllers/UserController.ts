@@ -1,5 +1,6 @@
-import { Controller, BaseQuery } from './BaseController';
-import { User } from '../models';
+import { BaseQuery, BaseController } from './BaseController';
+import { User } from '@/models';
+import {Client} from "@/client";
 
 export interface UserQuery extends BaseQuery {
   id?: string | number | number[];
@@ -14,5 +15,8 @@ const transform = (query: UserQuery): UserQuery => {
   return query;
 };
 
-export const UserController = Controller<User, UserQuery>(User, { transform });
-export type UserController = InstanceType<typeof UserController>;
+export class UserController extends BaseController<User, UserQuery> {
+  public constructor(client: Client) {
+    super(client, User, { transform });
+  }
+}

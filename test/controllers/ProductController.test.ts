@@ -1,4 +1,4 @@
-import { ProductController, Product, User, Client } from '../src';
+import { ProductController, Product, User, Client } from '../../src';
 
 describe('ProductController.test.ts', () => {
   const client = new Client();
@@ -16,7 +16,7 @@ describe('ProductController.test.ts', () => {
   test('Invalid Creator Returns Null', async (done) => {
     const controller = new ProductController(client);
 
-    const products = await controller.search({ creator: 'x124za' })
+    const products = await controller.search({ creator: 'x124za' });
 
     expect(products).toHaveLength(0);
 
@@ -31,6 +31,7 @@ describe('ProductController.test.ts', () => {
     const creator = product.creator;
 
     expect(creator).toBeInstanceOf(User);
+    expect(creator.registered).toBe(1313110378);
 
     done();
   });

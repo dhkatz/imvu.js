@@ -32,9 +32,9 @@ export class WebSocketManager extends EventEmitter {
   public handle(message: GatewayEvent): void {
     switch (message.record) {
       case 'msg_g2c_send_message':
-        
+
         break;
-    
+
       default:
         break;
     }
@@ -44,7 +44,7 @@ export class WebSocketManager extends EventEmitter {
     this.gateway = 'wss://imq.imvu.com:444/streaming/imvu_pre';
     this.queue = new Set(Array.from({ length: 1}, (v, k) => new IMQStream(this, k)));
 
-    this.spawn();
+    await this.spawn();
   }
 
   public async reconnect(): Promise<boolean> {

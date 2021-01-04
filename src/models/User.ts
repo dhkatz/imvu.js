@@ -1,9 +1,9 @@
-import { JsonProperty } from 'json-typescript-mapper';
+import {JsonProperty} from '@dhkatz/json-ts';
 
-import { Client } from '@/client';
-import { Paginator, URLPaginator, Paginators } from '@/util/Paginator';
-import { BaseModel, GetMatched, ModelOptions, Product } from '@/models';
-import { authenticated } from '@/util/Decorators';
+import {Client} from '@/client';
+import {Paginator, Paginators, URLPaginator} from '@/util/Paginator';
+import {BaseModel, GetMatched, ModelOptions, Product} from '@/models';
+import {authenticated} from '@/util/Decorators';
 
 export class User extends BaseModel {
   @JsonProperty({ type: Number, name: 'legacy_cid' } )
@@ -82,9 +82,7 @@ export class User extends BaseModel {
   }
 
   public async load(): Promise<void> {
-    const profile = await this.client.matched.fetch(this.id);
-
-    this.matched = profile;
+    this.matched = await this.client.matched.fetch(this.id);
   }
 
   public async * shop(): AsyncIterableIterator<Product> {

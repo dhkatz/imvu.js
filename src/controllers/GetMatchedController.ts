@@ -1,5 +1,9 @@
 import { GetMatched } from '../models';
-import { Controller } from './BaseController';
+import { BaseController } from './BaseController';
+import {Client} from "@/client";
 
-export const GetMatchedController = Controller<GetMatched>(GetMatched);
-export type GetMatchedController = InstanceType<typeof GetMatchedController>;
+export class GetMatchedController extends BaseController<GetMatched> {
+  public constructor(client: Client) {
+    super(client, GetMatched);
+  }
+}

@@ -7,6 +7,7 @@ import { GetMatchedController, ProductController, UserController } from '@/contr
 import { OutfitViewer } from '@/extensions';
 import { Avatar, ClientUser } from '@/models';
 import { WebSocketManager, GatewayMessage } from '@/client/websocket';
+import {deserialize} from "@dhkatz/json-ts";
 
 cookies(axios);
 
@@ -21,7 +22,7 @@ export interface Client extends BaseClient {
  * The main client for interacting with the IMVU API controllers.
  */
 export class Client extends BaseClient {
-  public username: string; 
+  public username: string;
   public password: string;
 
   public ready: boolean;
@@ -39,7 +40,7 @@ export class Client extends BaseClient {
 
   public viewer: OutfitViewer;
 
-  /* istanbul ignore next */ 
+  /* istanbul ignore next */
   public constructor() {
     super();
 
@@ -67,6 +68,7 @@ export class Client extends BaseClient {
    * Logs the client in and establishes a WebSocket connection with IMVU.
    * @param {string} username The username of the account to login with
    * @param {string} password The password of the account to login with
+   * @param options
    * @returns {Promise<string>} The password of the account used
    * @example
    * client.login('username', 'password');
@@ -89,21 +91,21 @@ export class Client extends BaseClient {
 
     const { data } = await this.http.get(`/avatar/avatar-${user.id}`);
 
-    const json = data.denormalized[`https://api.imvu.com/avatar/avatar-${user.id}`].data;
+    const json = data.denormalized[data.id].data;
 
-    const avatar = new (Function.bind.apply(Avatar, [user, user.client, user.options])) as Avatar;
+    const avatar = new Avatar(user.client, user.options);
+
+    deserialize(avatar, json);
+
+    await avatar.load();
+
+    const clientUser = new (Function.bind.apply(ClientUser, [user, user.client, user.options])) as ClientUser;
 
     for (const key of Object.keys(user)) {
-      avatar[key] = user[key];
+      clientUser[key] = user[key];
     }
 
-    avatar._products = json.products;
-
-    const clientUser = new (Function.bind.apply(ClientUser, [avatar, avatar.client, avatar.options])) as ClientUser;
-
-    for (const key of Object.keys(avatar)) {
-      clientUser[key] = avatar[key];
-    }
+    clientUser.avatar = avatar;
 
     await clientUser.load();
 
@@ -115,18 +117,22 @@ export class Client extends BaseClient {
       return;
     }
 
-    return new Promise(async (resolve, reject) => {
-      try {
-        await this.socket.connect();
-
-        this.authenticated = true;
-
-        resolve();
-      } catch (err) {
-        this.destroy();
-        reject(err);
-      }
+    return new Promise( (resolve, reject) => {
+      this.socket.connect()
+        .then(() => {
+          this.authenticated = true;
+          this.emit('ready');
+          resolve();
+        })
+        .catch((reason) => {
+          this.destroy();
+          reject(reason);
+        });
     });
+  }
+
+  public logout(): void {
+    this.destroy();
   }
 
   public async holidays(): Promise<Array<{ title: string; date: Date }>> {

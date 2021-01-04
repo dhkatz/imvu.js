@@ -17,13 +17,23 @@ export class FriendManager extends BaseManager {
     yield * new URLPaginator(this.client, Paginators.User, `/user/user-${this.client.user.id}/friends`);
   }
 
+  public async count(): Promise<number> {
+    if (!this.client.authenticated) {
+      throw new Error('Cannot retrieve data without user authentication!');
+    }
+
+    const { data } = await this.client.http.get(`/user/user-${this.client.user.id}/friends?limit=0`);
+
+    return data.denormalized[data.id].data['total_count'];
+  }
+
   public async add(user: User): Promise<boolean>;
   public async add(username: string): Promise<boolean>;
   public async add(id: number): Promise<boolean>;
   public async add(user: User | string | number): Promise<boolean> {
-    const id = typeof user === 'string' ? (await this.client.users.search({ username: user }))[0].id : typeof user === 'number' ? user : user.id;
-
     try {
+      const id = typeof user === 'string' ? (await this.client.users.search({ username: user }))[0].id : typeof user === 'number' ? user : user.id;
+
       await this.client.http.post(`/user/user-${this.client.user.id}/outbound_friend_requests`, {
         id: `https://api.imvu.com/user/user-${id}`,
       });

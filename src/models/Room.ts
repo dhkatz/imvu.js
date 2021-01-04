@@ -1,4 +1,4 @@
-import { JsonProperty } from 'json-typescript-mapper';
+import { JsonProperty } from '@dhkatz/json-ts';
 
 import { Client } from '@/client';
 import { BaseModel, ModelOptions } from './BaseModel';
@@ -16,6 +16,6 @@ export class Room extends BaseModel {
   }
 
   public async load(): Promise<void> {
-    
+
   }
 }

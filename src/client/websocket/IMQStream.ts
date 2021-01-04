@@ -4,7 +4,7 @@ import { format } from 'util';
 import WebSocket from 'ws';
 
 import { Status, Subscriptions } from '@/util/Constants';
-import { WebSocketManager } from './WebSocketManager';
+import { WebSocketManager } from '@/client';
 import { GatewayEvent, ClientEvent, encode, decode, ResultEvent, JoinedQueueEvent, SentMessageEvent } from './Events';
 
 /* eslint-disable */
@@ -32,7 +32,7 @@ export class IMQStream extends EventEmitter {
 
     this.state = {} as any;
     this.pings = [] as any;
-    this.status = Status.IDLE;
+    this.status = Status.CONNECTING;
   }
 
   public destroy(): void {
@@ -67,7 +67,7 @@ export class IMQStream extends EventEmitter {
         Subscriptions.forEach((queue: string) => {
           this.send({ record: 'msg_c2g_subscribe', queues: [format(queue, this.manager.client.user.id)] });
         });
-        
+
         resolve();
       };
 
@@ -123,7 +123,7 @@ export class IMQStream extends EventEmitter {
       return;
     }
 
-    this.connection.send(this.encode(data), (err: Error) => {
+    this.connection.send(IMQStream.encode(data), (err: Error) => {
       if (err) this.manager.client.emit('stream_error', err, this.id);
     });
   }
@@ -134,11 +134,11 @@ export class IMQStream extends EventEmitter {
     this.send({ record: 'msg_c2g_ping' });
   }
 
-  private encode(data: ClientEvent): string {
+  private static encode(data: ClientEvent): string {
     return JSON.stringify([encode(data)]);
   }
 
-  private decode(message: string): string {
+  private static decode(message: string): string {
     return decodeURIComponent(global.escape(atob(message)));
   }
 
@@ -179,7 +179,7 @@ export class IMQStream extends EventEmitter {
       this.pings.unshift(Date.now() - this.state.last);
       if (this.pings.length > 3) this.pings = this.pings.slice(0, 3) as any;
     }
-  
+
     if (this.status === Status.AUTHENTICATING) {
       if (message.record === 'msg_g2c_result') {
         if (message.status === 0) {
