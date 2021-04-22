@@ -36,7 +36,7 @@
     "axios": "^0.21.1",
     "axios-cookiejar-support": "^1.0.1",
     "babel-plugin-transform-typescript-metadata": "^0.3.1",
-    "core-js": "^3.8.1",
+    "core-js": "^3.11.0",
     "reflect-metadata": "^0.1.13",
     "regenerator-runtime": "^0.13.7",
     "ws": "^7.4.2"
