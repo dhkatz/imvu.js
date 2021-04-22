@@ -39,7 +39,7 @@
     "core-js": "^3.8.1",
     "reflect-metadata": "^0.1.13",
     "regenerator-runtime": "^0.13.7",
-    "ws": "^7.4.2"
+    "ws": "^7.4.5"
   },
   "devDependencies": {
     "@babel/cli": "^7.12.10",
