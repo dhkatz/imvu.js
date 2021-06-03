@@ -19,4 +19,15 @@ export class UserController extends BaseController<User, UserQuery> {
   public constructor(client: Client) {
     super(client, User, { transform });
   }
+
+  /**
+   * Check if a username is available for registration
+   * @param {string} username
+   * @returns {Promise<boolean>}
+   */
+  public async available(username: string): Promise<boolean> {
+    const { data } = await this.client.http.post('/validate_account', { avatarname: username });
+
+    return data['denormalized'][data.id]['data']['valid'];
+  }
 }

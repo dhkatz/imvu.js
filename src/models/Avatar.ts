@@ -1,8 +1,7 @@
 import {ICustomConverter, JsonProperty} from '@dhkatz/json-ts';
 
-import { Client } from '@/client';
 import { Product } from './Product';
-import {BaseModel, ModelOptions} from './BaseModel';
+import {BaseModel} from './BaseModel';
 import {User} from "@/models/User";
 
 export type PartialProduct = { id: string; product_id: number; owned: boolean; rating: string };
@@ -25,15 +24,6 @@ export class Avatar extends BaseModel {
   public products: Product[];
 
   public user: User;
-
-  public constructor(client: Client, options?: ModelOptions) {
-    super(client, options);
-
-    this.lookUrl = undefined;
-    this.assetUrl = undefined;
-    this._products = undefined;
-    this.products = undefined;
-  }
 
   public async load(): Promise<void> {
     if (!this.products) {

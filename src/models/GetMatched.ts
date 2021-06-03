@@ -1,10 +1,8 @@
 import { JsonProperty } from '@dhkatz/json-ts';
 
-import { Client } from '@/client';
-import { BaseModel, ModelOptions } from './BaseModel';
-import { User } from './User';
+import { BaseModel } from './BaseModel';
 
-export class GetMatched extends BaseModel {
+export class GetMatched extends BaseModel<Record<string, unknown>> {
   @JsonProperty('avatarname')
   public username: string;
 
@@ -20,21 +18,7 @@ export class GetMatched extends BaseModel {
   @JsonProperty('ap_profile')
   public isApProfile: boolean;
 
-  public user: User;
-
-  public constructor(client: Client, options?: ModelOptions) {
-    super(client, options);
-
-    this.username = undefined;
-    this.story = undefined;
-    this.progress = undefined;
-    this.status = undefined;
-    this.isApProfile = undefined;
-  }
-
-  public async load(): Promise<void> {
-    const [user] = await this.client.users.search({ username: this.username });
-
-    this.user = user;
+  public relations = {
+    user: () => this.client.users.search({ username: this.username })
   }
 }

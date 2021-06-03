@@ -1,5 +1,5 @@
 export function authenticated(): MethodDecorator {
-  return <T>(target: object, propertyKey: PropertyKey, descriptor: TypedPropertyDescriptor<T>): TypedPropertyDescriptor<T> => {
+  return <T>(target: Record<string, unknown>, propertyKey: PropertyKey, descriptor: TypedPropertyDescriptor<T>): TypedPropertyDescriptor<T> => {
     const method = descriptor.value as any;
 
     descriptor.value = async function(...args: any[]) {

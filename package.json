@@ -18,7 +18,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dhkatz/imvu.git"
+    "url": "git+https://github.com/dhkatz/imvu.js.git"
   },
   "scripts": {
     "build": "npm run build:types && npm run build:js",
@@ -35,6 +35,7 @@
     "@dhkatz/json-ts": "^4.4.1",
     "axios": "^0.21.1",
     "axios-cookiejar-support": "^1.0.1",
+    "axios-debug-log": "^0.8.2",
     "babel-plugin-transform-typescript-metadata": "^0.3.1",
     "core-js": "^3.8.1",
     "reflect-metadata": "^0.1.13",

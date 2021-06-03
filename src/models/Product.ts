@@ -1,10 +1,9 @@
 import {JsonProperty} from '@dhkatz/json-ts';
 
-import {Client} from '@/client';
-import {BaseModel, ModelOptions} from './BaseModel';
+import {BaseModel, Relations} from './BaseModel';
 import {User} from './User';
 
-export class Product extends BaseModel {
+export class Product extends BaseModel<{ creator: User, parent: Product }> {
   @JsonProperty({ type: Number, name: 'product_id' })
   public id: number;
 
@@ -47,28 +46,8 @@ export class Product extends BaseModel {
   @JsonProperty({ name: 'is', type: String })
   public types: string[];
 
-  public creator: User;
-
-  public constructor(client: Client, options?: ModelOptions) {
-    super(client, options);
-
-    this.id = undefined;
-    this.name = undefined;
-    this.creatorId = undefined;
-    this.creatorName = undefined;
-    this.rating = undefined;
-    this.price = undefined;
-    this.discountPrice = undefined;
-    this.page = undefined;
-    this.creatorPage = undefined;
-    this.isBundle = undefined;
-    this.image = undefined;
-    this.gender = undefined;
-    this.categories = undefined;
-    this.types = undefined;
-  }
-
-  public async load(): Promise<void> {
-    this.creator = await this.client.users.fetch(this.creatorId);
-  }
+  relations: Relations<{ creator: User, parent: Product | undefined }> = {
+    creator: () => this.client.users.fetch(this.creatorId),
+    parent: () => this.client.products.fetch(this.parentId),
+  };
 }

@@ -1,4 +1,4 @@
-import { Product } from '../models';
+import { Product } from '@/models';
 import { BaseQuery, BaseController} from './BaseController';
 import {Client} from "@/client";
 

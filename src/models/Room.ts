@@ -1,7 +1,6 @@
 import { JsonProperty } from '@dhkatz/json-ts';
 
-import { Client } from '@/client';
-import { BaseModel, ModelOptions } from './BaseModel';
+import { BaseModel } from './BaseModel';
 
 export class Room extends BaseModel {
   public id: number;
@@ -9,13 +8,19 @@ export class Room extends BaseModel {
   @JsonProperty()
   public name: string;
 
-  public constructor(client: Client, options?: ModelOptions) {
-    super(client, options);
+  @JsonProperty()
+  public description: string;
 
-    this.name = undefined;
-  }
+  @JsonProperty()
+  public privacy: string;
 
-  public async load(): Promise<void> {
+  @JsonProperty()
+  public rating: number;
 
+  @JsonProperty()
+  public capacity: number;
+
+  public load(): Promise<void> {
+    return Promise.resolve(undefined);
   }
 }

@@ -1,11 +1,17 @@
 import { BaseManager } from './BaseManager';
+import {Room} from "@/models";
+import {URLPaginator} from "@/util/Paginator";
 
 export class RoomManager extends BaseManager {
-  public async recent(): Promise<any> {
-    const { data } = await this.client.http.get(`/user/user-${this.client.user.id}/recent_rooms`);
+  public async * recent(): AsyncIterableIterator<Room> {
+    yield * new URLPaginator(this.client, this.client.rooms, `/user/user-${this.client.user.id}/recent_rooms`);
+  }
 
-    const urls = data['denormalized'][`https://api.imvu.com/user/user-${this.client.user.id}/recent_rooms`]['data']['items'] as string[];
+  public async * favorites(): AsyncIterableIterator<Room> {
+    yield * new URLPaginator(this.client, this.client.rooms, `/user/user-${this.client.user.id}/favorite_rooms`);
+  }
 
-    return urls.map((url: string) => ({}));
+  public async * managed(): AsyncIterableIterator<Room> {
+    yield * new URLPaginator(this.client, this.client.rooms, `/user/user-${this.client.user.id}/managed_rooms`);
   }
 }

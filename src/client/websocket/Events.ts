@@ -78,7 +78,7 @@ export interface CreateMountEvent extends IMQEvent {
   record: 'msg_g2c_create_mount';
   queue: string;
   mount: string;
-  type: number;
+  type: 'message' | 'state';
   sequence?: number;
 }
 
@@ -104,11 +104,12 @@ export interface PongEvent extends IMQEvent {
   record: 'msg_g2c_pong';
 }
 
-const responses: Record<string, (data: IMQEvent) => IMQEvent> = {
+const responses: Record<GatewayMessage, (data: IMQEvent) => IMQEvent> = {
   msg_g2c_result: (data: ResultEvent) => data,
   msg_g2c_joined_queue: (data: JoinedQueueEvent) => data,
   msg_g2c_left_queue: (data: LeftQueueEvent) => data,
-  msg_g2c_create_mount: (data: CreateMountEvent) => {
+  msg_g2c_create_mount: (data: unknown): CreateMountEvent => {
+    const verify = (value: any): value is CreateMountEvent => value.record === 'msg_g2c_create_mount';
     // var b = { 1: "message", 2: "state" }[a.type],
     //   d = {};
     // if ("undefined" === typeof b)
@@ -119,7 +120,14 @@ const responses: Record<string, (data: IMQEvent) => IMQEvent> = {
     // "state" === b && (d.state = k._property_list(a.properties));
     // return d;
 
-    return data;
+    if (!verify(data)) {
+      throw new Error();
+    }
+
+    return {
+      ...data,
+      type: { 1: 'message', 2: 'state' }[data.type]
+    };
   },
   msg_g2c_send_message: (data: SentMessageEvent) => {
     return {
@@ -138,7 +146,7 @@ export function decode<T extends IMQEvent>(data: T): T {
   return responses[data.record](data) as T;
 }
 
-export const encodeIMQComponent = (value: any): string => {
+export const encodeIMQComponent = (value: string | number | boolean): string => {
   return Buffer.from(unescape(encodeURIComponent(value))).toString('base64');
 };
 
@@ -153,7 +161,7 @@ const state_property = (a: any[]): any[] => {
   }, []);
 };
 
-const messages: Record<string, (data: IMQEvent) => IMQEvent> = {
+const messages: Record<ClientMessage, (data: IMQEvent) => IMQEvent> = {
   msg_c2g_send_message: (data: SendMessageEvent): SendMessageEvent => ({ ...data, message: escape(data.message) }),
   msg_c2g_state_change: (data: StateChangeEvent): StateChangeEvent => ({ ...data, properties: state_property(data.delta) }),
   msg_c2g_unsubscribe: (data: UnsubscribeEvent) => data,

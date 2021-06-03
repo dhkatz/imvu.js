@@ -1,12 +1,13 @@
 import axios, { AxiosInstance } from 'axios';
+// import 'axios-debug-log';
 import cookies from 'axios-cookiejar-support';
 import { CookieJar } from 'tough-cookie';
 
-import { BaseClient } from '@/client';
-import { GetMatchedController, ProductController, UserController } from '@/controllers';
+import {BaseClient, ClientUser} from '@/client';
+import {GetMatchedController, ProductController, RoomController, UserController} from '@/controllers';
 import { OutfitViewer } from '@/extensions';
-import { Avatar, ClientUser } from '@/models';
-import { WebSocketManager, GatewayMessage } from '@/client/websocket';
+import {Avatar} from '@/models';
+import { IMQManager, GatewayMessage } from '@/client/websocket';
 import {deserialize} from "@dhkatz/json-ts";
 
 cookies(axios);
@@ -24,6 +25,7 @@ export interface Client extends BaseClient {
 export class Client extends BaseClient {
   public username: string;
   public password: string;
+  public sauce: string;
 
   public ready: boolean;
   public authenticated: boolean;
@@ -32,11 +34,12 @@ export class Client extends BaseClient {
 
   public http: AxiosInstance;
   public cookies: CookieJar;
-  public socket: WebSocketManager;
+  public imq: IMQManager;
 
   public users: UserController;
   public matched: GetMatchedController;
   public products: ProductController;
+  public rooms: RoomController;
 
   public viewer: OutfitViewer;
 
@@ -47,18 +50,19 @@ export class Client extends BaseClient {
     this.cookies = new CookieJar();
     this.http = axios.create({ baseURL: 'https://api.imvu.com', jar: this.cookies, withCredentials: true });
 
-    this.socket = new WebSocketManager(this);
+    this.imq = new IMQManager(this);
 
     this.users = new UserController(this);
     this.products = new ProductController(this);
     this.matched = new GetMatchedController(this);
+    this.rooms = new RoomController(this);
 
     this.viewer = new OutfitViewer(this);
   }
 
   public destroy(): void {
     super.destroy();
-    this.socket.destroy();
+    this.imq.destroy();
 
     this.username = null;
     this.password = null;
@@ -87,7 +91,23 @@ export class Client extends BaseClient {
       throw new Error('Unable to login to the IMVU API! Invalid username/password or the servers are offline!');
     }
 
-    const [user] = await this.users.search({ username: this.username });
+    // Setup the "sauce", basically a JSON authentication token
+    // The token must be included with every non-GET request
+
+    const { data: info } = await this.http.get('/login/me');
+
+    const loginInfo = info['denormalized'][info.id];
+
+    this.sauce = loginInfo['data']['sauce'];
+
+    axios.defaults.headers.post['x-imvu-sauce'] = loginInfo['data']['sauce'];
+    axios.defaults.headers.post['x-imvu-application'] = 'next_desktop/1';
+    axios.defaults.headers.delete['x-imvu-sauce'] = loginInfo['data']['sauce'];
+    axios.defaults.headers.delete['x-imvu-application'] = 'next_desktop/1';
+
+    // Setup the client user, including the base user and avatar.
+
+    const user = await this.users.fetch(parseInt(loginInfo['relations']['quick_chat_profile']));
 
     const { data } = await this.http.get(`/avatar/avatar-${user.id}`);
 
@@ -118,7 +138,7 @@ export class Client extends BaseClient {
     }
 
     return new Promise( (resolve, reject) => {
-      this.socket.connect()
+      this.imq.connect()
         .then(() => {
           this.authenticated = true;
           this.emit('ready');
@@ -138,7 +158,7 @@ export class Client extends BaseClient {
   public async holidays(): Promise<Array<{ title: string; date: Date }>> {
     const { data } = await this.http.get('/holiday');
 
-    const holidays = data['denormalized']['https://api.imvu.com/holiday']['data']['items'] as Array<{ title: string; date: Date }>;
+    const holidays = data['denormalized'][data.id]['data']['items'] as Array<{ title: string; date: Date }>;
 
     return holidays.map((value) => ({ ...value, date: new Date(value.date) }));
   }

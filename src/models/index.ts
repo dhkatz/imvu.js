@@ -4,4 +4,6 @@ export * from './User';
 export * from './Avatar';
 export * from './GetMatched';
 export * from './Scene';
-export * from './ClientUser';
+export * from './Chat';
+export * from './Profile';
+export * from './Room';

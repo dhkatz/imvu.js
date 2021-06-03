@@ -1,20 +1,24 @@
 import { EventEmitter } from 'events';
-import { format } from 'util';
-
 import WebSocket from 'ws';
 
-import { Status, Subscriptions } from '@/util/Constants';
-import { WebSocketManager } from '@/client';
-import { GatewayEvent, ClientEvent, encode, decode, ResultEvent, JoinedQueueEvent, SentMessageEvent } from './Events';
+import { IMQManager } from '@/client';
+import { GatewayEvent, ClientEvent, encode, decode } from './Events';
+
+export enum Status {
+  CLOSED,
+  CONNECTING,
+  AUTHENTICATING,
+  AUTHENTICATED,
+  WAITING
+}
 
 /* eslint-disable */
 export interface IMQStream extends EventEmitter {
   on(event: 'close', listener: (event: CloseEvent) => void): this;
+  on(event: 'error', listener: (error: Error) => void): this;
   on(event: 'ready', listener: () => void): this;
+  on(event: 'status', listener: (status: Status) => void): this;
   on(event: 'message', listener: (message: GatewayEvent) => void): this;
-  on(event: 'result', listener: (message: ResultEvent) => void): this;
-  on(event: 'joined_queue', listener: (message: JoinedQueueEvent) => void): this;
-  on(event: 'send_message', listener: (message: SentMessageEvent) => void): this;
 }
 
 /**
@@ -27,12 +31,12 @@ export class IMQStream extends EventEmitter {
 
   private state: { heartbeat: NodeJS.Timeout; last: number; acknowledged: boolean };
 
-  public constructor(public manager: WebSocketManager, public id: number) {
+  public constructor(public manager: IMQManager, public id: number) {
     super();
 
     this.state = {} as any;
     this.pings = [] as any;
-    this.status = Status.CONNECTING;
+    this.status = Status.CLOSED;
   }
 
   public destroy(): void {
@@ -52,9 +56,11 @@ export class IMQStream extends EventEmitter {
   public async connect(): Promise<void> {
     const { gateway } = this.manager;
 
-    if (this.status === Status.READY && this.connection && this.connection.readyState === WebSocket.OPEN) {
+    if (this.status === Status.AUTHENTICATED && this.connection && this.connection.readyState === WebSocket.OPEN) {
       return Promise.resolve();
     }
+
+    this.status = Status.CONNECTING;
 
     /* eslint-disable */
     return new Promise((resolve, reject) => {
@@ -63,10 +69,6 @@ export class IMQStream extends EventEmitter {
         this.off('error', onError);
 
         this.send({ record: 'msg_c2g_open_floodgates' });
-
-        Subscriptions.forEach((queue: string) => {
-          this.send({ record: 'msg_c2g_subscribe', queues: [format(queue, this.manager.client.user.id)] });
-        });
 
         resolve();
       };
@@ -103,6 +105,8 @@ export class IMQStream extends EventEmitter {
    * @param {number} [code=1000] The close code to send to the gateway if open
    */
   public close(code: number = 1000): void {
+    console.log('Disconnecting from IMQ');
+
     if (this.connection && this.connection.readyState !== WebSocket.CLOSED) {
       this.connection.close(code);
     } else {
@@ -115,7 +119,7 @@ export class IMQStream extends EventEmitter {
     }
 
     this.connection = null;
-    this.status = Status.DISCONNECTED;
+    this.status = Status.CLOSED;
   }
 
   public send(data: ClientEvent): void {
@@ -124,7 +128,7 @@ export class IMQStream extends EventEmitter {
     }
 
     this.connection.send(IMQStream.encode(data), (err: Error) => {
-      if (err) this.manager.client.emit('stream_error', err, this.id);
+      if (err) this.emit('error', err, this.id);
     });
   }
 
@@ -172,18 +176,12 @@ export class IMQStream extends EventEmitter {
   private onMessage(data: WebSocket.Data): void {
     const message = decode(JSON.parse(data['data']) as GatewayEvent);
 
-    if (message.record !== 'msg_g2c_pong') {
-      this.manager.client.emit('raw', message, this.id);
-    } else {
-      this.state.acknowledged = true;
-      this.pings.unshift(Date.now() - this.state.last);
-      if (this.pings.length > 3) this.pings = this.pings.slice(0, 3) as any;
-    }
-
-    if (this.status === Status.AUTHENTICATING) {
+    if (this.status === Status.CONNECTING) {
       if (message.record === 'msg_g2c_result') {
-        if (message.status === 0) {
-          this.status = Status.READY;
+        if (!message.error) {
+          console.log('IMQ authenticated');
+
+          this.status = Status.AUTHENTICATED;
           this.emit('ready');
 
           this.heartbeat();
@@ -195,7 +193,7 @@ export class IMQStream extends EventEmitter {
             this.heartbeat();
           }, 15000);
         } else {
-          this.manager.client.emit('stream_error', new Error(`Failed to authenticate wih IMQ server: ${message.error}`), this.id);
+          this.emit('error', new Error(`Failed to authenticate wih IMQ server: ${message.error}`), this.id);
           return this.destroy();
         }
       } else {
@@ -204,6 +202,10 @@ export class IMQStream extends EventEmitter {
     } else if (message.record !== 'msg_g2c_pong') {
       this.emit('message', message, this.id);
       this.emit(message.record.replace('msg_g2c_', ''), message, this.id);
+    } else {
+      this.state.acknowledged = true;
+      this.pings.unshift(Date.now() - this.state.last);
+      if (this.pings.length > 3) this.pings = this.pings.slice(0, 3) as any;
     }
   }
 
@@ -242,7 +244,7 @@ export class IMQStream extends EventEmitter {
    * @param {CloseEvent} event The close event received.
    */
   private onClose(event: CloseEvent): void {
-    this.status = Status.DISCONNECTED;
+    this.status = Status.CLOSED;
     this.manager.client.clearInterval(this.state.heartbeat);
 
     /**

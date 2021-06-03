@@ -1,5 +1,5 @@
 import { BaseManager } from './BaseManager';
-import { URLPaginator, Paginators } from '@/util/Paginator';
+import { URLPaginator } from '@/util/Paginator';
 import { User } from '@/models';
 
 /**
@@ -14,7 +14,7 @@ export class FriendManager extends BaseManager {
       throw new Error('Cannot retrieve data without user authentication!');
     }
 
-    yield * new URLPaginator(this.client, Paginators.User, `/user/user-${this.client.user.id}/friends`);
+    yield * new URLPaginator(this.client, this.client.users, `/user/user-${this.client.user.id}/friends`);
   }
 
   public async count(): Promise<number> {
@@ -51,7 +51,7 @@ export class FriendManager extends BaseManager {
     const id = typeof user === 'string' ? (await this.client.users.search({ username: user }))[0].id : typeof user === 'number' ? user : user.id;
 
     try {
-      await this.client.http.delete(`https://api.imvu.com/user/user-${this.client.user.id}/friends/user-${id}`);
+      await this.client.http.delete(`/user/user-${this.client.user.id}/friends/user-${id}`);
     } catch {
       return false;
     }

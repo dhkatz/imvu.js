@@ -14,7 +14,7 @@ export interface ControllerOptions<T, U> {
   ttl?: number;
 }
 
-export abstract class BaseController<T extends BaseModel, U extends BaseQuery = BaseQuery> {
+export class BaseController<T extends BaseModel, U extends BaseQuery = BaseQuery> {
   public client: Client;
   public model: new (...args: any[]) => T;
   public options: ControllerOptions<T, U>;
@@ -23,7 +23,7 @@ export abstract class BaseController<T extends BaseModel, U extends BaseQuery = 
   public cache: Map<number, { ttl: number; value: T }> = new Map();
   public ttl = 60000;
 
-  protected constructor(client: Client, model: new (...args: any[]) => T, options: ControllerOptions<T, U> = {}) {
+  public constructor(client: Client, model: new (...args: any[]) => T, options: ControllerOptions<T, U> = {}) {
     this.client = client;
     this.model = model;
     this.options = options;
@@ -48,9 +48,13 @@ export abstract class BaseController<T extends BaseModel, U extends BaseQuery = 
       const {data} = await this.client.http.get(`${this.base}-${id}`, {baseURL: `https://api.imvu.com${this.base}`});
 
       const cls = this.model;
-      const json: any = data.denormalized[data.id].data;
       const instance = new cls(this.client);
+
+      const json: any = data.denormalized[data.id].data;
+      const relations = data.denormalized[data.id].relations;
+
       const object = deserialize(instance, json);
+      object.relations = relations;
 
       if (cache) {
         this.cache.set(id, {ttl: Date.now() + this.ttl, value: object});

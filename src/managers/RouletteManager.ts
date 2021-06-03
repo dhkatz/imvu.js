@@ -14,6 +14,10 @@ export interface RouletteData {
 }
 
 export class RouletteManager extends BaseManager {
+  public async available(): Promise<boolean> {
+    return this.status().then((status) => status.available);
+  }
+
   public async status(): Promise<RouletteData> {
     const { data } = await this.client.http.get(`/roulette/roulette-${this.client.user.id}`);
 
@@ -37,16 +41,17 @@ export class RouletteManager extends BaseManager {
    * Spin the roulette wheel.
    * @returns
    */
-  public async spin(): Promise<RouletteData | null> {
-    try {
+  public async spin(): Promise<RouletteData> {
+    const status = await this.status();
+
+    if (status.available) {
       await this.client.http.post(`/roulette/roulette-${this.client.user.id}`, {
         status: 'redeemed',
       });
-    } catch (error) {
-      console.log(error);
-      return null;
+
+      return this.status();
     }
 
-    return this.status();
+    return status;
   }
 }

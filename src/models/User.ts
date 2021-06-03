@@ -1,11 +1,9 @@
 import {JsonProperty} from '@dhkatz/json-ts';
 
-import {Client} from '@/client';
-import {Paginator, Paginators, URLPaginator} from '@/util/Paginator';
-import {BaseModel, GetMatched, ModelOptions, Product} from '@/models';
-import {authenticated} from '@/util/Decorators';
+import {Paginator, URLPaginator} from '@/util/Paginator';
+import {BaseModel, Product} from '@/models';
 
-export class User extends BaseModel {
+export class User extends BaseModel<Record<string, unknown>> {
   @JsonProperty({ type: Number, name: 'legacy_cid' } )
   public id: number;
 
@@ -57,56 +55,22 @@ export class User extends BaseModel {
   @JsonProperty('is_staff')
   public isStaff: boolean;
 
-  public matched: GetMatched;
-
-  public constructor(client: Client, options?: ModelOptions) {
-    super(client, options);
-
-    this.id = undefined;
-    this.created = undefined;
-    this.registered = undefined;
-    this.gender = undefined;
-    this.displayName = undefined;
-    this.age = undefined;
-    this.country = undefined;
-    this.state = undefined;
-    this.avatarImage = undefined;
-    this.avatarPortraitImage = undefined;
-    this.isVip = undefined;
-    this.isAp = undefined;
-    this.isCreator = undefined;
-    this.isAdult = undefined;
-    this.isAgeVerified = undefined;
-    this.isStaff = undefined;
-    this.username = undefined;
-  }
-
-  public async load(): Promise<void> {
-    this.matched = await this.client.matched.fetch(this.id);
-  }
+  public relations = {
+    spouse: () => this.client.users.fetch(1),
+    matched: () => this.client.matched.fetch(this.id),
+    profile: () => ({} as any)
+  };
 
   public async * shop(): AsyncIterableIterator<Product> {
-    yield* new Paginator(this.client, (client, offset) => client.products.search({ creator: this.username, start_index: 0, limit: 25, offset }));
+    yield * new Paginator(
+      this.client,
+      (client, offset) => client.products.search({
+        creator: this.username, start_index: 0, limit: 25, offset
+      })
+    );
   }
 
   public async * wishlist(): AsyncIterableIterator<Product> {
-    yield * new URLPaginator(this.client, Paginators.User, `/user/user-${this.id}/wishlist`);
-  }
-
-  /**
-   * Add a friend to the client's friends list.
-   * @returns {Promise<boolean>} If the operation was successful or not
-   */
-  @authenticated()
-  public async add(): Promise<boolean> {
-    return this.client.user.friends.add(this);
-  }
-
-  /**
-   * Remove a friend from client's friends list.
-   * @returns {Promise<boolean>} If the operation was successful or not
-   */
-  public async remove(): Promise<boolean> {
-    return this.client.user.friends.remove(this);
+    yield * new URLPaginator(this.client, this.client.products, `/user/user-${this.id}/wishlist`);
   }
 }

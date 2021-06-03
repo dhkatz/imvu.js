@@ -8,7 +8,7 @@ This library allows easy usage to the exposed API endpoints on IMVU's current *I
 
 ## Installation
 
-`npm install imvu.js`
+`npm install dhkatz/imvu.js`
 
 ## Information
 
@@ -20,6 +20,16 @@ In order to reduce load on IMVU's API, this library implements request caching b
 |----------|----------------|-------------|
 | User     | JSON.stringify | 1 minute(s) |
 | Product  | JSON.stringify | 5 minute(s) |
+| Room     | JSON.stringify | 5 minute(s) |
+| Matched  | JSON.stringify | 30 minute(s) |
+| Profile  | JSON.stringify | 5 minute(s) |
+
+### Testing
+
+This library has testing in place to ensure the integrity and reliability of the APIs being used.
+
+If you would like to run the tests, I recommend using a VPN and separate account to avoid potential 
+rate limiting and IP issues.
 
 ## License
 
