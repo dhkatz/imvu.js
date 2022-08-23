@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "cli-progress": "^3.10.0",
-    "commander": "^9.1.0",
+    "commander": "^9.4.0",
     "csharp-binary-stream": "^1.0.3",
     "lzma-purejs": "github:elderapo/lzma-purejs"
   }
