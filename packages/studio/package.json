@@ -1,0 +1,27 @@
+{
+  "name": "@imvu/studio",
+  "version": "0.2.0-dev",
+  "description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
+  "author": "dhkatz",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "typings": "./dist/index.d.ts",
+  "files": [
+    "dist/**/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhkatz/imvu.js.git"
+  },
+  "scripts": {
+    "build": "npm run build:types && npm run build:js",
+    "build:types": "tsc --emitDeclarationOnly",
+    "build:js": "tsc",
+    "lint": "eslint packages/client/src/**/* && tsc --noEmit",
+    "test": "jest --ci --verbose --forceExit --detectOpenHandles --coverage"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+  }
+}

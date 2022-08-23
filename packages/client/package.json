@@ -1,0 +1,37 @@
+{
+  "name": "@imvu/client",
+  "version": "0.2.0-dev",
+  "description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
+  "author": "dhkatz",
+  "license": "MIT",
+  "main": "./dist/index.js",
+  "typings": "./dist/index.d.ts",
+  "files": [
+    "lib/**/*"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dhkatz/imvu.js.git"
+  },
+  "scripts": {
+    "build": "npm run build:types && npm run build:js",
+    "build:types": "tsc --emitDeclarationOnly",
+    "build:js": "tsc",
+    "lint": "eslint packages/client/src/**/* && tsc --noEmit",
+    "test": "jest --ci --verbose --forceExit --detectOpenHandles --coverage"
+  },
+  "dependencies": {
+    "axios": "^0.27.2",
+    "axios-cookiejar-support": "^4.0.3",
+    "image-type": "^5.0.0",
+    "jszip": "^3.10.1",
+    "reflect-metadata": "^0.1.13",
+    "tough-cookie-file-store": "^2.0.3",
+    "typescript-json-serializer": "^4.3.0"
+  },
+  "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/tough-cookie": "^4.0.2",
+    "@types/tough-cookie-file-store": "^2.0.1"
+  }
+}

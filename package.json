@@ -1,169 +1,31 @@
 {
-  "name": "imvu.js",
-  "version": "0.2.0-dev",
-  "description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
-  "keywords": [
-    "imvu",
-    "imvu.js",
-    "imvu api",
-    "typescript"
-  ],
-  "author": "Doctor Jew",
+  "name": "@imvu/monorepo",
+  "version": "1.0.0",
+  "author": "David Katz",
   "license": "MIT",
-  "main": "lib/index.js",
-  "typings": "typings/index.d.ts",
-  "files": [
-    "lib/**/*",
-    "typings/**/*"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/dhkatz/imvu.js.git"
-  },
+  "private": true,
   "scripts": {
-    "build": "npm run build:types && npm run build:js",
-    "build:types": "tsc --emitDeclarationOnly",
-    "build:js": "babel src --out-dir lib --extensions \".ts,.tsx\" --source-maps inline",
-    "lint": "eslint src/**/* && tsc --noEmit",
-    "test": "jest --verbose --forceExit --detectOpenHandles",
-    "coverage:test": "jest --coverage --ci --verbose --forceExit --detectOpenHandles && rm -rf /coverage",
-    "coverage": "jest --coverage --ci --verbose --forceExit --detectOpenHandles && cat ./coverage/lcov.info | coveralls && rm -rf /coverage",
-    "clean": "rm -rf lib && rm -rf typings && rm -rf coverage",
-    "bundle": "webpack"
+    "build": "tsc --build",
+    "test": "jest --coverage --verbose --ci"
   },
-  "dependencies": {
-    "@dhkatz/json-ts": "^4.4.1",
-    "axios": "^0.21.1",
-    "axios-cookiejar-support": "^1.0.1",
-    "axios-debug-log": "^0.8.2",
-    "babel-plugin-transform-typescript-metadata": "^0.3.1",
-    "core-js": "^3.8.1",
-    "reflect-metadata": "^0.1.13",
-    "regenerator-runtime": "^0.13.7",
-    "ws": "^7.4.2"
-  },
-  "devDependencies": {
-    "@babel/cli": "^7.12.10",
-    "@babel/core": "^7.12.10",
-    "@babel/plugin-proposal-class-properties": "^7.12.1",
-    "@babel/plugin-proposal-decorators": "^7.12.12",
-    "@babel/plugin-proposal-object-rest-spread": "^7.12.1",
-    "@babel/preset-env": "^7.12.11",
-    "@babel/preset-typescript": "^7.12.7",
-    "@types/axios": "^0.14.0",
-    "@types/jest": "^26.0.19",
-    "@types/node": "^14.14.17",
-    "@types/tough-cookie": "^4.0.0",
-    "@types/ws": "^7.4.0",
-    "@typescript-eslint/eslint-plugin": "^4.12.0",
-    "@typescript-eslint/parser": "^4.11.1",
-    "babel-plugin-module-resolver": "^4.1.0",
-    "coveralls": "^3.1.0",
-    "eslint": "^7.17.0",
-    "jest": "^26.6.3",
-    "ts-node": "^9.1.1",
-    "tsconfig-paths": "^3.9.0",
-    "typescript": "^4.1.3"
-  },
-  "babel": {
-    "presets": [
-      [
-        "@babel/env",
-        {
-          "useBuiltIns": "entry",
-          "corejs": "3"
-        }
-      ],
-      "@babel/typescript"
-    ],
-    "plugins": [
-      "babel-plugin-transform-typescript-metadata",
-      [
-        "@babel/plugin-proposal-decorators",
-        {
-          "legacy": true
-        }
-      ],
-      [
-        "@babel/proposal-class-properties",
-        {
-          "loose": true
-        }
-      ],
-      "@babel/proposal-object-rest-spread",
-      [
-        "module-resolver",
-        {
-          "alias": {
-            "@": "./src"
-          }
-        }
-      ]
-    ],
-    "sourceMaps": "inline"
-  },
-  "jest": {
-    "collectCoverage": true,
-    "roots": [
-      "<rootDir>/test"
-    ],
-    "testRegex": "(/test/.*|(\\.|/)(test|spec))\\.(tsx?)$",
-    "testEnvironment": "node",
-    "moduleNameMapper": {
-      "^@/(.*)$": "<rootDir>/src/$1"
-    },
-    "collectCoverageFrom": [
-      "<rootDir>/src/**/*.{ts,tsx}",
-      "!<rootDir>/src/util/**/*"
+  "workspaces": {
+    "packages": [
+      "packages/*"
     ]
   },
-  "eslintConfig": {
-    "env": {
-      "node": true,
-      "es6": true,
-      "browser": true,
-      "jest": true
-    },
-    "parser": "@typescript-eslint/parser",
-    "plugins": [
-      "@typescript-eslint"
-    ],
-    "extends": [
-      "eslint:recommended",
-      "plugin:@typescript-eslint/recommended"
-    ],
-    "rules": {
-      "semi": [
-        "error",
-        "always"
-      ],
-      "no-console": "off",
-      "no-dupe-class-members": "off",
-      "@typescript-eslint/indent": [
-        "error",
-        2
-      ],
-      "@typescript-eslint/no-explicit-any": 0,
-      "@typescript-eslint/array-type": [
-        "error",
-        {
-          "default": "array-simple"
-        }
-      ],
-      "@typescript-eslint/explicit-function-return-type": [
-        "error",
-        {
-          "allowExpressions": true
-        }
-      ],
-      "@typescript-eslint/no-use-before-define": [
-        "error",
-        {
-          "functions": false
-        }
-      ],
-      "@typescript-eslint/no-parameter-properties": "off",
-      "@typescript-eslint/camelcase": "off"
-    }
+  "devDependencies": {
+    "@types/jest": "^28.1.7",
+    "@types/node": "^18.7.8",
+    "@typescript-eslint/eslint-plugin": "^5.33.1",
+    "@typescript-eslint/parser": "^5.33.1",
+    "eslint": "^8.22.0",
+    "eslint-config-prettier": "^8.5.0",
+    "eslint-plugin-prettier": "^4.2.1",
+    "jest": "^28.1.3",
+    "prettier": "^2.7.1",
+    "ts-jest": "^28.0.8",
+    "ts-node": "^10.9.1",
+    "type-fest": "^2.18.1",
+    "typescript": "^4.7.4"
   }
 }

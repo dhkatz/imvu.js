@@ -1,40 +1,15 @@
 {
-  "compilerOptions": {
-    /* Module/Target Options */
-    "target": "esnext",
-    "lib": ["es2017", "esnext.asynciterable", "dom", "es2018"],
-    "module": "commonjs",
-
-    "declaration": true,
-    "outDir": "./lib",
-    "declarationDir": "./typings",
-
-    /* Strict Type-Checking Options */
-    "alwaysStrict": true,
-    "noImplicitAny": true,
-    "suppressImplicitAnyIndexErrors": true,
-
-    /* Basic Options */
-    "importHelpers": true,
-
-    /* Extra Options */
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-
-    "rootDir": "./src",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"]
-    }
-  },
-  "include": [
-    "src"
-  ],
-  "exclude": [
-    "lib/**",
-    "node_modules/**",
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+	{
+	  "path": "./packages/chkn"
+	},
+	{
+	  "path": "./packages/client"
+	},
+	  {
+		  "path": "./packages/imq"
+	  }
   ]
 }
