@@ -1,7 +1,7 @@
 import { Client } from '../client';
 import { Resource } from '../resources';
 import { BaseController } from '../controllers';
-import { Constructor } from 'type-fest';
+import { Class } from 'type-fest';
 
 /**
  * Instances of this class generate instances of T.
@@ -44,23 +44,27 @@ export class Paginator<T extends Resource> {
 
 export class URLPaginator<
   T extends Resource,
-  U extends BaseController<T, any> | Constructor<T>
+  U extends BaseController<T, any> | Class<T>
 > extends Paginator<T> {
   public constructor(client: Client, controller: U, url: string) {
     super(client, async (client, offset) => {
-      const { data } = await client.http.get(url, { params: { start_index: offset, limit: 25 } });
+      const { data } = await client.resource(url, { params: { start_index: offset, limit: 25 } });
 
-      const base =
-        typeof controller === 'function'
-          ? `/${controller.name.replace(/([A-Z])/g, (g) => `_${g.toLowerCase()}`)}`
-          : '';
+      let base = '';
+
+      if (typeof controller === 'function') {
+        const basename = (controller as any).basename;
+        if (typeof basename === 'string') {
+          base = `/${basename}`;
+        } else {
+          base = `/${controller.name.replace(/([A-Z])/g, (g) => `_${g.toLowerCase()}`)}`;
+        }
+      }
 
       return Promise.all(
-        data['denormalized'][data.id]['data']['items']
+        data.items
           .map((url: string) => {
-            const match = url.match(/\d+(-\d+)?$/);
-
-            return match ? match[0] : null;
+            return client.utils.id(url);
           })
           .filter((id: string | null) => id !== null)
           .map((id: string) => {

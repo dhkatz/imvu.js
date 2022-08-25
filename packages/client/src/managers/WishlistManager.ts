@@ -1,11 +1,11 @@
 import { BaseManager } from './BaseManager';
 import { Product } from '../resources';
 import { URLPaginator } from '../util/Paginator';
-import { authenticated } from '../util/Decorators';
 
 export class WishlistManager extends BaseManager {
-  @authenticated()
   public async *list(): AsyncIterableIterator<Product> {
+    this.authenticated();
+
     yield* new URLPaginator(
       this.client,
       this.client.products,
@@ -13,13 +13,14 @@ export class WishlistManager extends BaseManager {
     );
   }
 
-  @authenticated()
   public async count(): Promise<number> {
-    const { data } = await this.client.http.get(
+    this.authenticated();
+
+    const { data } = await this.client.resource(
       `/user/user-${this.client.account.id}/wishlist?limit=0`
     );
 
-    return data.denormalized[data.id].data['total_count'];
+    return data['total_count'];
   }
 
   public async add(product: Product): Promise<boolean>;

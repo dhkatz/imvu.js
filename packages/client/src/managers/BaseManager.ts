@@ -1,7 +1,7 @@
 import { Client } from '../client';
 
 export class BaseManager {
-  public constructor(public client: Client) {}
+  public constructor(protected client: Client) {}
 
   protected authenticated(): boolean {
     if (!this.client.authenticated) {

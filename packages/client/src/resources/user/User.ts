@@ -4,7 +4,7 @@ import { URLPaginator } from '../../util/Paginator';
 import type { GetMatched, Product } from '../index';
 
 import { Resource } from '../Resource';
-import { Profile, Room } from '../index';
+import { ProfileUser, Room } from '../index';
 import { Creator } from '../product/Creator';
 
 @JsonObject()
@@ -60,24 +60,20 @@ export class User extends Resource {
   @JsonProperty()
   public isStaff = false;
 
-  public async profile(): Promise<Profile> {
-    return this.client.resource(`/profile/profile-user-${this.id}`, Profile);
+  public async *wishlist(): AsyncIterableIterator<Product> {
+    yield* new URLPaginator(this.client, this.client.products, `/user/user-${this.id}/wishlist`);
+  }
+
+  public async profile(): Promise<ProfileUser | null> {
+    return this.relations ? this.client.resource(this.relations.profile, ProfileUser) : null;
   }
 
   public async creator(): Promise<Creator | null> {
-    if (this.relations?.creator_details) {
-      return this.client.resource(this.relations.creator_details, Creator);
-    }
-
-    return null;
+    return this.relations ? this.client.resource(this.relations.creator_details, Creator) : null;
   }
 
   public async spouse(): Promise<User | null> {
-    if (this.relations?.spouse) {
-      return this.client.users.fetch(this.relations.spouse);
-    }
-
-    return null;
+    return this.relations ? this.client.users.fetch(this.relations.spouse) : null;
   }
 
   public async matched(): Promise<GetMatched | null> {
@@ -96,17 +92,17 @@ export class User extends Resource {
     return null;
   }
 
-  public async gift(product: Product, message?: string): Promise<boolean>;
-  public async gift(product: number, message?: string): Promise<boolean>;
-  public async gift(product: number | Product, message = ''): Promise<boolean> {
+  public async gift(product: number | string | Product, message = ''): Promise<boolean> {
     this.authenticated();
+
+    const id = await this.client.utils.id(product);
 
     try {
       await this.client.http.post(`/user/user-${this.client.account.id}/gifts`, {
         id: `https://api.imvu.com/user/user-${this.id}`,
         is_thank_you: false,
         message,
-        product_id: typeof product === 'number' ? product : product.id,
+        product_id: id,
         txn_id: `gift-${this.client.account.id}-${this.id}-${Math.floor(Date.now() / 1000)}`,
         type: 1,
       });
@@ -123,12 +119,14 @@ export class User extends Resource {
    * @return {Promise<boolean>}
    */
   public async add(): Promise<boolean> {
-    this.authenticated();
-
     return this.client.account.friends.add(this);
   }
 
-  public async *wishlist(): AsyncIterableIterator<Product> {
-    yield* new URLPaginator(this.client, this.client.products, `/user/user-${this.id}/wishlist`);
+  /**
+   * A convenience method for removing a user from your friends list.
+   * @return {Promise<boolean>}
+   */
+  public async remove(): Promise<boolean> {
+    return this.client.account.friends.remove(this);
   }
 }

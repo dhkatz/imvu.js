@@ -7,11 +7,6 @@ export interface ModelOptions {}
 
 @JsonObject()
 export abstract class Resource {
-  /**
-   * @internal
-   */
-  public client: Client;
-
   public readonly id: string | number = '';
 
   /**
@@ -25,13 +20,10 @@ export abstract class Resource {
   public updates: APIResource['updates'] = {};
 
   /* istanbul ignore next */
-  public constructor(client: Client, protected options: ModelOptions = {}) {
-    this.client = client;
-
-    // Hide client and options from being enumerable (such as in for...in loops and console.log)
-
+  public constructor(protected readonly client: Client, protected options: ModelOptions = {}) {
     Object.defineProperty(this, 'client', {
       enumerable: false,
+      writable: false,
     });
 
     Object.defineProperty(this, 'options', {

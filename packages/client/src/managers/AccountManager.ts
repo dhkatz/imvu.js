@@ -1,5 +1,4 @@
 import { URLPaginator } from '../util/Paginator';
-import { authenticated } from '../util/Decorators';
 import { Client } from '../client';
 import { Avatar, Product, User } from '../resources';
 
@@ -54,8 +53,9 @@ export class AccountManager extends BaseManager {
   /**
    * An asynchronous generator which yields each `User` on the client's blocklist.
    */
-  @authenticated()
   public async *blocklist(): AsyncIterableIterator<User> {
+    this.authenticated();
+
     yield* new URLPaginator(this.client, this.client.users, `/user/user-${this.user.id}/blocked`);
   }
 

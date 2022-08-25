@@ -13,7 +13,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-	  "isolatedModules": true,
+  	"isolatedModules": true,
 
 	"strict": true,
 	"esModuleInterop": true,
@@ -22,8 +22,8 @@
 	"forceConsistentCasingInFileNames": true,
 	"skipLibCheck": true,
 
-	  "emitDecoratorMetadata": true,
-	  "experimentalDecorators": true,
+	"emitDecoratorMetadata": true,
+	"experimentalDecorators": true,
 
 	"paths": {
 	  "@imvu/*": ["./packages/*/src"]

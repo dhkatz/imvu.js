@@ -4,7 +4,7 @@ import { URLPaginator } from '../../util/Paginator';
 import { APIResponse } from '../../types';
 
 @JsonObject()
-export class Profile extends Resource {
+export class ProfileUser extends Resource {
   @JsonProperty()
   public image = '';
 
@@ -29,12 +29,20 @@ export class Profile extends Resource {
   @JsonProperty('approx_follower_count')
   public followerCount = 0;
 
-  public async *following(): AsyncIterableIterator<Profile> {
-    yield* new URLPaginator(this.client, Profile, `/profile/profile-user-${this.id}/subscriptions`);
+  public async *following(): AsyncIterableIterator<ProfileUser> {
+    yield* new URLPaginator(
+      this.client,
+      ProfileUser,
+      `/profile/profile-user-${this.id}/subscriptions`
+    );
   }
 
-  public async *followers(): AsyncIterableIterator<Profile> {
-    yield* new URLPaginator(this.client, Profile, `/profile/profile-user-${this.id}/subscribers`);
+  public async *followers(): AsyncIterableIterator<ProfileUser> {
+    yield* new URLPaginator(
+      this.client,
+      ProfileUser,
+      `/profile/profile-user-${this.id}/subscribers`
+    );
   }
 
   public async follow(): Promise<boolean> {

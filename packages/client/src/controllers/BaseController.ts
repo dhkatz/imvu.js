@@ -18,12 +18,12 @@ export class BaseController<T extends Resource, U extends BaseQuery = BaseQuery>
 
   public constructor(
     protected readonly client: Client,
-    private readonly model: Constructor<T>,
+    protected readonly model: Constructor<T>,
     private options: ControllerOptions<T, U> = {}
   ) {
     this.base =
       options.name ||
-      `/${model.name
+      `${model.name
         .split(/(?=[A-Z])/)
         .join('_')
         .toLowerCase()}`;
@@ -37,20 +37,10 @@ export class BaseController<T extends Resource, U extends BaseQuery = BaseQuery>
   public async fetch(id: string): Promise<T | null>;
   public async fetch(id: number): Promise<T | null>;
   public async fetch(id: number | string): Promise<T | null> {
-    if (typeof id === 'string') {
-      const match = id.match(/\d+(-\d+)?$/);
-
-      if (!match) {
-        throw new Error(`Could not parse id from string: ${id}, expected to match /\\d+$/`);
-      }
-
-      id = match[0];
-    } else {
-      id = id.toString();
-    }
+    id = await this.client.utils.id(id);
 
     try {
-      const resource = await this.client.resource(`${this.base}${this.base}-${id}`, this.model);
+      const resource = await this.client.resource(`/${this.base}/${this.base}-${id}`, this.model);
 
       return this.options.process ? this.options.process(resource) : resource;
     } catch (err) {
@@ -71,27 +61,11 @@ export class BaseController<T extends Resource, U extends BaseQuery = BaseQuery>
   public async search(query: U): Promise<T[]> {
     const params = this.options.transform ? this.options.transform(query) : query;
 
-    const { data } = await this.client.http.get('', {
-      params,
-      baseURL: `https://api.imvu.com${this.base}`,
+    const { data } = await this.client.resource(`/${this.base}`, { params });
+
+    const ids: string[] = data.items.map((url: string) => {
+      return this.client.utils.id(url);
     });
-
-    const match_id = (url: string) => {
-      const match = url.match(/\d+(-\d+)?$/);
-
-      if (!match) {
-        throw new Error(
-          `Could not parse id from string: ${url}, expected to match /\\d+(-\\d+)?$/`
-        );
-      }
-
-      return match[0];
-    };
-
-    const ids: string[] =
-      'data' in data
-        ? data.data.items.map(match_id)
-        : data.denormalized[data.id].data.items.map(match_id);
 
     const objects = await Promise.all(ids.map((id: string) => this.fetch(id)));
 

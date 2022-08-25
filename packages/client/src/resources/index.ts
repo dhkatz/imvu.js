@@ -4,5 +4,5 @@ export * from './user/User';
 export * from './user/Avatar';
 export * from './user/GetMatched';
 export * from './chat/Chat';
-export * from './user/Profile';
+export * from './user/ProfileUser';
 export * from './chat/Room';

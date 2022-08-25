@@ -7,6 +7,7 @@ import { Avatar, GetMatched, Resource } from '../resources';
 import { AccountManager } from '../managers';
 import { APIResource, APIResponse } from '../types';
 import { Utilities } from './Utilities';
+import { AxiosRequestConfig } from 'axios';
 
 /**
  * The main client for interacting with the IMVU API controllers.
@@ -67,13 +68,22 @@ export class Client extends BaseClient {
    * This will automatically attempt to deserialize the response into the specified type.
    */
   public async resource<T extends object = Record<string, any>>(
-    url: string
+    url: string,
+    config?: AxiosRequestConfig
   ): Promise<APIResource<T>>;
-  public async resource<T extends Resource>(url: string, cls: Constructor<T>): Promise<T>;
   public async resource<T extends Resource>(
     url: string,
-    cls?: Constructor<T>
+    cls: Constructor<T>,
+    config?: AxiosRequestConfig
+  ): Promise<T>;
+  public async resource<T extends Resource>(
+    url: string,
+    cls?: Constructor<T> | AxiosRequestConfig,
+    config?: AxiosRequestConfig
   ): Promise<T | APIResource<T>> {
+    cls = typeof cls === 'function' ? cls : undefined;
+    config = typeof cls === 'object' ? cls : config;
+
     if (cls && !this.cache.has(cls)) {
       this.cache.set(cls, new Map());
     }
@@ -89,7 +99,7 @@ export class Client extends BaseClient {
       return cached.value;
     }
 
-    const { data } = await this.http.get<APIResponse<T>>(url);
+    const { data } = await this.http.get<APIResponse<T>>(url, config);
 
     if (data.status === 'failure') {
       throw new Error(data.message);
