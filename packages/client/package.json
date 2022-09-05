@@ -23,14 +23,11 @@
   "dependencies": {
     "axios": "^0.27.2",
     "axios-cookiejar-support": "^4.0.3",
-    "image-type": "^5.0.0",
-    "jszip": "^3.10.1",
     "reflect-metadata": "^0.1.13",
     "tough-cookie-file-store": "^2.0.3",
     "typescript-json-serializer": "^4.3.0"
   },
   "devDependencies": {
-    "@types/axios": "^0.14.0",
     "@types/tough-cookie": "^4.0.2",
     "@types/tough-cookie-file-store": "^2.0.1"
   }

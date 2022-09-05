@@ -5,9 +5,6 @@ import { URLPaginator } from '../../util/Paginator';
 
 @JsonObject()
 export class Creator extends Resource {
-  @JsonProperty()
-  public id = '';
-
   @JsonProperty('creator_tier')
   public tier = 0;
 

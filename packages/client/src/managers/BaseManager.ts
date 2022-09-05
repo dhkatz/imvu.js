@@ -1,7 +1,12 @@
 import { Client } from '../client';
+import { AccountManager } from '@imvu/client';
 
 export class BaseManager {
   public constructor(protected client: Client) {}
+
+  protected get account(): AccountManager {
+    return this.client.account;
+  }
 
   protected authenticated(): boolean {
     if (!this.client.authenticated) {

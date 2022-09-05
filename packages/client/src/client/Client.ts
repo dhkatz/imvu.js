@@ -5,7 +5,7 @@ import { BaseClient } from './index';
 import { BaseController, ProductController, RoomController, UserController } from '../controllers';
 import { Avatar, GetMatched, Resource } from '../resources';
 import { AccountManager } from '../managers';
-import { APIResource, APIResponse } from '../types';
+import { APIResource, APIResponse, APISuccessResponse } from '../types';
 import { Utilities } from './Utilities';
 import { AxiosRequestConfig } from 'axios';
 
@@ -99,63 +99,55 @@ export class Client extends BaseClient {
       return cached.value;
     }
 
+    const { data: response } = await this.http.get<APIResponse<T>>(url, config);
+
+    if (response.status === 'failure') {
+      throw new Error(response.message);
+    }
+
+    const resource = response.denormalized[response.id];
+
+    if (matched_id && !resource.data.id) {
+      resource.data.id = matched_id[0];
+    }
+
+    if (cls) {
+      const value = this.deserialize(cls, resource);
+
+      cache?.set(key, { ttl: Date.now() + 1000 * 60 * 10, value });
+
+      return value;
+    }
+
+    return resource;
+  }
+
+  public async request<T extends object = Record<string, any>>(
+    url: string,
+    config?: AxiosRequestConfig
+  ): Promise<APISuccessResponse<T>> {
     const { data } = await this.http.get<APIResponse<T>>(url, config);
 
     if (data.status === 'failure') {
       throw new Error(data.message);
     }
 
-    const json = this.#transformDates(data.denormalized[data.id].data);
-
-    if (matched_id && !json.id) {
-      json.id = matched_id[0];
-    }
-
-    const { relations, updates } = data.denormalized[data.id];
-
-    if (cls) {
-      const instance = new cls(this);
-
-      const resource = this.serializer.deserialize(json, instance) as T;
-
-      if (relations) resource.relations = relations;
-      if (updates) resource.updates = updates;
-
-      cache?.set(key, { ttl: Date.now() + 1000 * 60 * 10, value: resource });
-
-      return resource;
-    }
-
-    return { data: json, relations, updates };
+    return data;
   }
 
-  /**
-   * Convert all the fields in a JSON response ending in _datetime to Date objects.
-   * @param value
-   * @private
-   */
-  #transformDates<T>(value: T): T {
-    if (typeof value === 'object') {
-      if (value instanceof Date) {
-        return value;
-      }
+  public deserialize<T extends Resource>(cls: Constructor<T>, data: APIResource<T>): T {
+    const instance = new cls(this);
 
-      if (Array.isArray(value)) {
-        return value.map((v) => this.#transformDates(v)) as unknown as T;
-      }
+    const resource = this.serializer.deserialize<T>(data.data, instance);
 
-      if (!value) {
-        return value;
-      }
-
-      return Object.entries(value).reduce((acc, [key, val]) => {
-        acc[key as keyof T] = key.endsWith('_datetime') ? new Date(val) : this.#transformDates(val);
-
-        return acc;
-      }, {} as T);
+    if (!resource || Array.isArray(resource)) {
+      throw new Error(`Unable to deserialize '${cls.name}'`);
     }
 
-    return value;
+    if (data.relations) resource.relations = data.relations;
+    if (data.updates) resource.updates = data.updates;
+
+    return resource;
   }
 
   #account?: AccountManager;

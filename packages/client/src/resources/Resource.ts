@@ -1,5 +1,5 @@
 import { Client } from '../client';
-import { JsonObject } from 'typescript-json-serializer';
+import { JsonObject, JsonProperty } from 'typescript-json-serializer';
 import { APIResource } from '../types';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -7,7 +7,8 @@ export interface ModelOptions {}
 
 @JsonObject()
 export abstract class Resource {
-  public readonly id: string | number = '';
+  @JsonProperty()
+  public readonly id: string = '';
 
   /**
    * @internal

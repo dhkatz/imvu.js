@@ -6,9 +6,6 @@ import { URLPaginator } from '../../util/Paginator';
 
 @JsonObject()
 export class Product extends Resource {
-  @JsonProperty({ name: 'product_id' })
-  public id = -1;
-
   @JsonProperty('product_name')
   public name = '';
 

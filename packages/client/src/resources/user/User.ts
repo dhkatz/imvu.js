@@ -9,9 +9,6 @@ import { Creator } from '../product/Creator';
 
 @JsonObject()
 export class User extends Resource {
-  @JsonProperty({ name: 'legacy_cid' })
-  public id = 0;
-
   @JsonProperty()
   public created: Date = new Date();
 

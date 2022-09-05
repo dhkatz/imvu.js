@@ -5,9 +5,6 @@ import { Album } from './Album';
 
 @JsonObject()
 export class Photo extends Resource {
-  @JsonProperty('pid')
-  public id = -1;
-
   @JsonProperty()
   public title = '';
 

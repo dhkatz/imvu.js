@@ -4,8 +4,6 @@ import { Resource } from '../Resource';
 
 @JsonObject()
 export class Room extends Resource {
-  public id = -1;
-
   @JsonProperty()
   public name = '';
 
