@@ -8,6 +8,12 @@
     "build": "tsc --build",
     "test": "jest --coverage --verbose --ci"
   },
+  "files": [
+    "packages",
+    "tsconfig.json",
+    "tsconfig.base.json",
+    "jest.config.json"
+  ],
   "workspaces": {
     "packages": [
       "packages/*"

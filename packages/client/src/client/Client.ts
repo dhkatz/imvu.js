@@ -13,146 +13,125 @@ import { AxiosRequestConfig } from 'axios';
  * The main client for interacting with the IMVU API controllers.
  */
 export class Client extends BaseClient {
-  public users: UserController = new UserController(this);
-  public matched: BaseController<GetMatched> = new BaseController(this, GetMatched);
-  public products: ProductController = new ProductController(this);
-  public rooms: RoomController = new RoomController(this);
+	public users: UserController = new UserController(this);
+	public matched: BaseController<GetMatched> = new BaseController(this, GetMatched);
+	public products: ProductController = new ProductController(this);
+	public rooms: RoomController = new RoomController(this);
 
-  public utils: Utilities = new Utilities(this);
+	public utils: Utilities = new Utilities(this);
 
-  private cache: Map<Constructor<unknown>, Map<string, { ttl: number; value: Resource | null }>> =
-    new Map();
+	private serializer = new JsonSerializer({
+		formatPropertyName: (name: string) => name.replace(/([A-Z])/g, '_$1').toLowerCase(),
+	});
 
-  private serializer = new JsonSerializer({
-    formatPropertyName: (name: string) => name.replace(/([A-Z])/g, '_$1').toLowerCase(),
-  });
+	public get account(): AccountManager {
+		if (!this.#account) {
+			throw new Error('Client account cannot be accessed before logging in!');
+		}
 
-  public get account(): AccountManager {
-    if (!this.#account) {
-      throw new Error('Client account cannot be accessed before logging in!');
-    }
+		return this.#account;
+	}
 
-    return this.#account;
-  }
+	public async login(username: string, password: string, options: any = {}) {
+		await super.login(username, password, options);
+		// Set up the client user, including the base user and avatar.
 
-  public async login(username: string, password: string, options: any = {}) {
-    await super.login(username, password, options);
-    // Set up the client user, including the base user and avatar.
+		const user = await this.users.fetch(this.cid);
 
-    const user = await this.users.fetch(this.cid);
+		if (!user) {
+			throw new Error(`Unable to fetch client user ${this.cid}`);
+		}
 
-    if (!user) {
-      throw new Error(`Unable to fetch client user ${this.cid}`);
-    }
+		// This is an ugly hack to build the avatar
 
-    // This is an ugly hack to build the avatar
+		const avatar = await this.resource(`/avatar/avatar-${user.id}`, Avatar);
 
-    const avatar = await this.resource(`/avatar/avatar-${user.id}`, Avatar);
+		this.#account = new AccountManager(this, user, avatar);
+	}
 
-    this.#account = new AccountManager(this, user, avatar);
-  }
+	public async holidays(): Promise<Array<{ title: string; date: Date }>> {
+		const { data } = await this.http.get('/holiday');
 
-  public async holidays(): Promise<Array<{ title: string; date: Date }>> {
-    const { data } = await this.http.get('/holiday');
+		const holidays = data['denormalized'][data.id]['data']['items'] as Array<{
+			title: string;
+			date: Date;
+		}>;
 
-    const holidays = data['denormalized'][data.id]['data']['items'] as Array<{
-      title: string;
-      date: Date;
-    }>;
+		return holidays.map((value) => ({ ...value, date: new Date(value.date) }));
+	}
 
-    return holidays.map((value) => ({ ...value, date: new Date(value.date) }));
-  }
+	/**
+	 * Convenience method for fetching a resource from the IMVU API.
+	 * This will automatically attempt to deserialize the response into the specified type.
+	 */
+	public async resource<T extends object = Record<string, any>>(
+		url: string,
+		config?: AxiosRequestConfig
+	): Promise<APIResource<T>>;
+	public async resource<T extends Resource>(
+		url: string,
+		cls: Constructor<T>,
+		config?: AxiosRequestConfig
+	): Promise<T>;
+	public async resource<T extends Resource>(
+		url: string,
+		cls?: Constructor<T> | AxiosRequestConfig,
+		config?: AxiosRequestConfig
+	): Promise<T | APIResource<T>> {
+		cls = typeof cls === 'function' ? cls : undefined;
+		config = typeof cls === 'object' ? cls : config ?? {};
+		config.validateStatus = () => true;
 
-  /**
-   * Convenience method for fetching a resource from the IMVU API.
-   * This will automatically attempt to deserialize the response into the specified type.
-   */
-  public async resource<T extends object = Record<string, any>>(
-    url: string,
-    config?: AxiosRequestConfig
-  ): Promise<APIResource<T>>;
-  public async resource<T extends Resource>(
-    url: string,
-    cls: Constructor<T>,
-    config?: AxiosRequestConfig
-  ): Promise<T>;
-  public async resource<T extends Resource>(
-    url: string,
-    cls?: Constructor<T> | AxiosRequestConfig,
-    config?: AxiosRequestConfig
-  ): Promise<T | APIResource<T>> {
-    cls = typeof cls === 'function' ? cls : undefined;
-    config = typeof cls === 'object' ? cls : config;
+		const { data: response } = await this.http.get<APIResponse<T>>(url, config);
 
-    if (cls && !this.cache.has(cls)) {
-      this.cache.set(cls, new Map());
-    }
+		if (response.status === 'failure') {
+			throw new Error(response.message);
+		}
 
-    const cache = cls && (this.cache.get(cls) as Map<string, { ttl: number; value: T | null }>);
+		const resource = response.denormalized[response.id];
 
-    const matched_id = url.match(/\d+(-\d+)?$/);
-    const key = matched_id ? matched_id[0] : url;
+		if (!resource.data.id) {
+			const id = response.id.match(/\d+(?:-\d+)?$/);
 
-    const cached = cache?.get(key);
+			if (!id) throw new Error(`Unable to parse resource ID from '${response.id}'`);
 
-    if (cached && cached.ttl > Date.now() && cached.value) {
-      return cached.value;
-    }
+			resource.data.id = id[0];
+		}
 
-    const { data: response } = await this.http.get<APIResponse<T>>(url, config);
+		return cls ? this.deserialize(cls, resource) : resource;
+	}
 
-    if (response.status === 'failure') {
-      throw new Error(response.message);
-    }
+	public async request<T extends object = Record<string, any>>(
+		url: string,
+		config?: AxiosRequestConfig
+	): Promise<APISuccessResponse<T>> {
+		const { data } = await this.http.get<APIResponse<T>>(url, config);
 
-    const resource = response.denormalized[response.id];
+		if (data.status === 'failure') {
+			throw new Error(data.message);
+		}
 
-    if (matched_id && !resource.data.id) {
-      resource.data.id = matched_id[0];
-    }
+		return data;
+	}
 
-    if (cls) {
-      const value = this.deserialize(cls, resource);
+	public deserialize<T extends Resource>(cls: Constructor<T>, data: APIResource<T>): T {
+		const instance = new cls(this);
 
-      cache?.set(key, { ttl: Date.now() + 1000 * 60 * 10, value });
+		const resource = this.serializer.deserialize<T>(data.data, instance);
 
-      return value;
-    }
+		if (!resource || Array.isArray(resource)) {
+			throw new Error(`Unable to deserialize '${cls.name}'`);
+		}
 
-    return resource;
-  }
+		if (data.relations) resource.relations = data.relations;
+		if (data.updates) resource.updates = data.updates;
 
-  public async request<T extends object = Record<string, any>>(
-    url: string,
-    config?: AxiosRequestConfig
-  ): Promise<APISuccessResponse<T>> {
-    const { data } = await this.http.get<APIResponse<T>>(url, config);
+		return resource;
+	}
 
-    if (data.status === 'failure') {
-      throw new Error(data.message);
-    }
-
-    return data;
-  }
-
-  public deserialize<T extends Resource>(cls: Constructor<T>, data: APIResource<T>): T {
-    const instance = new cls(this);
-
-    const resource = this.serializer.deserialize<T>(data.data, instance);
-
-    if (!resource || Array.isArray(resource)) {
-      throw new Error(`Unable to deserialize '${cls.name}'`);
-    }
-
-    if (data.relations) resource.relations = data.relations;
-    if (data.updates) resource.updates = data.updates;
-
-    return resource;
-  }
-
-  #account?: AccountManager;
+	#account?: AccountManager;
 }
 
 export interface Client extends BaseClient {
-  on(event: 'ready', listener: () => void): this;
+	on(event: 'ready', listener: () => void): this;
 }

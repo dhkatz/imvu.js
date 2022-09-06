@@ -35,6 +35,9 @@ This library has testing in place to ensure the integrity and reliability of the
 If you would like to run the tests, I recommend using a VPN and separate account to avoid potential 
 rate limiting and IP issues.
 
+Please set the `IMVU_USERNAME` and `IMVU_PASSWORD` environment variables to your IMVU account credentials.
+Do not use your main account, as the tests may modify your account.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details

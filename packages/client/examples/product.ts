@@ -1,15 +1,19 @@
 import { Client } from '../src';
 
 async function main() {
-  const client = new Client();
+	const client = new Client();
 
-  await client.login(process.env.IMVU_USERNAME!, process.env.IMVU_PASSWORD!);
+	await client.login(process.env.IMVU_USERNAME!, process.env.IMVU_PASSWORD!);
 
-  console.log(`Logged in as ${client.account.username}`);
+	console.log(`Logged in as ${client.account.username}`);
 
-  const rouletteResponse = await client.account.roulette.status();
+	const [user] = await client.users.search({ username: 'Dvah' });
 
-  console.log(rouletteResponse);
+	if (!user) {
+		throw new Error('User not found!');
+	}
+
+	console.log(`Found user ${user.username} with id ${user.id}`);
 }
 
 main();
