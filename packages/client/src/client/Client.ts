@@ -2,8 +2,8 @@ import { JsonSerializer } from 'typescript-json-serializer';
 import { Constructor } from 'type-fest';
 
 import { BaseClient } from './index';
-import { BaseController, ProductController, RoomController, UserController } from '../controllers';
-import { Avatar, GetMatched, Resource } from '../resources';
+import { BaseController } from '../controllers';
+import { Avatar, GetMatched, Product, Resource, Room, User } from '../resources';
 import { AccountManager } from '../managers';
 import { APIResource, APIResponse, APISuccessResponse } from '../types';
 import { Utilities } from './Utilities';
@@ -13,24 +13,34 @@ import { AxiosRequestConfig } from 'axios';
  * The main client for interacting with the IMVU API controllers.
  */
 export class Client extends BaseClient {
-	public users: UserController = new UserController(this);
-	public matched: BaseController<GetMatched> = new BaseController(this, GetMatched);
-	public products: ProductController = new ProductController(this);
-	public rooms: RoomController = new RoomController(this);
+	public readonly users = new BaseController<User, { username?: string }>(this, User, 'user');
+	public readonly matched: BaseController<GetMatched> = new BaseController(
+		this,
+		GetMatched,
+		'get_matched'
+	);
+	public readonly products = new BaseController<Product, { creator?: string }>(
+		this,
+		Product,
+		'product'
+	);
+	public readonly rooms = new BaseController(this, Room, 'room');
 
-	public utils: Utilities = new Utilities(this);
-
-	private serializer = new JsonSerializer({
-		formatPropertyName: (name: string) => name.replace(/([A-Z])/g, '_$1').toLowerCase(),
-	});
+	#account?: AccountManager;
 
 	public get account(): AccountManager {
-		if (!this.#account) {
-			throw new Error('Client account cannot be accessed before logging in!');
+		if (!this.authenticated || !this.#account) {
+			throw new Error(`You must be logged into to access account information!`);
 		}
 
 		return this.#account;
 	}
+
+	public readonly utils: Utilities = new Utilities(this);
+
+	private readonly serializer = new JsonSerializer({
+		formatPropertyName: (name: string) => name.replace(/([A-Z])/g, '_$1').toLowerCase(),
+	});
 
 	public async login(username: string, password: string, options: any = {}) {
 		await super.login(username, password, options);
@@ -79,33 +89,75 @@ export class Client extends BaseClient {
 		config?: AxiosRequestConfig
 	): Promise<T | APIResource<T>> {
 		cls = typeof cls === 'function' ? cls : undefined;
-		config = typeof cls === 'object' ? cls : config ?? {};
-		config.validateStatus = () => true;
+		config = typeof cls === 'object' ? cls : config;
 
-		const { data: response } = await this.http.get<APIResponse<T>>(url, config);
-
-		if (response.status === 'failure') {
-			throw new Error(response.message);
-		}
+		const response = await this.request<T>(url, config);
 
 		const resource = response.denormalized[response.id];
 
+		// This is a hack to provide an id to resources which don't include their own id
 		if (!resource.data.id) {
 			const id = response.id.match(/\d+(?:-\d+)?$/);
 
-			if (!id) throw new Error(`Unable to parse resource ID from '${response.id}'`);
-
-			resource.data.id = id[0];
+			resource.data.id = id ? id[0] : '';
 		}
 
 		return cls ? this.deserialize(cls, resource) : resource;
+	}
+
+	public async resources<T extends object = Record<string, any>>(
+		url: string,
+		config?: AxiosRequestConfig
+	): Promise<APIResource<T>[]>;
+	public async resources<T extends Resource>(
+		url: string,
+		cls: Constructor<T>,
+		config?: AxiosRequestConfig
+	): Promise<T[]>;
+	public async resources<T extends Resource>(
+		url: string,
+		cls?: Constructor<T> | AxiosRequestConfig,
+		config?: AxiosRequestConfig
+	): Promise<T[] | APIResource<T>[]> {
+		const model = typeof cls === 'function' ? cls : undefined;
+		config = typeof cls === 'object' ? cls : config;
+
+		const response = await this.request(url, config);
+
+		const data = response.denormalized[response.id].data;
+
+		if (!Array.isArray(data.items)) {
+			throw new Error(`The resource at '${url}' does not contain a list of resources`);
+		}
+
+		return data.items
+			.map((url: string) => {
+				const ref = response.denormalized[url].relations?.ref;
+
+				const resource = response.denormalized[ref ?? url] as APIResource<T>;
+
+				if (!resource) return null;
+
+				// This is a hack to provide an id to resources which don't include their own id
+				if (!resource.data.id) {
+					const id = (ref ?? url).match(/\d+(?:-\d+)?$/);
+
+					resource.data.id = id ? id[0] : '';
+				}
+
+				return model ? this.deserialize(model, resource) : resource;
+			})
+			.filter((resource) => resource !== null) as T extends Resource ? T[] : APIResource<T>[];
 	}
 
 	public async request<T extends object = Record<string, any>>(
 		url: string,
 		config?: AxiosRequestConfig
 	): Promise<APISuccessResponse<T>> {
-		const { data } = await this.http.get<APIResponse<T>>(url, config);
+		config = config ?? {};
+		config.validateStatus = () => true;
+
+		const { data } = await this.http.request<APIResponse<T>>({ url, ...config });
 
 		if (data.status === 'failure') {
 			throw new Error(data.message);
@@ -128,8 +180,6 @@ export class Client extends BaseClient {
 
 		return resource;
 	}
-
-	#account?: AccountManager;
 }
 
 export interface Client extends BaseClient {

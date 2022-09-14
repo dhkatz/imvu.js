@@ -4,18 +4,18 @@ import { Resource } from '../Resource';
 
 @JsonObject()
 export class Room extends Resource {
-  @JsonProperty()
-  public name = '';
+	@JsonProperty()
+	public name = '';
 
-  @JsonProperty()
-  public description = '';
+	@JsonProperty()
+	public description = '';
 
-  @JsonProperty()
-  public privacy = '';
+	@JsonProperty()
+	public privacy = '';
 
-  @JsonProperty()
-  public rating = 0;
+	@JsonProperty()
+	public rating = 0;
 
-  @JsonProperty()
-  public capacity = 0;
+	@JsonProperty()
+	public capacity = 0;
 }

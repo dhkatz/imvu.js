@@ -95,8 +95,6 @@ export class BaseClient extends EventEmitter {
 		this.authenticated = true;
 
 		// TODO: Connect to the IMVU WebSocket server using the IMQ library
-
-		this.emit('ready');
 	}
 
 	public logout(): void {

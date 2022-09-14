@@ -5,36 +5,32 @@ import { URLPaginator } from '../../util/Paginator';
 
 @JsonObject()
 export class Creator extends Resource {
-  @JsonProperty('creator_tier')
-  public tier = 0;
+	@JsonProperty('creator_tier')
+	public tier = 0;
 
-  @JsonProperty()
-  public isPro = false;
+	@JsonProperty()
+	public isPro = false;
 
-  @JsonProperty()
-  public isActive = false;
+	@JsonProperty()
+	public isActive = false;
 
-  @JsonProperty()
-  public isTopSeller = false;
+	@JsonProperty()
+	public isTopSeller = false;
 
-  @JsonProperty()
-  public isVeteran = false;
+	@JsonProperty()
+	public isVeteran = false;
 
-  public async *products(): AsyncIterableIterator<Product> {
-    yield* new URLPaginator(
-      this.client,
-      this.client.products,
-      `/creator/creator-${this.id}/products`
-    );
-  }
+	public async *products(): AsyncIterableIterator<Product> {
+		yield* new URLPaginator(this.client, Product, `/creator/creator-${this.id}/products`);
+	}
 
-  public async *sales(): AsyncIterableIterator<Product> {
-    this.authenticated();
+	public async *sales(): AsyncIterableIterator<Product> {
+		this.authenticated();
 
-    yield* new URLPaginator(
-      this.client,
-      this.client.products,
-      `/creator/creator-${this.id}/product_sale_events`
-    );
-  }
+		yield* new URLPaginator(
+			this.client,
+			Product,
+			`/creator/creator-${this.id}/product_sale_events`
+		);
+	}
 }

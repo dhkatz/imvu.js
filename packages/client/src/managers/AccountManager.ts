@@ -56,14 +56,12 @@ export class AccountManager extends BaseManager {
 	public async *blocklist(): AsyncIterableIterator<User> {
 		this.authenticated();
 
-		yield* new URLPaginator(this.client, this.client.users, `/user/user-${this.user.id}/blocked`);
+		yield* new URLPaginator(this.client, User, `/user/user-${this.user.id}/blocked`);
 	}
 
 	public async *inventory(): AsyncIterableIterator<Product> {
-		yield* new URLPaginator(
-			this.client,
-			this.client.products,
-			`/user/user-${this.user.id}/inventory`
-		);
+		this.authenticated();
+
+		yield* new URLPaginator(this.client, Product, `/user/user-${this.user.id}/inventory`);
 	}
 }

@@ -3,7 +3,6 @@ import { Class } from 'type-fest';
 import { Client } from '../client';
 import { Resource } from '../resources';
 import { BaseController } from '../controllers';
-import { APIResource } from '../types';
 
 export interface PaginatorOptions<T extends Resource> {
 	next: (client: Client, offset: number) => Promise<T[]>;
@@ -58,32 +57,13 @@ export class Paginator<T extends Resource> {
 	}
 }
 
-export class URLPaginator<
-	T extends Resource,
-	U extends BaseController<T, any> | Class<T>
-> extends Paginator<T> {
+export class URLPaginator<T extends Resource, U extends Class<T>> extends Paginator<T> {
 	public constructor(client: Client, controller: U, url: string) {
 		super(client, {
-			next: async (client) => {
-				const response = await client.request(url, {
+			next: async (client) =>
+				client.resources(url, controller, {
 					params: { start_index: this.offset, limit: this.limit },
-				});
-
-				const data = response.denormalized[response.id].data;
-
-				return data.items
-					.map((url: string) => {
-						const ref = response.denormalized[url].relations?.ref;
-
-						return ref ? response.denormalized[ref] : null;
-					})
-					.filter((resource: APIResource<T> | null) => resource !== null)
-					.map((resource: APIResource<T>) => {
-						return typeof controller === 'function'
-							? client.deserialize(controller, resource)
-							: controller.deserialize(resource);
-					});
-			},
+				}),
 		});
 	}
 }
