@@ -150,22 +150,6 @@ export class Client extends BaseClient {
 			.filter((resource) => resource !== null) as T extends Resource ? T[] : APIResource<T>[];
 	}
 
-	public async request<T extends object = Record<string, any>>(
-		url: string,
-		config?: AxiosRequestConfig
-	): Promise<APISuccessResponse<T>> {
-		config = config ?? {};
-		config.validateStatus = () => true;
-
-		const { data } = await this.http.request<APIResponse<T>>({ url, ...config });
-
-		if (data.status === 'failure') {
-			throw new Error(data.message);
-		}
-
-		return data;
-	}
-
 	public deserialize<T extends Resource>(cls: Constructor<T>, data: APIResource<T>): T {
 		const instance = new cls(this);
 

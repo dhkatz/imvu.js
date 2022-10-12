@@ -1,11 +1,10 @@
 import { EventEmitter } from 'events';
 
-import axios, { AxiosInstance } from 'axios';
-import { CookieJar } from 'tough-cookie';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { CookieJar, Store } from 'tough-cookie';
 import { FileCookieStore } from 'tough-cookie-file-store';
 import { wrapper } from 'axios-cookiejar-support';
-
-type Timeout = ReturnType<typeof setTimeout>;
+import { APIResponse, APISuccessResponse } from '../types';
 
 export class BaseClient extends EventEmitter {
 	protected username = '';
@@ -18,18 +17,19 @@ export class BaseClient extends EventEmitter {
 
 	public readonly http: AxiosInstance;
 	public readonly cookies: CookieJar;
-
-	private intervals: Set<Timeout> = new Set();
+	protected readonly store: Store;
 
 	public constructor() {
 		super();
 
-		this.cookies = new CookieJar(new FileCookieStore('./cookies.json'));
+		this.store = new FileCookieStore('./cookies.json');
+		this.cookies = new CookieJar(this.store, { rejectPublicSuffixes: false });
 		this.http = wrapper(
 			axios.create({
 				baseURL: 'https://api.imvu.com',
 				jar: this.cookies,
 				withCredentials: true,
+				validateStatus: () => true,
 			})
 		);
 	}
@@ -44,53 +44,40 @@ export class BaseClient extends EventEmitter {
 	 * await client.login('username', 'password');
 	 */
 	public async login(username: string, password: string, options: any = {}): Promise<void> {
-		const { status } = await this.http.post(
-			'/login',
-			{
-				gdpr_cookie_acceptance: true,
-				username,
-				password,
-				remember_device: true,
-				'2fa_code': options.twoFactorCode,
-			},
-			{ validateStatus: () => true }
-		);
+		const cookies = await this.cookies.getCookies('https://imvu.com/');
 
-		if (status >= 200 && status < 300) {
-			this.username = username;
-			this.password = password;
-		} else {
-			throw new Error(
-				'Unable to log in to the IMVU API! Invalid username/password or the servers are offline!'
-			);
+		const session = cookies.find((c) => c.key === '_imvu_avnm');
+
+		if (session?.value.toLowerCase() !== username.toLowerCase()) {
+			await this.request('/login', {
+				method: 'POST',
+				data: {
+					gdpr_cookie_acceptance: true,
+					username,
+					password,
+					remember_device: true,
+					'2fa_code': options.twoFactorCode,
+				},
+			});
 		}
 
-		// Setup the "sauce", basically a JSON authentication token
+		this.username = username;
+		this.password = password;
+
+		// Set up the "sauce", basically a JSON authentication token
 		// The token must be included with every non-GET request
 
-		const { data: info } = await this.http.get('/login/me');
+		const data = await this.request('/login/me');
 
-		const loginInfo = info['denormalized'][info.id];
+		const resource = data.denormalized[data.id];
 
-		this.sauce = loginInfo['data']['sauce'];
-		const cid = loginInfo['relations']['quick_chat_profile'].match(/\d+(-\d+)?$/);
+		this.sauce = resource.data.sauce;
+		this.cid = parseInt(resource?.relations?.quick_chat_profile ?? '0', 10);
 
-		if (!cid) {
-			throw new Error(
-				`Unable to fetch client user ${loginInfo['relations']['quick_chat_profile']}`
-			);
+		for (const method of ['post', 'put', 'patch', 'delete'] as const) {
+			this.http.defaults.headers[method]['x-imvu-sauce'] = this.sauce;
+			this.http.defaults.headers[method]['x-imvu-application'] = 'next_desktop/1';
 		}
-
-		this.cid = parseInt(cid[0], 10);
-
-		this.http.defaults.headers.post['x-imvu-sauce'] = this.sauce;
-		this.http.defaults.headers.post['x-imvu-application'] = 'next_desktop/1';
-		this.http.defaults.headers.put['x-imvu-sauce'] = this.sauce;
-		this.http.defaults.headers.put['x-imvu-application'] = 'next_desktop/1';
-		this.http.defaults.headers.patch['x-imvu-sauce'] = this.sauce;
-		this.http.defaults.headers.patch['x-imvu-application'] = 'next_desktop/1';
-		this.http.defaults.headers.delete['x-imvu-sauce'] = this.sauce;
-		this.http.defaults.headers.delete['x-imvu-application'] = 'next_desktop/1';
 
 		this.authenticated = true;
 
@@ -102,22 +89,20 @@ export class BaseClient extends EventEmitter {
 	}
 
 	public destroy(): void {
-		for (const i of this.intervals) this.clearInterval(i);
-
-		this.intervals.clear();
-
 		this.username = '';
 		this.password = '';
 	}
 
-	public setInterval(callback: (...args: never[]) => void, ms: number, ...args: never[]): Timeout {
-		const interval = setInterval(callback, ms, ...args);
-		this.intervals.add(interval);
-		return interval;
-	}
+	public async request<T extends object = Record<string, any>>(
+		url: string,
+		config: AxiosRequestConfig = {}
+	): Promise<APISuccessResponse<T>> {
+		const { data } = await this.http.request<APIResponse<T>>({ url, ...config });
 
-	public clearInterval(interval: Timeout): void {
-		clearInterval(interval);
-		this.intervals.delete(interval);
+		if (data.status === 'failure') {
+			throw new Error(data.message);
+		}
+
+		return data;
 	}
 }

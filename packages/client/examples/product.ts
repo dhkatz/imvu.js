@@ -7,7 +7,7 @@ async function main() {
 
 	console.log(`Logged in as ${client.account.username}`);
 
-	const [user] = await client.users.search({ username: 'Dvah' });
+	const [user] = await client.users.search({ username: 'whiffIe' });
 
 	if (!user) {
 		throw new Error('User not found!');
