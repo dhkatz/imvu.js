@@ -9,9 +9,6 @@
 	"baseUrl": ".",
 
 	"composite": true,
-	"incremental": true,
-    "declaration": true,
-    "declarationMap": true,
     "sourceMap": true,
   	"isolatedModules": true,
 
@@ -24,6 +21,7 @@
 
 	"emitDecoratorMetadata": true,
 	"experimentalDecorators": true,
+	  "downlevelIteration": true,
 
 	"paths": {
 	  "@imvu/*": ["./packages/*/src"]

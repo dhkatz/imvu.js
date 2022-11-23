@@ -1,26 +1,39 @@
 {
   "name": "@imvu/chkn",
-  "version": "0.2.0-dev",
+	"private": true,
+  "version": "0.1.0",
   "description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
   "author": "dhkatz",
   "license": "MIT",
-  "main": "../../lib/index.js",
-  "typings": "typings/index.d.ts",
-  "files": [
-    "lib/**/*",
-    "typings/**/*"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/dhkatz/imvu.js.git"
-  },
-  "scripts": {
-    "build": "npm run build:types && npm run build:js",
-    "build:types": "tsc --emitDeclarationOnly",
-    "build:js": "tsc",
-    "lint": "eslint packages/client/src/**/* && tsc --noEmit",
-    "test": "jest --ci --verbose --forceExit --detectOpenHandles --coverage"
-  },
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/types/index.d.ts",
+			"module": "./dist/esm/index.js",
+			"import": "./dist/esm/index.js",
+			"require": "./dist/cjs/index.js"
+		}
+	},
+	"main": "./dist/cjs/index.js",
+	"types": "./dist/cjs/index.d.ts",
+	"sideEffects": false,
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/dhkatz/imvu.js.git"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "npm run clean && npm run build:cjs && npm run build:esm",
+		"build:cjs": "tsc -b",
+		"build:esm": "tsc --outDir dist/esm --module esnext --target esnext",
+		"clean": "rimraf ./dist",
+		"lint": "eslint packages/client/src/**/* && tsc --noEmit",
+		"test": "jest --ci --verbose --forceExit --detectOpenHandles --coverage",
+		"postversion": "git push && git push --tags",
+		"prepublish": "npm run build"
+	},
   "dependencies": {
   },
   "devDependencies": {

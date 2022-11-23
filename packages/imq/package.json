@@ -1,24 +1,37 @@
 {
   "name": "@imvu/imq",
-  "version": "0.2.0-dev",
+  "version": "0.1.0",
   "description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
   "author": "dhkatz",
   "license": "MIT",
-  "main": "./dist/index.js",
-  "typings": "./dist/index.d.ts",
-  "files": [
-    "dist/**/*"
-  ],
+	"type": "module",
+	"exports": {
+		".": {
+			"types": "./dist/types/index.d.ts",
+			"module": "./dist/esm/index.js",
+			"import": "./dist/esm/index.js",
+			"require": "./dist/cjs/index.js"
+		}
+	},
+	"main": "./dist/cjs/index.js",
+	"types": "./dist/cjs/index.d.ts",
+	"sideEffects": false,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dhkatz/imvu.js.git"
   },
+	"publishConfig": {
+		"access": "public"
+	},
   "scripts": {
-    "build": "npm run build:types && npm run build:js",
-    "build:types": "tsc --emitDeclarationOnly",
-    "build:js": "tsc",
+		"build": "npm run clean && npm run build:cjs && npm run build:esm",
+		"build:cjs": "tsc -b",
+		"build:esm": "tsc --outDir dist/esm --module esnext --target esnext",
+		"clean": "rimraf ./dist",
     "lint": "eslint packages/client/src/**/* && tsc --noEmit",
-    "test": "jest --ci --verbose --forceExit --detectOpenHandles --coverage"
+    "test": "jest --ci --verbose --forceExit --detectOpenHandles --coverage",
+		"postversion": "git push && git push --tags",
+		"prepublish": "npm run build"
   },
   "dependencies": {
     "ws": "^8.8.1"

@@ -1,7 +1,7 @@
-import { deserialize } from '@dhkatz/json-ts';
 import { Client, Avatar, PartialProduct, Product } from '@imvu/client';
 
 import { BaseExtension } from './BaseExtenstion';
+import { JsonSerializer } from 'typescript-json-serializer';
 
 export interface SceneViewerOptions {
 	load?: boolean;
@@ -69,6 +69,10 @@ export class Scene {
 
 	public furniture: Product[] = [];
 
+	protected serializer = new JsonSerializer({
+		formatPropertyName: (name: string) => name.replace(/([A-Z])/g, '_$1').toLowerCase(),
+	});
+
 	public constructor(public client: Client, public data: SceneData) {}
 
 	/**
@@ -87,12 +91,15 @@ export class Scene {
 
 				const ids = products.map((p) => p.product_id);
 
-				deserialize(avatar, {
-					look_url: `https://api.imvu.com/look/${ids.join('%2C')}`,
-					asset_url: '',
-					legacy_message: `*putOnOutfit ${ids.join(' ')}`,
-					products,
-				});
+				this.serializer.deserializeObject(
+					{
+						look_url: `https://api.imvu.com/look/${ids.join('%2C')}`,
+						asset_url: '',
+						legacy_message: `*putOnOutfit ${ids.join(' ')}`,
+						products,
+					},
+					avatar
+				);
 
 				return avatar;
 			})

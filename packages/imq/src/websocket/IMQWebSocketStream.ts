@@ -1,44 +1,59 @@
-import { IMQStream, IMQStreamState } from '../IMQStream.new';
+import { IMQStream, IMQStreamState } from '../IMQStream';
 import WebSocket from 'ws';
 
 export class IMQWebSocketStream extends IMQStream {
-  private state: IMQStreamState = IMQStreamState.CONNECTING;
-  private socket: WebSocket | null = null;
+	private socket: WebSocket | null = null;
 
-  public constructor(socket: WebSocket) {
-    super({});
+	public constructor(socket: WebSocket) {
+		super({});
 
-    this.socket = socket;
+		this.socket = socket;
 
-    socket.on('open', () => {
-      this.state = IMQStreamState.OPEN;
-      this.emit('open');
-    });
+		this.addListeners();
+	}
 
-    socket.on('close', () => {
-      this.state = IMQStreamState.CLOSED;
-      this.socket?.removeAllListeners();
-      this.socket = null;
-      this.emit('close');
-    });
+	public send(event: any) {
+		this.socket?.send(event);
+	}
 
-    socket.on('message', (data: any) => {
-      this.emit('message', data);
-    });
+	public close() {
+		if (this.state === IMQStreamState.CONNECTING || this.state === IMQStreamState.OPEN) {
+			this.state = IMQStreamState.CLOSING;
+			this.socket?.close();
+		}
+	}
 
-    socket.on('error', (error: any) => {
-      this.emit('error', error);
-    });
-  }
+	private addListeners() {
+		this.socket?.on('open', this.onOpen);
+		this.socket?.on('close', this.onClose);
+		this.socket?.on('error', this.onError);
+		this.socket?.on('message', this.onMessage);
+	}
 
-  public send() {
-    this.socket?.send(null);
-  }
+	private removeListeners() {
+		this.socket?.removeListener('open', this.onOpen);
+		this.socket?.removeListener('close', this.onClose);
+		this.socket?.removeListener('error', this.onError);
+		this.socket?.removeListener('message', this.onMessage);
+		this.socket = null;
+	}
 
-  public close() {
-    if (this.state === IMQStreamState.CONNECTING || this.state === IMQStreamState.OPEN) {
-      this.state = IMQStreamState.CLOSING;
-      this.socket?.close();
-    }
-  }
+	private onOpen = () => {
+		this.state = IMQStreamState.OPEN;
+		this.emit('open', this.socket);
+	};
+
+	private onMessage = () => {
+		this.emit('message', this.socket);
+	};
+
+	private onError = () => {
+		this.emit('error', this.socket);
+	};
+
+	private onClose = () => {
+		this.state = IMQStreamState.CLOSED;
+		this.removeListeners();
+		this.emit('close', this.socket);
+	};
 }

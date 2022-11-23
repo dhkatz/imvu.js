@@ -6,19 +6,22 @@ import { APIResource } from '../types';
 export interface ModelOptions {}
 
 @JsonObject()
-export abstract class Resource {
+export abstract class Resource<
+	TRelations = APIResource['relations'],
+	TUpdates = APIResource['updates']
+> {
 	@JsonProperty()
 	public readonly id: string = '';
 
 	/**
 	 * @internal
 	 */
-	public relations: APIResource['relations'] = {};
+	public relations: Partial<TRelations> | APIResource['relations'] = {};
 
 	/**
 	 * @internal
 	 */
-	public updates: APIResource['updates'] = {};
+	public updates: Partial<TUpdates> | APIResource['updates'] = {};
 
 	/* istanbul ignore next */
 	public constructor(protected readonly client: Client, protected options: ModelOptions = {}) {

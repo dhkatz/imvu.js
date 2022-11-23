@@ -1,31 +1,42 @@
 {
   "name": "@imvu/client",
-  "version": "0.2.0-dev",
+  "version": "0.1.0",
   "description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
   "author": "dhkatz",
   "license": "MIT",
-  "main": "./dist/index.js",
-  "typings": "./dist/index.d.ts",
-  "files": [
-    "lib/**/*"
-  ],
+	"type": "module",
+  "exports": {
+		".": {
+			"types": "./dist/types/index.d.ts",
+			"module": "./dist/esm/index.js",
+			"import": "./dist/esm/index.js",
+			"require": "./dist/cjs/index.js"
+		}
+	},
+	"main": "./dist/cjs/index.js",
+	"types": "./dist/cjs/index.d.ts",
+	"sideEffects": false,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dhkatz/imvu.js.git"
   },
+	"publishConfig": {
+		"access": "public"
+	},
   "scripts": {
-    "build": "npm run build:types && npm run build:js",
-    "build:types": "tsc --emitDeclarationOnly",
-    "build:js": "tsc",
+		"build": "npm run clean && npm run build:cjs && npm run build:esm",
+		"build:cjs": "tsc -b",
+		"build:esm": "tsc --outDir dist/esm --module esnext --target esnext",
+		"clean": "rimraf ./dist",
     "lint": "eslint packages/client/src/**/* && tsc --noEmit",
     "test": "jest --ci --verbose --forceExit --detectOpenHandles --coverage"
   },
   "dependencies": {
-    "axios": "^0.27.2",
+    "axios": "^1.1.3",
     "axios-cookiejar-support": "^4.0.3",
     "reflect-metadata": "^0.1.13",
     "tough-cookie-file-store": "^2.0.3",
-    "typescript-json-serializer": "^4.3.0"
+    "typescript-json-serializer": "^5.1.0"
   },
   "devDependencies": {
     "@types/tough-cookie": "^4.0.2",

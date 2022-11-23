@@ -1,137 +1,259 @@
-import { Status } from './IMQStream';
 import { IMQConnectionStrategy } from './IMQConnectionStrategy';
-import { IMQStream } from './IMQStream.new';
+import { IMQStream } from './IMQStream';
 import { EventEmitter } from 'events';
 import { MessageEvent } from 'ws';
 import { IMQWebSocketConnectionStrategy } from './websocket/IMQWebSocketConnectionStrategy';
 import { ClientEvent, EventNameToType } from './Events';
 
+export enum Status {
+	CLOSED,
+	CONNECTING,
+	AUTHENTICATING,
+	AUTHENTICATED,
+	WAITING,
+}
+
+type Timeout = ReturnType<typeof setTimeout>;
+
 export class IMQConnection extends EventEmitter {
-  #heartbeat?: ReturnType<typeof setTimeout>;
-  #strategy: IMQConnectionStrategy;
-  #stream?: IMQStream;
+	private strategy: IMQConnectionStrategy;
+	private stream?: IMQStream;
+	private state = Status.CLOSED;
 
-  public constructor(private config: Record<string, any>) {
-    super();
+	private connectRetryTimerHandle?: Timeout;
+	private connectRetryIntervalIndex = 0;
+	private currentStrategyIndex = 0;
+	private lastMessageTime = 0;
+	private receivedMessageTimerHandle?: Timeout;
+	private pingTimerHandle?: Timeout;
 
-    this.#strategy = new IMQWebSocketConnectionStrategy(config);
-  }
+	public constructor(private config: Record<string, any> = {}) {
+		super();
 
-  #state = Status.CLOSED;
+		this.strategy = new IMQWebSocketConnectionStrategy(config);
 
-  get status() {
-    return this.#state;
-  }
+		this.config.onPreReconnectCallback =
+			this.config.onPreReconnectCallback ||
+			((d: any) => {
+				d(null, null);
+			});
 
-  private set status(state: Status) {
-    this.#state = state;
+		this.config.pingInterval = this.config.pingInterval || 15e3;
+		this.config.reconnect = this.config.reconnect ?? [5e3, 15e3, 45e3, 9e4, 18e4];
+		this.config.serverTimeoutInterval = this.config.serverTimeoutInterval || 60e3;
+	}
 
-    this.emit('state', state);
-  }
+	get status() {
+		return this.state;
+	}
 
-  public async connect() {
-    return this.#connect();
-  }
+	private set status(state: Status) {
+		this.state = state;
 
-  async #connect(): Promise<void> {
-    if (this.status !== Status.WAITING && this.status !== Status.CLOSED) {
-      return; // Already connected/connecting
-    }
+		if (state === Status.WAITING) {
+			this.emit('state', state); // TODO: Add time
+		} else {
+			this.emit('state', state);
+		}
+	}
 
-    this.status = Status.CONNECTING;
+	public connect() {
+		if (this.status !== Status.WAITING && this.status !== Status.CLOSED) {
+			return; // Already connected/connecting
+		}
 
-    console.log(`Connecting to IMQ via '${this.#strategy.url}' as user '${this.config.user}'`);
+		this.clearConnectRetryTimer();
+		this.status = Status.CONNECTING;
 
-    return new Promise((resolve, reject) => {
-      const onReady = (): void => {
-        this.off('close', onClose);
-        this.off('error', onError);
+		if (this.currentStrategyIndex >= this.config.strategies.length) {
+			this.currentStrategyIndex = 0;
+		}
 
-        resolve();
-      };
+		this.strategy = this.config.strategies[this.currentStrategyIndex++];
 
-      const onClose = (): void => {
-        this.off('ready', onReady);
-        this.off('error', onError);
-      };
+		console.log(`Connecting to IMQ via '${this.strategy.url}' as user '${this.config.user}'`);
 
-      const onError = (error: Error): void => {
-        this.off('ready', onReady);
-        this.off('close', onClose);
+		this.stream = this.strategy.connect();
+		this.stream.on('open', () => this.onOpen());
+		this.stream.on('close', () => this.onClose());
+		this.stream.on('error', (error: Error) => this.onError(error));
+		this.stream.on('message', (message: MessageEvent) => this.onMessage(message));
 
-        reject(error);
-      };
+		this.scheduleServerTimeout();
+	}
 
-      if (this.#stream) {
-        this.#stream.once('open', onReady);
-        this.#stream.once('close', onClose);
-        this.#stream.once('error', onError);
-      }
-    });
-  }
+	public send(a: any, b: any, id: number) {
+		this._send(a, b);
+	}
 
-  public send(a: any, b: any) {
-    this.#send(a, b);
-  }
+	public close() {
+		console.log('Disconnecting from IMQ');
 
-  public close() {
-    console.log('Disconnecting from IMQ');
+		this.reset();
+		this.disconnect();
 
-    this.#disconnect();
+		this.status = Status.CLOSED;
+	}
 
-    this.status = Status.CLOSED;
-  }
+	private onOpen() {
+		this.status = Status.AUTHENTICATING;
+		this.stream?.send(
+			this.strategy.encode('msg_c2g_connect', {
+				user_id: this.config.userId,
+				cookie: this.config.sessionId,
+				metadata: this.config.metadata,
+			})
+		);
+	}
 
-  async #reconnect() {
-    this.status = Status.WAITING;
+	private onMessage(message: MessageEvent) {
+		this.scheduleServerTimeout();
+		this.lastMessageTime = Date.now();
 
-    return this.#connect();
-  }
+		const event = this.strategy.decode(message.data);
 
-  #message(message: MessageEvent) {
-    const event = this.#strategy.decode(message.data);
+		if (this.status === Status.AUTHENTICATING) {
+			if (event.type === 'msg_g2c_result') {
+				if (!event.data.error) {
+					console.log('IMQ authenticated');
 
-    if (this.status === Status.AUTHENTICATING) {
-      if (event.type === 'msg_g2c_result') {
-        if (!event.data.error) {
-          console.log('IMQ authenticated');
+					this._send('msg_c2g_open_floodgates', {});
+					this.onAuthenticated();
+				} else {
+					console.log(`Failed to authenticate with IMQ: ${event.data.error}`);
+				}
+			} else {
+				console.log(`unexpected message type during IMQ authentication: ${event.type}`);
 
-          this.#send('msg_c2g_open_floodgates', {});
-        } else {
-          console.log(`Failed to authenticate with IMQ: ${event.data.error}`);
-        }
-      } else {
-        console.log(`unexpected message type during IMQ authentication: ${event.type}`);
+				this.onDisconnected();
+			}
+		} else if (event.type !== 'msg_g2c_pong') {
+			this.emit('message', event);
+		}
+	}
 
-        this.#disconnect();
-      }
-    } else if (event.type !== 'msg_g2c_pong') {
-      this.emit('message', event);
-    }
-  }
+	private onError(err: any) {
+		console.log('IMQ WebSocket error!');
+	}
 
-  #disconnect() {
-    if (this.#stream) {
-      this.#stream.removeAllListeners();
-      this.#stream.close();
-      this.#stream = undefined;
-    }
-  }
+	private onClose() {
+		this.onDisconnected();
+	}
 
-  #send<T extends ClientEvent['record']>(
-    record: T,
-    event: Omit<EventNameToType<ClientEvent, 'record', T>, 'record'>
-  ) {
-    clearTimeout(this.#heartbeat as ReturnType<typeof setTimeout>);
+	private onDisconnected() {
+		this.disconnect();
+		console.log('Connection to IMQ closed');
+		this.reconnect();
+	}
 
-    this.#heartbeat = setTimeout(() => {
-      this.#ping();
-    }, this.config.pingInterval);
+	private onAuthenticated() {
+		this.status = Status.AUTHENTICATED;
+		this.reset();
+	}
 
-    this.#stream?.send(this.#strategy.encode(record, event));
-  }
+	private reset() {
+		this.currentStrategyIndex = 0;
+		this.connectRetryIntervalIndex = 0;
+	}
 
-  #ping() {
-    this.#send('msg_c2g_ping', {});
-  }
+	private disconnect() {
+		this.clearConnectRetryTimer();
+		this.clearServerTimer();
+		this.clearPingTimer();
+
+		if (this.stream) {
+			this.stream.removeAllListeners();
+			this.stream.close();
+			this.stream = undefined;
+		}
+	}
+
+	private clearConnectRetryTimer() {
+		if (this.connectRetryTimerHandle) {
+			clearTimeout(this.connectRetryTimerHandle);
+			this.connectRetryTimerHandle = undefined;
+		}
+	}
+
+	private reconnect() {
+		if (this.currentStrategyIndex < this.config.strategies.length) {
+			this.status = Status.WAITING;
+			this.connect();
+			return;
+		}
+
+		if (this.connectRetryIntervalIndex === this.config.reconnect.length) {
+			this.connectRetryIntervalIndex = 0;
+		}
+
+		const timeout = this.config.reconnect[this.connectRetryIntervalIndex++];
+
+		console.log(`Reconnecting to IMQ in ${timeout / 1000} seconds`);
+
+		this.status = Status.WAITING;
+
+		this.connectRetryTimerHandle = setTimeout(() => {
+			this.config.onPreReconnectCallback((err: any, config: any) => {
+				if (err) {
+					console.log(`Error in IMQ pre-reconnect callback: ${err}`);
+					this.reconnect();
+				} else {
+					this.config = { ...this.config, ...config };
+					this.currentStrategyIndex = 0;
+					this.connect();
+				}
+			}, Date.now() - this.lastMessageTime);
+		}, timeout);
+	}
+
+	private _send<T extends ClientEvent['record']>(
+		record: T,
+		event: Omit<EventNameToType<ClientEvent, 'record', T>, 'record'>
+	) {
+		this.schedulePing();
+
+		this.stream?.send(this.strategy.encode(record, event));
+	}
+
+	private scheduleServerTimeout() {
+		this.clearServerTimer();
+
+		this.receivedMessageTimerHandle = setTimeout(() => {
+			this.onServerTimeout();
+		}, this.config.serverTimeoutInterval);
+	}
+
+	private clearServerTimer() {
+		if (this.receivedMessageTimerHandle) {
+			clearTimeout(this.receivedMessageTimerHandle);
+			this.receivedMessageTimerHandle = undefined;
+		}
+	}
+
+	private onServerTimeout() {
+		console.log(
+			`No message from IMQ server for ${
+				this.config.serverTimeoutInterval / 1000
+			} seconds, disconnecting`
+		);
+		this.onDisconnected();
+	}
+
+	private schedulePing() {
+		this.clearPingTimer();
+		this.pingTimerHandle = setTimeout(() => {
+			this.sendPing();
+		}, this.config.pingInterval);
+	}
+
+	private clearPingTimer() {
+		if (this.pingTimerHandle) {
+			clearTimeout(this.pingTimerHandle);
+			this.pingTimerHandle = undefined;
+		}
+	}
+
+	private sendPing() {
+		this._send('msg_c2g_ping', {});
+	}
 }

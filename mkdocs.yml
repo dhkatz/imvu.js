@@ -1,0 +1,68 @@
+site_name: "IMVU API"
+
+repo_name: "imvu.js"
+repo_url: "https://github.com/dhkatz/imvu.js"
+
+nav:
+  - Homepage: index.md
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  features:
+    - header.autohide
+    - navigation.sections
+    - navigation.instant
+    - navigation.top
+    - navigation.indexes
+    - navigation.tracking
+    - content.code.annotate
+    - toc.follow
+    - toc.integrate
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      primary: indigo
+      accent: blue
+      scheme: slate
+      toggle:
+        icon: material/toggle-switch
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      primary: indigo
+      accent: blue
+      scheme: default
+      toggle:
+        icon: material/toggle-switch-off-outline
+        name: Switch to dark mode
+
+markdown_extensions:
+  - admonition
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      linenums: true
+  - pymdownx.details
+  - pymdownx.snippets:
+      base_path: "."
+      check_paths: true
+  - toc:
+      permalink: true
+      toc_depth: 4
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+plugins:
+  - search
+
+extra:
+  version:
+    provider: mike
+    default: latest

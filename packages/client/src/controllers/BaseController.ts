@@ -5,13 +5,14 @@ import { Client } from '../client';
 import { APIResource } from '../types';
 
 export class BaseController<
-	T extends Resource,
-	U extends Record<string, any> = Record<string, any>
+	TResource extends Resource | object = Record<string, any>,
+	TParams extends Record<string, any> = Record<string, any>,
+	TResponse = TResource extends Resource ? TResource : APIResource<TResource>
 > {
 	public constructor(
 		protected readonly client: Client,
-		protected readonly model: Constructor<T>,
-		protected readonly base: string
+		protected readonly base: string,
+		protected readonly model?: Constructor<TResource>
 	) {}
 
 	/**
@@ -19,21 +20,26 @@ export class BaseController<
 	 * This is a lot faster than searching, so fetch with an ID if you can.
 	 * @param id Request ID
 	 */
-	public async fetch(id: string | number): Promise<T | null> {
+	public async fetch(id: string | number): Promise<TResponse | null> {
 		id = await this.client.utils.id(id);
 
-		return this.client.resource(`/${this.base}/${this.base}-${id}`, this.model);
+		return (await this.client.resource(
+			`/${this.base}/${this.base}-${id}`,
+			this.model as Constructor<Resource>
+		)) as TResponse | null;
 	}
 
 	/**
 	 * Search for and retrieve objects based on a given query
 	 * @param params Request query parameters to search for
 	 */
-	public async search(params: U): Promise<T[]> {
-		return this.client.resources(`/${this.base}`, this.model, { params });
-	}
+	public async search(params: TParams): Promise<TResponse[]> {
+		if (this.model) {
+			return (await this.client.resources(`/${this.base}`, this.model as Constructor<Resource>, {
+				params,
+			})) as TResponse[];
+		}
 
-	protected deserialize(object: APIResource<T>): T {
-		return this.client.deserialize(this.model, object);
+		return (await this.client.resources(`/${this.base}`, { params })) as TResponse[];
 	}
 }

@@ -1,175 +1,285 @@
-import { GatewayEvent } from './Events';
-import EventEmitter from 'events';
-import { Client } from '@imvu/client';
-
+import { IMQConnection, Status } from './IMQConnection';
 import { IMQQueue } from './message/IMQQueue';
-import { IMQStream, Status } from './IMQStream';
 
-const sleep = (ms: number): Promise<any> => new Promise((resolve) => setTimeout(resolve, ms));
+const STATUS = {
+	[Status.CONNECTING]: 'connecting',
+	[Status.AUTHENTICATED]: 'connected',
+	[Status.CLOSED]: 'disconnected',
+	[Status.WAITING]: 'disconnected',
+	[Status.AUTHENTICATING]: 'authenticating',
+} as const;
 
-export class IMQManager extends EventEmitter {
-  public reconnecting = false;
-  public gateway = '';
+export class IMQManager {
+	private connection: IMQConnection;
+	private messageOpId = 0;
 
-  public queues: Record<string, IMQQueue> = {};
-  public callbacks: Array<{ op_id: number; callback: (event: GatewayEvent) => void }> = [];
+	private queuedSubscriptions: Array<() => void> = [];
 
-  public connection: IMQStream | null = null;
+	messageCallbacks: any[] = [];
 
-  public constructor(public client: Client) {
-    super();
-  }
+	private state: { status: typeof STATUS[Status]; connectAt?: number } = {
+		status: 'disconnected',
+		connectAt: Date.now(),
+	};
 
-  public destroy(): void {
-    this.connection?.destroy();
-  }
+	public queues: Map<string, IMQQueue> = new Map();
 
-  public close(): void {
-    this.connection?.close();
+	public constructor(private config: any) {
+		this.connection = new IMQConnection(config);
 
-    for (const queue of Object.values(this.queues)) {
-      queue.close();
-    }
+		this.connection.on('state', (state: any) => {
+			this.onConnectionState(state);
+		});
 
-    this.queues = {};
-  }
+		this.connection.on('message', (message: any) => {
+			this.onMessage(message);
+		});
+	}
 
-  public handle(event: GatewayEvent): void {
-    switch (event.record) {
-      case 'msg_g2c_send_message': {
-        if (this.queues[event.queue]) {
-          this.queues[event.queue].onMessage(event);
-        }
+	public async connect(callback?: any): Promise<void> {
+		return new Promise((resolve, reject) => {
+			if (this.connection.status === Status.AUTHENTICATED) {
+				return resolve(callback?.());
+			}
 
-        break;
-      }
-      case 'msg_g2c_joined_queue': {
-        if (!this.queues[event.queue]) {
-          this.queues[event.queue] = new IMQQueue(this, event.queue);
-        }
+			const onState = (status: Status) => {
+				if (status === Status.AUTHENTICATED) {
+					this.connection.off('state', onState);
+					resolve();
+				}
+			};
 
-        this.queues[event.queue].onSubscriberJoined(event);
+			this.connection.on('state', onState);
 
-        break;
-      }
-      case 'msg_g2c_left_queue': {
-        if (this.queues[event.queue]) {
-          this.queues[event.queue].onSubscriberLeft(event);
-        }
+			if (this.connection.status === Status.WAITING || this.connection.status === Status.CLOSED) {
+				this.connection.connect();
+			}
+		});
+	}
 
-        break;
-      }
-      case 'msg_g2c_create_mount': {
-        switch (event.type) {
-          case 'message':
-            break;
-          case 'state':
-            break;
-        }
+	public subscribeState(a: any, name: string, c: any) {
+		const queueState = () => {
+			this.subscribeQueue(
+				a,
+				(f: any) => {
+					return f.getStateMount(name);
+				},
+				c
+			);
+		};
 
-        break;
-      }
-      case 'msg_g2c_state_change':
-        break;
-      default:
-        break;
-    }
-  }
+		if (this.connection.status !== Status.AUTHENTICATED) {
+			this.queuedSubscriptions.push(queueState);
+		} else {
+			queueState();
+		}
+	}
 
-  public async send(queue: string, mount: string, message: string): Promise<void> {
-    if (this.connection?.authenticated) {
-      this.connection.send({ record: 'msg_c2g_send_message', queue, mount, message });
-    }
-  }
+	public subscribeMessage(a: any, b: any, c: any) {
+		const queueMessage = () => {
+			this.subscribeQueue(
+				a,
+				(f: any) => {
+					return f.getMessageMount(b);
+				},
+				c
+			);
+		};
 
-  public async connect(): Promise<void> {
-    if (this.connection && this.connection.status === Status.AUTHENTICATED) return;
+		if (this.connection.status !== Status.AUTHENTICATED) {
+			this.queuedSubscriptions.push(queueMessage);
+		} else {
+			queueMessage();
+		}
+	}
 
-    this.gateway = 'wss://imq.imvu.com:444/streaming/imvu_pre';
-    this.connection = new IMQStream(this, 0);
+	public close() {
+		this.connection.close();
 
-    await this.spawn();
-  }
+		for (const [, queue] of this.queues) {
+			for (const [, mount] of queue.messageMounts) {
+				mount.removeAllListeners();
+			}
 
-  public subscribe(queue: string, listener: (data: any) => void): void {
-    if (!this.queues[queue]) {
-      this.queues[queue] = new IMQQueue(this, queue);
-      this.connection?.send({ record: 'msg_c2g_subscribe', queues: [queue] });
-    }
-  }
+			queue.messageMounts.clear();
 
-  public unsubscribe(queue: string): void {
-    if (this.queues[queue]) {
-      delete this.queues[queue];
-      this.connection?.send({ record: 'msg_c2g_unsubscribe', queues: [queue] });
-    }
-  }
+			for (const [, mount] of queue.stateMounts) {
+				mount.removeAllListeners();
+			}
 
-  public async reconnect(): Promise<boolean> {
-    if (this.reconnecting || (this.connection && this.connection.status !== Status.AUTHENTICATED))
-      return false;
+			queue.stateMounts.clear();
+		}
 
-    this.reconnecting = true;
+		this.queues.clear();
+	}
 
-    try {
-      await this.spawn();
-    } catch (error) {
-      if (!error) {
-        await sleep(5000);
-        this.reconnecting = false;
+	public sendMessage(queueName: string, mountName: string, message: any, callback?: any) {
+		const data = {
+			queueName,
+			mountName,
+			message,
+			op_id: this.messageOpId++,
+		};
 
-        return this.reconnect();
-      }
+		this.send('msg_c2g_send_message', data, callback);
+	}
 
-      if (this.client.listenerCount('invalidated')) {
-        this.client.emit('invalidated');
-        this.destroy();
-      } else {
-        this.client.destroy();
-      }
-    } finally {
-      this.reconnecting = false;
-    }
+	public sendStateChange(queueName: string, mountName: string, delta: any, callback?: any) {
+		this.send(
+			'msg_c2g_state_change',
+			{
+				queueName,
+				mountName,
+				delta,
+			},
+			callback
+		);
+	}
 
-    return true;
-  }
+	private onConnectionState(status: Status, connectAt?: number) {
+		this.state = {
+			status: STATUS[status] ?? 'unknown',
+			connectAt: connectAt ?? this.state.connectAt,
+		};
 
-  private async spawn(): Promise<boolean> {
-    if (!this.connection) return false;
+		if (status === Status.AUTHENTICATED) {
+			this.queues.forEach((queue) => {
+				this.send('msg_c2g_subscribe', [queue.name]);
+			});
 
-    const stream = this.connection;
-    this.connection = null;
+			this.queuedSubscriptions.forEach((subscriber) => {
+				subscriber();
+			});
 
-    stream.on('ready', () => {
-      this.emit('stream_ready', stream.id);
-    });
+			this.queuedSubscriptions = [];
+		}
+	}
 
-    stream.on('close', () => {
-      this.emit('stream_reconnecting', stream.id);
+	private subscribeQueue(name: string, callback: any, c: any) {
+		if (!this.queues.has(name)) {
+			this.send('msg_c2g_subscribe', [name]);
+		}
 
-      this.connection = stream;
-      this.reconnect();
-    });
+		c(null, callback(this.getOrCreateQueue(name)));
+	}
 
-    stream.on('message', (message) => {
-      this.handle(message);
-    });
+	public unsubscribeQueue(name: string, callback?: (err: string) => void) {
+		if (this.queues.has(name)) {
+			this.queues.delete(name);
+		}
 
-    try {
-      await stream.connect();
-    } catch (error) {
-      if (!error) {
-        this.connection = stream;
-      } else {
-        throw error;
-      }
-    }
+		this._unsubscribeQueue(name, (err: string) => {
+			if (err && err !== 'Cannot send data: Not authenticated!') {
+				console.error('Error unsubscribing from queue', name, ':', err);
+			}
 
-    if (!this.connection) {
-      await sleep(5000);
-      return this.spawn();
-    }
+			if (callback) {
+				callback(err);
+			}
+		});
+	}
 
-    return true;
-  }
+	private _unsubscribeQueue(name: string, callback: (err: string) => void) {
+		this.send('msg_c2g_unsubscribe', [name], callback);
+	}
+
+	private onMessage(message: any) {
+		const { type, data } = message;
+
+		switch (type) {
+			case 'msg_g2c_result':
+				this.receiveOpId(data.opId, data.error);
+				break;
+			case 'msg_g2c_left_queue':
+			case 'msg_g2c_joined_queue':
+				this.receiveQueue(data.queueName, type.split('_')[2], data.userId);
+				break;
+			case 'msg_g2c_create_mount':
+				this.receiveMount(data);
+				break;
+			case 'msg_g2c_send_message':
+				this.receiveMessage(data);
+				break;
+			case 'msg_g2c_state_change':
+				this.receiveStateChange(data);
+				break;
+			default:
+				this.onUnhandledMessage(data);
+		}
+	}
+
+	private handleCallback(a: Promise<any> | ((a: any) => void), error?: string) {
+		if (typeof a === 'function') {
+			a(error);
+		} else {
+			return a;
+		}
+	}
+
+	private send(type: string, b: any, c?: any) {
+		if (this.connection.status === Status.AUTHENTICATED) {
+			this.connection.send(type, b, b.op_id);
+			if (c && b.op_id) {
+				this.messageCallbacks.push({
+					op_id: b.op_id,
+					function: c,
+				});
+			}
+		} else if (c) {
+			this.handleCallback(c);
+		}
+	}
+
+	private getOrCreateQueue(name: string): IMQQueue {
+		if (!this.queues.has(name)) {
+			this.queues.set(name, new IMQQueue(this, name));
+		}
+
+		return this.queues.get(name)!;
+	}
+
+	private receiveOpId(opId: number, error?: string) {
+		let c = null;
+		if (opId) {
+			c = this.messageCallbacks.find((c) => c.opId === opId);
+		}
+
+		this.handleCallback(c.function, error);
+	}
+
+	private receiveQueue(queue: string, action: 'joined' | 'left', userId: string) {
+		this.getOrCreateQueue(queue).dispatchSubscriberUpdate({
+			action,
+			userId,
+		});
+	}
+
+	private receiveMount(message: any) {
+		switch (message.type) {
+			case 'message':
+				this.getOrCreateQueue(message.queueName).initMessageMount(message.mountName);
+				break;
+			case 'state':
+				this.getOrCreateQueue(message.queueName).initStateMount(message.mountName, message.state);
+				break;
+			default:
+				console.warn('Unhandled mount type', message);
+		}
+	}
+
+	private receiveMessage(message: any) {
+		if (this.queues.has(message.queueName)) {
+			this.queues.get(message.queueName)?.dispatchMessage(message.mountName, { ...message });
+		}
+	}
+
+	private receiveStateChange(message: any) {
+		if (this.queues.has(message.queueName)) {
+			this.queues.get(message.queueName)?.dispatchState(message.mountName, { ...message });
+		}
+	}
+
+	private onUnhandledMessage(message: any) {
+		console.warn('Unhandled IMQ message', message);
+	}
 }

@@ -2,7 +2,6 @@ import { Class } from 'type-fest';
 
 import { Client } from '../client';
 import { Resource } from '../resources';
-import { BaseController } from '../controllers';
 
 export interface PaginatorOptions<T extends Resource> {
 	next: (client: Client, offset: number) => Promise<T[]>;

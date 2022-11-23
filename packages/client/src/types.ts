@@ -4,10 +4,21 @@ export interface APIErrorResponse {
 	message: string;
 }
 
+export interface APIMount {
+	queue: `inv:${string}` | `private:${string}` | `/${string}`;
+	mount: 'node' | `edge:${string}`;
+}
+
 export interface APIResource<T extends object = Record<string, any>> {
 	data: T & { id?: string };
 	relations: Record<string, string> | null;
-	updates: Record<string, { queue: string; mount: string }> | null;
+	updates: Record<string, APIMount> | null;
+}
+
+export interface APICollection<T extends object = Record<string, any>> {
+	data: { items: string[]; total_count: number } & T;
+	relations: Record<string, string> | null;
+	updates: Record<string, APIMount> | null;
 }
 
 export type APIResourceStatusError = {
@@ -27,7 +38,7 @@ export interface APIResourceStatus {
 export interface APISuccessResponse<T extends object = Record<string, any>> {
 	status: 'success';
 	id: string;
-	denormalized: Record<string, APIResource<T>>;
+	denormalized: Record<string, APIResource<T> | APICollection>;
 	http: Record<string, APIResourceStatus>;
 }
 

@@ -1,11 +1,14 @@
 {
   "preset": "ts-jest",
+  "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.tsx?$",
   "collectCoverage": true,
   "collectCoverageFrom": [
-	"src/**/*.{ts,tsx}",
-	"!src/**/*.d.ts",
-	"!**/node_modules/**",
-	"!**/vendor/**"
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.d.ts",
+    "!src/__tests__/**/*.{ts,tsx}",
+    "!dist/**/*.{ts,tsx}",
+    "!**/node_modules/**",
+    "!**/vendor/**"
   ],
   "projects": [
     "<rootDir>/packages/*"

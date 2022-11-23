@@ -24,7 +24,7 @@ export class RoomManager extends BaseManager {
 	}
 
 	public async *owned(
-		type: 'closed' | 'listed' | 'inventory' | 'shared' | 'marriage'
+		type: 'closed' | 'listed' | 'inventory' | 'shared' | 'marriage' = 'listed'
 	): AsyncIterableIterator<Room> {
 		yield* new URLPaginator(
 			this.client,

@@ -1,30 +1,62 @@
-import { JsonSerializer } from 'typescript-json-serializer';
 import { Constructor } from 'type-fest';
 
-import { BaseClient } from './index';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import { CookieJar, Store } from 'tough-cookie';
+import { FileCookieStore } from 'tough-cookie-file-store';
+import { wrapper } from 'axios-cookiejar-support';
+import { EventEmitter } from 'events';
+
 import { BaseController } from '../controllers';
 import { Avatar, GetMatched, Product, Resource, Room, User } from '../resources';
 import { AccountManager } from '../managers';
 import { APIResource, APIResponse, APISuccessResponse } from '../types';
 import { Utilities } from './Utilities';
-import { AxiosRequestConfig } from 'axios';
 
 /**
  * The main client for interacting with the IMVU API controllers.
  */
-export class Client extends BaseClient {
-	public readonly users = new BaseController<User, { username?: string }>(this, User, 'user');
+export class Client extends EventEmitter {
+	protected username = '';
+	protected password = '';
+	protected sauce = '';
+	protected cid = 0;
+
+	public ready = false;
+	public authenticated = false;
+
+	public readonly http: AxiosInstance;
+	public readonly cookies: CookieJar;
+	protected readonly store: Store;
+
+	public readonly utils: Utilities = new Utilities(this);
+
+	public constructor() {
+		super();
+
+		this.store = new FileCookieStore('./cookies.json');
+		this.cookies = new CookieJar(this.store, { rejectPublicSuffixes: false });
+		this.http = wrapper(
+			axios.create({
+				baseURL: 'https://api.imvu.com',
+				jar: this.cookies,
+				withCredentials: true,
+				validateStatus: () => true,
+			})
+		);
+	}
+
+	public readonly users = new BaseController<User, { username?: string }>(this, 'user', User);
 	public readonly matched: BaseController<GetMatched> = new BaseController(
 		this,
-		GetMatched,
-		'get_matched'
+		'get_matched',
+		GetMatched
 	);
 	public readonly products = new BaseController<Product, { creator?: string }>(
 		this,
-		Product,
-		'product'
+		'product',
+		Product
 	);
-	public readonly rooms = new BaseController(this, Room, 'room');
+	public readonly rooms = new BaseController(this, 'room', Room);
 
 	#account?: AccountManager;
 
@@ -36,14 +68,53 @@ export class Client extends BaseClient {
 		return this.#account;
 	}
 
-	public readonly utils: Utilities = new Utilities(this);
-
-	private readonly serializer = new JsonSerializer({
-		formatPropertyName: (name: string) => name.replace(/([A-Z])/g, '_$1').toLowerCase(),
-	});
-
+	/**
+	 * Logs the client in and establishes a WebSocket connection with IMVU.
+	 * @param {string} username The username of the account to log in with
+	 * @param {string} password The password of the account to log in with
+	 * @param options
+	 * @returns {Promise<void>}
+	 * @example
+	 * await client.login('username', 'password');
+	 */
 	public async login(username: string, password: string, options: any = {}) {
-		await super.login(username, password, options);
+		const cookies = await this.cookies.getCookies('https://imvu.com/');
+
+		const session = cookies.find((c) => c.key === '_imvu_avnm');
+
+		if (session?.value.toLowerCase() !== username.toLowerCase()) {
+			await this.request('/login', {
+				method: 'POST',
+				data: {
+					gdpr_cookie_acceptance: true,
+					username,
+					password,
+					remember_device: true,
+					'2fa_code': options.twoFactorCode,
+				},
+			});
+		}
+
+		this.username = username;
+		this.password = password;
+
+		// Set up the "sauce", basically a JSON authentication token
+		// The token must be included with every non-GET request
+
+		const data = await this.request('/login/me');
+
+		const resource = data.denormalized[data.id];
+
+		this.sauce = resource.data.sauce;
+		this.cid = parseInt(resource?.relations?.quick_chat_profile ?? '0', 10);
+
+		for (const method of ['post', 'put', 'patch', 'delete'] as const) {
+			this.http.defaults.headers[method]['x-imvu-sauce'] = this.sauce;
+			this.http.defaults.headers[method]['x-imvu-application'] = 'next_desktop/1';
+		}
+
+		this.authenticated = true;
+
 		// Set up the client user, including the base user and avatar.
 
 		const user = await this.users.fetch(this.cid);
@@ -59,15 +130,21 @@ export class Client extends BaseClient {
 		this.#account = new AccountManager(this, user, avatar);
 	}
 
-	public async holidays(): Promise<Array<{ title: string; date: Date }>> {
-		const { data } = await this.http.get('/holiday');
+	public async logout(): Promise<void> {
+		return;
+	}
 
-		const holidays = data['denormalized'][data.id]['data']['items'] as Array<{
-			title: string;
-			date: Date;
-		}>;
+	public async request<T extends object = Record<string, any>>(
+		url: string,
+		config: AxiosRequestConfig = {}
+	): Promise<APISuccessResponse<T>> {
+		const { data } = await this.http.request<APIResponse<T>>({ url, ...config });
 
-		return holidays.map((value) => ({ ...value, date: new Date(value.date) }));
+		if (data.status === 'failure') {
+			throw new Error(data.message);
+		}
+
+		return data;
 	}
 
 	/**
@@ -88,21 +165,7 @@ export class Client extends BaseClient {
 		cls?: Constructor<T> | AxiosRequestConfig,
 		config?: AxiosRequestConfig
 	): Promise<T | APIResource<T>> {
-		cls = typeof cls === 'function' ? cls : undefined;
-		config = typeof cls === 'object' ? cls : config;
-
-		const response = await this.request<T>(url, config);
-
-		const resource = response.denormalized[response.id];
-
-		// This is a hack to provide an id to resources which don't include their own id
-		if (!resource.data.id) {
-			const id = response.id.match(/\d+(?:-\d+)?$/);
-
-			resource.data.id = id ? id[0] : '';
-		}
-
-		return cls ? this.deserialize(cls, resource) : resource;
+		return this.utils.resource(url, cls as Constructor<T>, config);
 	}
 
 	public async resources<T extends object = Record<string, any>>(
@@ -119,53 +182,6 @@ export class Client extends BaseClient {
 		cls?: Constructor<T> | AxiosRequestConfig,
 		config?: AxiosRequestConfig
 	): Promise<T[] | APIResource<T>[]> {
-		const model = typeof cls === 'function' ? cls : undefined;
-		config = typeof cls === 'object' ? cls : config;
-
-		const response = await this.request(url, config);
-
-		const data = response.denormalized[response.id].data;
-
-		if (!Array.isArray(data.items)) {
-			throw new Error(`The resource at '${url}' does not contain a list of resources`);
-		}
-
-		return data.items
-			.map((url: string) => {
-				const ref = response.denormalized[url].relations?.ref;
-
-				const resource = response.denormalized[ref ?? url] as APIResource<T>;
-
-				if (!resource) return null;
-
-				// This is a hack to provide an id to resources which don't include their own id
-				if (!resource.data.id) {
-					const id = (ref ?? url).match(/\d+(?:-\d+)?$/);
-
-					resource.data.id = id ? id[0] : '';
-				}
-
-				return model ? this.deserialize(model, resource) : resource;
-			})
-			.filter((resource) => resource !== null) as T extends Resource ? T[] : APIResource<T>[];
+		return this.utils.resources(url, cls as Constructor<T>, config);
 	}
-
-	public deserialize<T extends Resource>(cls: Constructor<T>, data: APIResource<T>): T {
-		const instance = new cls(this);
-
-		const resource = this.serializer.deserialize<T>(data.data, instance);
-
-		if (!resource || Array.isArray(resource)) {
-			throw new Error(`Unable to deserialize '${cls.name}'`);
-		}
-
-		if (data.relations) resource.relations = data.relations;
-		if (data.updates) resource.updates = data.updates;
-
-		return resource;
-	}
-}
-
-export interface Client extends BaseClient {
-	on(event: 'ready', listener: () => void): this;
 }
