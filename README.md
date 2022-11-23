@@ -1,6 +1,6 @@
 # @imvu/
 
-[![Build Status](https://travis-ci.com/dhkatz/imvu.js.svg?branch=master)](https://travis-ci.com/dhkatz/imvu.js) 
+[![Build Packages](https://github.com/dhkatz/imvu.js/actions/workflows/build.yml/badge.svg)](https://github.com/dhkatz/imvu.js/actions/workflows/build.yml)
 [![Coverage Status](https://coveralls.io/repos/github/dhkatz/imvu.js/badge.svg?branch=master)](https://coveralls.io/github/dhkatz/imvu.js?branch=master)
 
 A JavaScript/TypeScript library for interacting with the IMVU API.
