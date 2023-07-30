@@ -1,4 +1,4 @@
-import { BaseManager } from '@imvu/client';
+import { BaseManager } from './BaseManager';
 
 export class OutfitManager extends BaseManager {
 	public get base(): string {

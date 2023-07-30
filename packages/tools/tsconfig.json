@@ -1,18 +1,22 @@
 {
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "isolatedModules": true,
-    "noEmit": true,
-  },
-  "include": [
-    "src"
-  ],
-  "references": [
-    {
-      "path": "../client"
-    },
-    {
-      "path": "../chkn"
-    }
-  ]
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"rootDir": "./src",
+		"outDir": "./dist/cjs",
+		"types": [
+			"jest",
+			"node"
+		]
+	},
+	"include": [
+		"./src/**/*.ts"
+	],
+	"references": [
+		{
+			"path": "../client"
+		},
+		{
+			"path": "../chkn"
+		}
+	]
 }

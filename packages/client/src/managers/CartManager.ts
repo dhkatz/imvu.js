@@ -1,5 +1,6 @@
-import { BaseManager, Product } from '@imvu/client';
 import { URLPaginator } from '../util/Paginator';
+import { BaseManager } from './BaseManager';
+import { Product } from '../resources';
 
 export class CartManager extends BaseManager {
 	public get base(): string {

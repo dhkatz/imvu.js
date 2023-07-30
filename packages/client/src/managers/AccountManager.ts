@@ -10,6 +10,7 @@ import {
 	WalletManager,
 	WishlistManager,
 } from './index';
+import { GiftsManager } from './GiftsManager';
 
 export class AccountManager extends BaseManager {
 	public readonly friends: FriendManager;
@@ -17,6 +18,7 @@ export class AccountManager extends BaseManager {
 	public readonly wallet: WalletManager;
 	public readonly wishlist: WishlistManager;
 	public readonly followers: FollowerManager;
+	public readonly gifts: GiftsManager;
 
 	public constructor(client: Client, public readonly user: User, public readonly avatar: Avatar) {
 		super(client);
@@ -26,6 +28,7 @@ export class AccountManager extends BaseManager {
 		this.wallet = new WalletManager(client);
 		this.wishlist = new WishlistManager(client);
 		this.followers = new FollowerManager(client);
+		this.gifts = new GiftsManager(client);
 	}
 
 	/**

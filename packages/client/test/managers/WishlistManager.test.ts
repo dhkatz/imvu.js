@@ -1,4 +1,4 @@
-import { Client, Product } from '../../index';
+import { Client, Product } from '../../src';
 
 const { IMVU_USERNAME, IMVU_PASSWORD } = process.env;
 
@@ -9,7 +9,7 @@ if (!IMVU_USERNAME || !IMVU_PASSWORD) {
 describe('WishlistManager.test.ts', () => {
 	const client = new Client();
 
-	beforeAll(() => client.login(IMVU_USERNAME, IMVU_PASSWORD, { socket: false }));
+	beforeAll(() => client.login(IMVU_USERNAME, IMVU_PASSWORD));
 	afterAll(() => client.logout());
 
 	it('should return the current wishlist', async () => {

@@ -1,10 +1,8 @@
 import { Resource } from './Resource';
 import { JsonObject, JsonProperty } from 'typescript-json-serializer';
-import { URLPaginator } from '../util/Paginator';
-import { APIResponse } from '../types';
 
 @JsonObject()
-export class ProfileUser extends Resource {
+export class ProfileUser extends Resource<ProfileUserRelations> {
 	@JsonProperty()
 	public image = '';
 
@@ -30,19 +28,19 @@ export class ProfileUser extends Resource {
 	public followerCount = 0;
 
 	public async *following(): AsyncIterableIterator<ProfileUser> {
-		yield* new URLPaginator(
-			this.client,
-			ProfileUser,
-			`/profile/profile-user-${this.id}/subscriptions`
-		);
+		yield* this.paginatedRelationship('subscriptions', ProfileUser);
+	}
+
+	public async *subscriptions() {
+		return this.following();
 	}
 
 	public async *followers(): AsyncIterableIterator<ProfileUser> {
-		yield* new URLPaginator(
-			this.client,
-			ProfileUser,
-			`/profile/profile-user-${this.id}/subscribers`
-		);
+		yield* this.paginatedRelationship('subscribers', ProfileUser);
+	}
+
+	public async *subscribers() {
+		return this.followers();
 	}
 
 	public async follow(): Promise<boolean> {
@@ -51,9 +49,22 @@ export class ProfileUser extends Resource {
 		return this.client.account.followers.follow(this);
 	}
 
+	public async subscribe(): Promise<boolean> {
+		return this.follow();
+	}
+
 	public async unfollow(): Promise<boolean> {
 		this.authenticated();
 
 		return this.client.account.followers.unfollow(this);
 	}
+
+	public async unsubscribe(): Promise<boolean> {
+		return this.unfollow();
+	}
+}
+
+export interface ProfileUserRelations {
+	subscriptions: string;
+	subscribers: string;
 }

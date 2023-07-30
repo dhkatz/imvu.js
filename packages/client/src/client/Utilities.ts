@@ -1,8 +1,9 @@
-import { Client, Resource } from '@imvu/client';
+import { Client } from './Client';
 import { Constructor, Writable } from 'type-fest';
 import { APIResource } from '../types';
 import { JsonSerializer } from 'typescript-json-serializer';
 import { AxiosRequestConfig } from 'axios';
+import { Resource } from '../resources';
 
 export class Utilities {
 	public constructor(private client: Client) {}
@@ -11,7 +12,7 @@ export class Utilities {
 		formatPropertyName: (name: string) => name.replace(/([A-Z])/g, '_$1').toLowerCase(),
 	});
 
-	public async id<T extends Resource>(
+	public async id<T extends Resource<any>>(
 		resource: T | string | number,
 		user = false
 	): Promise<string> {
@@ -47,7 +48,7 @@ export class Utilities {
 		}
 	}
 
-	public deserialize<T extends Resource>(cls: Constructor<T>, data: APIResource<T>): T {
+	public deserialize<T extends Resource<any>>(cls: Constructor<T>, data: APIResource<T>): T {
 		const instance = new cls(this);
 
 		const resource = this.serializer.deserialize<T>(data.data, instance);
@@ -70,12 +71,12 @@ export class Utilities {
 		url: string,
 		config?: AxiosRequestConfig
 	): Promise<APIResource<T>>;
-	public async resource<T extends Resource>(
+	public async resource<T extends Resource<any>>(
 		url: string,
 		cls: Constructor<T>,
 		config?: AxiosRequestConfig
 	): Promise<T>;
-	public async resource<T extends Resource>(
+	public async resource<T extends Resource<any>>(
 		url: string,
 		cls?: Constructor<T> | AxiosRequestConfig,
 		config?: AxiosRequestConfig
@@ -100,10 +101,10 @@ export class Utilities {
 		}
 
 		// This is a hack to provide an id to resources which don't include their own id
-		if (!resource.data.id) {
+		if (!resource.data._id) {
 			const id = response.id.match(/\d+(?:-\d+)?$/);
 
-			resource.data.id = id ? id[0] : '';
+			resource.data._id = id ? id[0] : '';
 		}
 
 		return cls ? this.deserialize(cls, resource as APIResource<T>) : resource;
@@ -113,12 +114,12 @@ export class Utilities {
 		url: string,
 		config?: AxiosRequestConfig
 	): Promise<APIResource<T>[]>;
-	public async resources<T extends Resource>(
+	public async resources<T extends Resource<any>>(
 		url: string,
 		cls: Constructor<T>,
 		config?: AxiosRequestConfig
 	): Promise<T[]>;
-	public async resources<T extends Resource>(
+	public async resources<T extends Resource<any>>(
 		url: string,
 		cls?: Constructor<T> | AxiosRequestConfig,
 		config?: AxiosRequestConfig
@@ -152,6 +153,6 @@ export class Utilities {
 
 				return model ? this.deserialize(model, resource as APIResource<T>) : resource;
 			})
-			.filter((resource) => resource !== null) as T extends Resource ? T[] : APIResource<T>[];
+			.filter((resource) => resource !== null) as T extends Resource<any> ? T[] : APIResource<T>[];
 	}
 }

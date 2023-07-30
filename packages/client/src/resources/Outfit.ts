@@ -1,9 +1,8 @@
-import { Product, Resource } from '@imvu/client';
+import { Product, Resource } from '../resources';
 import { JsonObject, JsonProperty } from 'typescript-json-serializer';
-import { URLPaginator } from '../util/Paginator';
 
 @JsonObject()
-export class Outfit extends Resource {
+export class Outfit extends Resource<OutfitRelations> {
 	@JsonProperty()
 	public outfitName = '';
 
@@ -26,10 +25,10 @@ export class Outfit extends Resource {
 	public pids: number[] = [];
 
 	public async *products(): AsyncIterableIterator<Product> {
-		const products = this.relations?.products;
-
-		if (!products) return;
-
-		yield* new URLPaginator(this.client, Product, products);
+		yield* this.paginatedRelationship('products', Product);
 	}
+}
+
+export interface OutfitRelations {
+	products: string;
 }

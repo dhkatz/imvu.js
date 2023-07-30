@@ -9,15 +9,19 @@ export interface APIMount {
 	mount: 'node' | `edge:${string}`;
 }
 
+export interface APIRelations {
+	[relation: string]: string;
+}
+
 export interface APIResource<T extends object = Record<string, any>> {
 	data: T & { id?: string };
-	relations: Record<string, string> | null;
+	relations: APIRelations | null;
 	updates: Record<string, APIMount> | null;
 }
 
 export interface APICollection<T extends object = Record<string, any>> {
 	data: { items: string[]; total_count: number } & T;
-	relations: Record<string, string> | null;
+	relations: APIRelations | null;
 	updates: Record<string, APIMount> | null;
 }
 
@@ -27,12 +31,14 @@ export type APIResourceStatusError = {
 	message: string;
 };
 
-export type APIResourceStatusMeta = [];
+export interface APIResourceStatusMeta {
+	error_response?: APIErrorResponse;
+}
 
 export interface APIResourceStatus {
 	status: number;
 	headers: Record<string, string>;
-	meta: Array<unknown>;
+	meta: [] | APIResourceStatusMeta;
 }
 
 export interface APISuccessResponse<T extends object = Record<string, any>> {

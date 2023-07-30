@@ -4,7 +4,7 @@ import { Resource } from './Resource';
 import { User } from './User';
 
 @JsonObject()
-export class GetMatched extends Resource {
+export class GetMatched extends Resource<GetMatchedRelations> {
 	@JsonProperty('avatarname')
 	public username = '';
 
@@ -21,6 +21,10 @@ export class GetMatched extends Resource {
 	public apProfile: '0' | '1' = '0';
 
 	public async user(): Promise<User | null> {
-		return this.relations?.user ? this.client.users.fetch(this.relations.user) : null;
+		return this.relationship('user', User);
 	}
+}
+
+export interface GetMatchedRelations {
+	user: string;
 }

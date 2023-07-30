@@ -10,16 +10,10 @@ export class FriendManager extends BaseManager {
 	 * An asynchronous generator which yields each `User` on the client's friends list.
 	 */
 	public async *list(): AsyncIterableIterator<User> {
-		if (!this.client.authenticated) {
-			throw new Error('Cannot retrieve data without user authentication!');
-		}
-
 		yield* new URLPaginator(this.client, User, `/user/user-${this.client.account.id}/friends`);
 	}
 
 	public async count(): Promise<number> {
-		this.authenticated();
-
 		const { data } = await this.client.resource(
 			`/user/user-${this.client.account.id}/friends?limit=0`
 		);
@@ -31,8 +25,6 @@ export class FriendManager extends BaseManager {
 	public async add(username: string): Promise<boolean>;
 	public async add(id: number): Promise<boolean>;
 	public async add(user: User | string | number): Promise<boolean> {
-		this.authenticated();
-
 		const id = await this.client.utils.id(user, true);
 
 		try {
@@ -50,8 +42,6 @@ export class FriendManager extends BaseManager {
 	public async remove(username: string): Promise<boolean>;
 	public async remove(id: number): Promise<boolean>;
 	public async remove(user: User | string | number): Promise<boolean> {
-		this.authenticated();
-
 		const id = await this.client.utils.id(user, true);
 
 		try {

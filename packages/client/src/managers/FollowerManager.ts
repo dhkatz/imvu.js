@@ -1,6 +1,7 @@
 import { ProfileUser, User } from '../resources';
 import { BaseManager } from './BaseManager';
 import { APIResponse } from '../types';
+
 import { URLPaginator } from '../util/Paginator';
 
 export class FollowerManager extends BaseManager {

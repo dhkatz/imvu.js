@@ -4,7 +4,7 @@ import { JsonObject, JsonProperty } from 'typescript-json-serializer';
 import { Album } from './Album';
 
 @JsonObject()
-export class Photo extends Resource {
+export class Photo extends Resource<PhotoRelations> {
 	@JsonProperty()
 	public title = '';
 
@@ -17,11 +17,23 @@ export class Photo extends Resource {
 	@JsonProperty()
 	public shareable = true;
 
+	@JsonProperty()
+	public pid = -1;
+
+	public get id() {
+		return `${this.pid}`;
+	}
+
 	public async owner(): Promise<User | null> {
-		return this.relations?.owner ? this.client.users.fetch(this.relations.owner) : null;
+		return this.relationship('owner', User);
 	}
 
 	public async album(): Promise<Album | null> {
-		return this.relations?.album ? this.client.resource(this.relations.album, Album) : null;
+		return this.relationship('album', Album);
 	}
+}
+
+export interface PhotoRelations {
+	owner: string;
+	album: string;
 }

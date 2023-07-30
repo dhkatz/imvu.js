@@ -1,15 +1,18 @@
 {
-  "extends": "./tsconfig.base.json",
   "files": [],
+  "compilerOptions": {
+    "disableSourceOfProjectReferenceRedirect": true,
+    "esModuleInterop": true
+  },
   "references": [
-	{
-	  "path": "./packages/chkn"
-	},
-	{
-	  "path": "./packages/client"
-	},
-	  {
-		  "path": "./packages/imq"
-	  }
+    {
+      "path": "./packages/chkn"
+    },
+    {
+      "path": "./packages/client"
+    },
+    {
+      "path": "./packages/imq"
+    }
   ]
 }

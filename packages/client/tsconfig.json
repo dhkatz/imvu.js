@@ -1,8 +1,14 @@
 {
-  "extends": "../../tsconfig.base.json",
-	"include": ["./src"],
-  "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist/cjs"
-  }
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"rootDir": "./src",
+		"outDir": "./dist/cjs",
+		"types": [
+			"jest",
+			"node"
+		]
+	},
+	"include": [
+		"./src/**/*.ts"
+	]
 }

@@ -1,4 +1,4 @@
-import { Client } from '../../index';
+import { Client } from '../../src';
 
 const { IMVU_USERNAME, IMVU_PASSWORD } = process.env;
 
@@ -9,7 +9,7 @@ if (!IMVU_USERNAME || !IMVU_PASSWORD) {
 describe('WalletManager.test.ts', () => {
 	const client = new Client();
 
-	beforeAll(() => client.login(IMVU_USERNAME, IMVU_PASSWORD, { socket: false }));
+	beforeAll(() => client.login(IMVU_USERNAME, IMVU_PASSWORD));
 	afterAll(() => client.logout());
 
 	it('should return the proper amount of credits', async () => {

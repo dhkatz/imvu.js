@@ -1,4 +1,4 @@
-import { Client } from '../../index';
+import { Client } from '../../src';
 
 const { IMVU_USERNAME, IMVU_PASSWORD } = process.env;
 

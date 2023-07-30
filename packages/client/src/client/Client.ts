@@ -46,11 +46,7 @@ export class Client extends EventEmitter {
 	}
 
 	public readonly users = new BaseController<User, { username?: string }>(this, 'user', User);
-	public readonly matched: BaseController<GetMatched> = new BaseController(
-		this,
-		'get_matched',
-		GetMatched
-	);
+	public readonly matched = new BaseController<GetMatched>(this, 'get_matched', GetMatched);
 	public readonly products = new BaseController<Product, { creator?: string }>(
 		this,
 		'product',
@@ -77,7 +73,11 @@ export class Client extends EventEmitter {
 	 * @example
 	 * await client.login('username', 'password');
 	 */
-	public async login(username: string, password: string, options: any = {}) {
+	public async login(
+		username: string,
+		password: string,
+		options: Record<string, any> = {}
+	): Promise<void> {
 		const cookies = await this.cookies.getCookies('https://imvu.com/');
 
 		const session = cookies.find((c) => c.key === '_imvu_avnm');
@@ -123,8 +123,6 @@ export class Client extends EventEmitter {
 			throw new Error(`Unable to fetch client user ${this.cid}`);
 		}
 
-		// This is an ugly hack to build the avatar
-
 		const avatar = await this.resource(`/avatar/avatar-${user.id}`, Avatar);
 
 		this.#account = new AccountManager(this, user, avatar);
@@ -141,7 +139,7 @@ export class Client extends EventEmitter {
 		const { data } = await this.http.request<APIResponse<T>>({ url, ...config });
 
 		if (data.status === 'failure') {
-			throw new Error(data.message);
+			throw new Error(`(${data.status}) ${data.message} (${data.error})`);
 		}
 
 		return data;

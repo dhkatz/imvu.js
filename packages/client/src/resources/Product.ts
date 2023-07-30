@@ -1,11 +1,10 @@
 import { JsonObject, JsonProperty } from 'typescript-json-serializer';
 
 import { Resource } from './Resource';
-import type { User } from './User';
-import { URLPaginator } from '../util/Paginator';
+import { User } from './User';
 
 @JsonObject()
-export class Product extends Resource {
+export class Product extends Resource<ProductRelations> {
 	@JsonProperty('product_name')
 	public name = '';
 
@@ -51,19 +50,28 @@ export class Product extends Resource {
 	@JsonProperty()
 	public tags: string[] = [];
 
+	@JsonProperty()
+	public isPurchasable = false;
+
 	public async creator(): Promise<User | null> {
-		return this.client.users.fetch(this.creatorId);
+		return this.relationship('creator', User);
 	}
 
 	public async parent(): Promise<Product | null> {
-		if (this.relations?.parent) {
-			return this.client.products.fetch(this.relations.parent);
-		}
-
-		return null;
+		return this.relationship('parent', Product);
 	}
 
+	/**
+	 * Async iterator for all the product's ancestors.
+	 * This is more efficient than calling `product.parent()` until it returns `null`.
+	 */
 	public async *ancestors(): AsyncIterableIterator<Product> {
-		yield* new URLPaginator(this.client, Product, `/products/product-${this.id}/ancestor_products`);
+		yield* this.paginatedRelationship('ancestor_products', Product);
 	}
+}
+
+export interface ProductRelations {
+	creator: string;
+	parent: string;
+	ancestor_products: string;
 }

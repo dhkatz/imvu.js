@@ -1,7 +1,7 @@
-import { Resource } from './Resource';
 import { JsonObject, JsonProperty } from 'typescript-json-serializer';
-import { User } from '@imvu/client';
-import { URLPaginator } from '../util/Paginator';
+
+import { Resource } from './Resource';
+import { User } from './User';
 import { Photo } from './Photo';
 
 @JsonObject()
@@ -16,14 +16,15 @@ export class Album extends Resource<AlbumRelations> {
 	public description = '';
 
 	public async owner(): Promise<User | null> {
-		return this.relations?.owner ? this.client.users.fetch(this.relations.owner) : null;
+		return this.relationship('owner', User);
 	}
 
 	public async *photos(): AsyncIterableIterator<Photo> {
-		yield* new URLPaginator(this.client, Photo, `/album/album-${this.id}/photos`);
+		yield* this.paginatedRelationship('photos', Photo);
 	}
 }
 
 export interface AlbumRelations {
 	owner: string;
+	photos: string;
 }

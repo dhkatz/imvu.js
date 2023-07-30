@@ -1,4 +1,4 @@
-import { AccountManager, Client } from '../../index';
+import { AccountManager, Client } from '../../src';
 
 const { IMVU_USERNAME, IMVU_PASSWORD } = process.env;
 
@@ -14,7 +14,7 @@ describe('Client.test.ts', () => {
 
 		expect(client.authenticated).toBeTruthy();
 
-		client.logout();
+		await client.logout();
 	});
 
 	test('Invalid Login Information Throws', async () => {
@@ -31,7 +31,7 @@ describe('Client.test.ts', () => {
 		expect(client.account).toBeInstanceOf(AccountManager);
 		expect(client.account.username.toLowerCase()).toEqual(IMVU_USERNAME.toLowerCase());
 
-		client.logout();
+		await client.logout();
 	});
 
 	test('Account unset when retrieving Account without authentication', async () => {
