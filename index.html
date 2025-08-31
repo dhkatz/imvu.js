@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IMVU Avatar Extractor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+            transition: transform 0.3s ease;
+        }
+
+        .container:hover {
+            transform: translateY(-5px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-weight: 700;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 40px;
+            font-weight: 400;
+        }
+
+        .search-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .search-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .results {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .results.show {
+            display: block;
+        }
+
+        .avatar-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+        }
+
+        .avatar-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .avatar-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid #667eea;
+        }
+
+        .avatar-info h3 {
+            color: #2d3748;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+
+        .avatar-info p {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .avatar-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #4a5568;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 5px;
+        }
+
+        .detail-value {
+            color: #2d3748;
+            font-size: 1rem;
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge.vip {
+            background: #ffd700;
+            color: #744210;
+        }
+
+        .badge.creator {
+            background: #9f7aea;
+            color: white;
+        }
+
+        .badge.ap {
+            background: #38b2ac;
+            color: white;
+        }
+
+        .badge.staff {
+            background: #e53e3e;
+            color: white;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 25px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .input-group {
+                flex-direction: column;
+            }
+
+            .avatar-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .avatar-details {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>IMVU Avatar Extractor</h1>
+        <p class="subtitle">Consulte dados de avatar e perfil do IMVU</p>
+        
+        <form class="search-form" id="searchForm">
+            <div class="input-group">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="Digite o nome de usuário ou ID do avatar..."
+                    required
+                >
+                <button type="submit" class="search-btn" id="searchBtn">
+                    Buscar
+                </button>
+            </div>
+        </form>
+
+        <div class="loading" id="loading">
+            <p>🔍 Buscando dados do avatar...</p>
+        </div>
+
+        <div class="results" id="results">
+            <!-- Results will be populated here -->
+        </div>
+    </div>
+
+    <script>
+        const searchForm = document.getElementById('searchForm');
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+
+        searchForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            // Show loading state
+            loading.classList.add('show');
+            results.classList.remove('show');
+            searchBtn.disabled = true;
+            searchBtn.textContent = 'Buscando...';
+
+            try {
+                const response = await fetch('/api/avatar', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data.data);
+                } else {
+                    displayError(data.error || 'Erro ao buscar dados do avatar');
+                }
+            } catch (error) {
+                displayError('Erro de conexão. Tente novamente.');
+            } finally {
+                // Hide loading state
+                loading.classList.remove('show');
+                searchBtn.disabled = false;
+                searchBtn.textContent = 'Buscar';
+            }
+        });
+
+        function displayResults(data) {
+            const { user, avatar, profile } = data;
+            
+            results.innerHTML = `
+                <div class="avatar-card">
+                    <div class="avatar-header">
+                        <img src="${user.avatarImage || user.avatarPortraitImage}" alt="${user.username}" class="avatar-image">
+                        <div class="avatar-info">
+                            <h3>${user.displayName || user.username}</h3>
+                            <p>@${user.username}</p>
+                            <div style="margin-top: 8px;">
+                                ${user.isVip ? '<span class="badge vip">VIP</span>' : ''}
+                                ${user.isCreator ? '<span class="badge creator">Creator</span>' : ''}
+                                ${user.isAp ? '<span class="badge ap">AP</span>' : ''}
+                                ${user.isStaff ? '<span class="badge staff">Staff</span>' : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="avatar-details">
+                        <div class="detail-item">
+                            <div class="detail-label">ID do Usuário</div>
+                            <div class="detail-value">${user.id}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">Gênero</div>
+                            <div class="detail-value">${user.gender || 'Não informado'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">Idade</div>
+                            <div class="detail-value">${user.age || 'Não informado'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">País</div>
+                            <div class="detail-value">${user.country || 'Não informado'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">Estado</div>
+                            <div class="detail-value">${user.state || 'Não informado'}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">Membro desde</div>
+                            <div class="detail-value">${new Date(user.registered).toLocaleDateString('pt-BR')}</div>
+                        </div>
+                        
+                        ${profile ? `
+                        <div class="detail-item">
+                            <div class="detail-label">Seguidores</div>
+                            <div class="detail-value">${profile.followerCount.toLocaleString()}</div>
+                        </div>
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">Seguindo</div>
+                            <div class="detail-value">${profile.followingCount.toLocaleString()}</div>
+                        </div>
+                        ` : ''}
+                        
+                        <div class="detail-item">
+                            <div class="detail-label">Status</div>
+                            <div class="detail-value">${profile?.online ? '🟢 Online' : '🔴 Offline'}</div>
+                        </div>
+                        
+                        ${avatar ? `
+                        <div class="detail-item">
+                            <div class="detail-label">Gênero do Avatar</div>
+                            <div class="detail-value">${avatar.gender || 'Não informado'}</div>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            results.classList.add('show');
+        }
+
+        function displayError(message) {
+            results.innerHTML = `
+                <div class="error">
+                    <strong>Erro:</strong> ${message}
+                </div>
+            `;
+            results.classList.add('show');
+        }
+    </script>
+</body>
+</html>
