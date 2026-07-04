@@ -12,10 +12,7 @@ export class Utilities {
 		formatPropertyName: (name: string) => name.replace(/([A-Z])/g, '_$1').toLowerCase(),
 	});
 
-	public async id<T extends Resource<any>>(
-		resource: T | string | number,
-		user = false
-	): Promise<string> {
+	public async id<T extends Resource<any>>(resource: T | string | number, user = false): Promise<string> {
 		if (typeof resource === 'string') {
 			const match = resource.match(/\d+(-\d+)?$/);
 

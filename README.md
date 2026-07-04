@@ -5,7 +5,7 @@
 
 A JavaScript/TypeScript library for interacting with the IMVU API.
 
-This library allows easy usage to the exposed API endpoints on IMVU's current *IMVU Next* implementation,
+This library allows easy usage to the exposed API endpoints on IMVU's current _IMVU Next_ implementation,
 as well as several legacy web endpoints.
 
 Despite what IMVU's own `imvu.js` library claims, they are not using standard JavaScript practices. This collection
@@ -31,7 +31,7 @@ The `@imvu` mono-repository contains the following packages:
 
 This library has testing in place to ensure the integrity and reliability of the APIs being used.
 
-If you would like to run the tests, I recommend using a VPN and separate account to avoid potential 
+If you would like to run the tests, I recommend using a VPN and separate account to avoid potential
 rate limiting and IP issues.
 
 Please set the `IMVU_USERNAME` and `IMVU_PASSWORD` environment variables to your IMVU account credentials.

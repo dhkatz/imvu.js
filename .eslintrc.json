@@ -8,10 +8,7 @@
     "plugin:prettier/recommended"
   ],
   "parser": "@typescript-eslint/parser",
-  "plugins": [
-    "@typescript-eslint",
-    "import"
-  ],
+  "plugins": ["@typescript-eslint", "import"],
   "settings": {
     "import/resolver": {
       "node": {},
@@ -30,7 +27,7 @@
   },
   "env": {
     "node": true,
-	"es6": true,
+    "es6": true,
     "browser": false
   }
 }

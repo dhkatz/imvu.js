@@ -16,7 +16,10 @@ export class Paginator<T extends Resource> {
 	protected offset = 0;
 	protected readonly limit: number = 25;
 
-	public constructor(protected client: Client, protected options: PaginatorOptions<T>) {
+	public constructor(
+		protected client: Client,
+		protected options: PaginatorOptions<T>
+	) {
 		this.client = client;
 		this.limit = options.limit ?? this.limit;
 	}

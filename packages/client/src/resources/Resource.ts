@@ -8,14 +8,14 @@ import { URLPaginator } from '../util/Paginator';
 export interface ResourceOptions {}
 
 @JsonObject()
-export abstract class Resource<
-	TRelations = APIResource['relations'],
-	TUpdates = APIResource['updates']
-> {
+export abstract class Resource<TRelations = APIResource['relations'], TUpdates = APIResource['updates']> {
 	@JsonProperty()
 	public readonly _id: string = '';
 
-	public constructor(protected readonly client: Client, protected options: ResourceOptions = {}) {
+	public constructor(
+		protected readonly client: Client,
+		protected options: ResourceOptions = {}
+	) {
 		Object.defineProperty(this, 'client', {
 			enumerable: false,
 			writable: false,

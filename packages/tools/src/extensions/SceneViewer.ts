@@ -73,7 +73,10 @@ export class Scene {
 		formatPropertyName: (name: string) => name.replace(/([A-Z])/g, '_$1').toLowerCase(),
 	});
 
-	public constructor(public client: Client, public data: SceneData) {}
+	public constructor(
+		public client: Client,
+		public data: SceneData
+	) {}
 
 	/**
 	 * Load the `Avatar` and `Product` objects from the `Scene` data.
@@ -107,9 +110,7 @@ export class Scene {
 
 		this.avatars = avatars.filter((a) => a !== null) as Avatar[];
 
-		const furniture = await Promise.all(
-			this.data.furniture.map((value) => this.client.products.fetch(value))
-		);
+		const furniture = await Promise.all(this.data.furniture.map((value) => this.client.products.fetch(value)));
 
 		this.furniture = furniture.filter((p) => p !== null) as Product[];
 	}

@@ -27,9 +27,7 @@ export class RouletteManager extends BaseManager {
 	public async status(): Promise<RouletteResponse> {
 		this.authenticated();
 
-		const { data } = await this.client.resource<RouletteResponse>(
-			`/roulette/roulette-${this.client.account.id}`
-		);
+		const { data } = await this.client.resource<RouletteResponse>(`/roulette/roulette-${this.client.account.id}`);
 
 		return data;
 	}

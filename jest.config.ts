@@ -6,10 +6,7 @@ dotenv.config();
 const config: JestConfigWithTsJest = {
   preset: 'ts-jest',
   coverageDirectory: '<rootDir>/coverage',
-  collectCoverageFrom: [
-    '<rootDir>/packages/**/src/**/*.ts',
-    '!<rootDir>/packages/**/src/**/index.ts',
-  ],
+  collectCoverageFrom: ['<rootDir>/packages/**/src/**/*.ts', '!<rootDir>/packages/**/src/**/index.ts'],
   projects: [
     {
       displayName: '@imvu/client',

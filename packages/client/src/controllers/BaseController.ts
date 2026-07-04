@@ -7,7 +7,7 @@ import { APIResource } from '../types';
 export class BaseController<
 	TResource extends Resource | object = Record<string, any>,
 	TParams extends Record<string, any> = Record<string, any>,
-	TResponse = TResource extends Resource ? TResource : APIResource<TResource>
+	TResponse = TResource extends Resource ? TResource : APIResource<TResource>,
 > {
 	public constructor(
 		protected readonly client: Client,

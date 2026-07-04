@@ -4,7 +4,10 @@ import { IMQQueue } from './IMQQueue';
 export class IMQStateMount extends EventEmitter {
 	private state: any = {};
 
-	public constructor(private queue: IMQQueue, public readonly name: string) {
+	public constructor(
+		private queue: IMQQueue,
+		public readonly name: string
+	) {
 		super();
 	}
 

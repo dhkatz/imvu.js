@@ -3,14 +3,9 @@
 	"compilerOptions": {
 		"rootDir": "./src",
 		"outDir": "./dist/cjs",
-		"types": [
-			"jest",
-			"node"
-		]
+		"types": ["jest", "node"]
 	},
-	"include": [
-		"./src/**/*.ts"
-	],
+	"include": ["./src/**/*.ts"],
 	"references": [
 		{
 			"path": "../client"

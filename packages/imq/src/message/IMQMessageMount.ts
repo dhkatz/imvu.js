@@ -2,7 +2,10 @@ import { EventEmitter } from 'events';
 import { IMQQueue } from './IMQQueue';
 
 export class IMQMessageMount extends EventEmitter {
-	public constructor(private queue: IMQQueue, private name: string) {
+	public constructor(
+		private queue: IMQQueue,
+		private name: string
+	) {
 		super();
 	}
 

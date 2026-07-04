@@ -65,10 +65,7 @@ export class ProductExtractor extends BaseExtension {
 			throw new Error('Failed to download product after 10 attempts');
 		}
 
-		const files = await this.download<ProductManifest['files']>(
-			`/${pid}/${i}/_contents.json`,
-			'json'
-		);
+		const files = await this.download<ProductManifest['files']>(`/${pid}/${i}/_contents.json`, 'json');
 
 		return {
 			id: parseInt(`${pid}`),
@@ -77,10 +74,7 @@ export class ProductExtractor extends BaseExtension {
 		};
 	}
 
-	private async download<T = Buffer>(
-		url: string,
-		responseType: ResponseType = 'arraybuffer'
-	): Promise<T> {
+	private async download<T = Buffer>(url: string, responseType: ResponseType = 'arraybuffer'): Promise<T> {
 		const response = await this.client.http.get(url, {
 			baseURL: 'https://userimages-akm.imvu.com/productdata',
 			responseType,

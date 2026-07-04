@@ -2,11 +2,7 @@ import { BaseManager } from './BaseManager';
 import { Product, User } from '../resources';
 
 export class GiftsManager extends BaseManager {
-	public async gift(
-		user: User | string | number,
-		product: Product | string | number,
-		message = ''
-	): Promise<boolean> {
+	public async gift(user: User | string | number, product: Product | string | number, message = ''): Promise<boolean> {
 		const id = await this.client.utils.id(user, true);
 		const productId = await this.client.utils.id(product, true);
 

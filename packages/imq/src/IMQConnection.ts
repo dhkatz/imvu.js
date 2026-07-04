@@ -231,11 +231,7 @@ export class IMQConnection extends EventEmitter {
 	}
 
 	private onServerTimeout() {
-		console.log(
-			`No message from IMQ server for ${
-				this.config.serverTimeoutInterval / 1000
-			} seconds, disconnecting`
-		);
+		console.log(`No message from IMQ server for ${this.config.serverTimeoutInterval / 1000} seconds, disconnecting`);
 		this.onDisconnected();
 	}
 

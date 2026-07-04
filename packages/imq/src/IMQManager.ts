@@ -17,7 +17,7 @@ export class IMQManager {
 
 	messageCallbacks: any[] = [];
 
-	private state: { status: typeof STATUS[Status]; connectAt?: number } = {
+	private state: { status: (typeof STATUS)[Status]; connectAt?: number } = {
 		status: 'disconnected',
 		connectAt: Date.now(),
 	};

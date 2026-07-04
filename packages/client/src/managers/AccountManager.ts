@@ -2,14 +2,7 @@ import { URLPaginator } from '../util/Paginator';
 import { Client } from '../client';
 import { Avatar, Product, User } from '../resources';
 
-import {
-	BaseManager,
-	FollowerManager,
-	FriendManager,
-	RouletteManager,
-	WalletManager,
-	WishlistManager,
-} from './index';
+import { BaseManager, FollowerManager, FriendManager, RouletteManager, WalletManager, WishlistManager } from './index';
 import { GiftsManager } from './GiftsManager';
 
 export class AccountManager extends BaseManager {
@@ -20,7 +13,11 @@ export class AccountManager extends BaseManager {
 	public readonly followers: FollowerManager;
 	public readonly gifts: GiftsManager;
 
-	public constructor(client: Client, public readonly user: User, public readonly avatar: Avatar) {
+	public constructor(
+		client: Client,
+		public readonly user: User,
+		public readonly avatar: Avatar
+	) {
 		super(client);
 
 		this.friends = new FriendManager(client);

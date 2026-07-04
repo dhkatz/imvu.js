@@ -8,11 +8,7 @@ export class FollowerManager extends BaseManager {
 	public async *followers(): AsyncIterableIterator<User> {}
 
 	public async *following(): AsyncIterableIterator<ProfileUser> {
-		yield* new URLPaginator(
-			this.client,
-			ProfileUser,
-			`/profile/profile-user-${this.client.account.id}/subscriptions`
-		);
+		yield* new URLPaginator(this.client, ProfileUser, `/profile/profile-user-${this.client.account.id}/subscriptions`);
 	}
 
 	public async follow(profile: ProfileUser): Promise<boolean>;

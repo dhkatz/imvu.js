@@ -47,11 +47,7 @@ export class Client extends EventEmitter {
 
 	public readonly users = new BaseController<User, { username?: string }>(this, 'user', User);
 	public readonly matched = new BaseController<GetMatched>(this, 'get_matched', GetMatched);
-	public readonly products = new BaseController<Product, { creator?: string }>(
-		this,
-		'product',
-		Product
-	);
+	public readonly products = new BaseController<Product, { creator?: string }>(this, 'product', Product);
 	public readonly rooms = new BaseController(this, 'room', Room);
 
 	#account?: AccountManager;
@@ -73,11 +69,7 @@ export class Client extends EventEmitter {
 	 * @example
 	 * await client.login('username', 'password');
 	 */
-	public async login(
-		username: string,
-		password: string,
-		options: Record<string, any> = {}
-	): Promise<void> {
+	public async login(username: string, password: string, options: Record<string, any> = {}): Promise<void> {
 		const cookies = await this.cookies.getCookies('https://imvu.com/');
 
 		const session = cookies.find((c) => c.key === '_imvu_avnm');
@@ -153,11 +145,7 @@ export class Client extends EventEmitter {
 		url: string,
 		config?: AxiosRequestConfig
 	): Promise<APIResource<T>>;
-	public async resource<T extends Resource>(
-		url: string,
-		cls: Constructor<T>,
-		config?: AxiosRequestConfig
-	): Promise<T>;
+	public async resource<T extends Resource>(url: string, cls: Constructor<T>, config?: AxiosRequestConfig): Promise<T>;
 	public async resource<T extends Resource>(
 		url: string,
 		cls?: Constructor<T> | AxiosRequestConfig,

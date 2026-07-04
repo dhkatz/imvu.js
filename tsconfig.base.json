@@ -3,10 +3,7 @@
     "ignoreDeprecations": "6.0",
     "module": "CommonJS",
     "target": "es2016",
-    "lib": [
-      "dom",
-      "es2019"
-    ],
+    "lib": ["dom", "es2019"],
     "moduleResolution": "Node",
     "rootDir": ".",
     "baseUrl": ".",
@@ -23,7 +20,5 @@
     "experimentalDecorators": true,
     "downlevelIteration": true
   },
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

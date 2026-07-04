@@ -7,9 +7,7 @@ export class WalletManager extends BaseManager {
 	}
 
 	public async status(): Promise<WalletResponse> {
-		return this.client
-			.resource<WalletResponse>(`/wallet/wallet-${this.client.account.id}`)
-			.then(({ data }) => data);
+		return this.client.resource<WalletResponse>(`/wallet/wallet-${this.client.account.id}`).then(({ data }) => data);
 	}
 }
 

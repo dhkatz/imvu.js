@@ -1,10 +1,10 @@
 {
-  "name": "@imvu/chkn",
+	"name": "@imvu/chkn",
 	"private": true,
-  "version": "0.1.0",
-  "description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
-  "author": "dhkatz",
-  "license": "MIT",
+	"version": "0.1.0",
+	"description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
+	"author": "dhkatz",
+	"license": "MIT",
 	"type": "module",
 	"exports": {
 		".": {
@@ -34,8 +34,6 @@
 		"postversion": "git push && git push --tags",
 		"prepublish": "npm run build"
 	},
-  "dependencies": {
-  },
-  "devDependencies": {
-  }
+	"dependencies": {},
+	"devDependencies": {}
 }

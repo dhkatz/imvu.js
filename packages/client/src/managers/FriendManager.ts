@@ -14,9 +14,7 @@ export class FriendManager extends BaseManager {
 	}
 
 	public async count(): Promise<number> {
-		const { data } = await this.client.resource(
-			`/user/user-${this.client.account.id}/friends?limit=0`
-		);
+		const { data } = await this.client.resource(`/user/user-${this.client.account.id}/friends?limit=0`);
 
 		return data['total_count'];
 	}

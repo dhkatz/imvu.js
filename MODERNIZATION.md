@@ -18,24 +18,24 @@ serialization via Valibot behind the Standard Schema interface._
 
 ## Target versions (latest as of 2026-07-04)
 
-| Tool | From | To |
-|---|---|---|
-| TypeScript | 5.0.4 | 6.0.x |
-| Node (CI baseline) | 16 (EOL) | 22 LTS (test matrix 20/22/24) |
-| Vitest | (Jest 29) | 4.x + `@vitest/coverage-v8` |
-| tsup | (raw tsc) | 8.x |
-| ESLint | 8 | 10.x (flat config) |
-| typescript-eslint | `@typescript-eslint/*` 5 | `typescript-eslint` 8.x (unified) |
-| Prettier | 2.8 | 3.x |
-| Changesets | (Lerna 6) | `@changesets/cli` 2.x |
-| valibot | — | 1.4.x |
-| @standard-schema/spec | — | 1.x |
-| rimraf | 5 | 6 |
-| @types/node | 20 | 24 (match CI Node) |
-| axios | 1.1 | 1.18 |
-| ws / @types/ws | 8.8 | 8.21 |
-| commander | 9 | 15 |
-| dotenv | 16 | 17 |
+| Tool                  | From                     | To                                |
+| --------------------- | ------------------------ | --------------------------------- |
+| TypeScript            | 5.0.4                    | 6.0.x                             |
+| Node (CI baseline)    | 16 (EOL)                 | 22 LTS (test matrix 20/22/24)     |
+| Vitest                | (Jest 29)                | 4.x + `@vitest/coverage-v8`       |
+| tsup                  | (raw tsc)                | 8.x                               |
+| ESLint                | 8                        | 10.x (flat config)                |
+| typescript-eslint     | `@typescript-eslint/*` 5 | `typescript-eslint` 8.x (unified) |
+| Prettier              | 2.8                      | 3.x                               |
+| Changesets            | (Lerna 6)                | `@changesets/cli` 2.x             |
+| valibot               | —                        | 1.4.x                             |
+| @standard-schema/spec | —                        | 1.x                               |
+| rimraf                | 5                        | 6                                 |
+| @types/node           | 20                       | 24 (match CI Node)                |
+| axios                 | 1.1                      | 1.18                              |
+| ws / @types/ws        | 8.8                      | 8.21                              |
+| commander             | 9                        | 15                                |
+| dotenv                | 16                       | 17                                |
 
 Drop entirely: `typescript-json-serializer`, `reflect-metadata`, `lerna`,
 `ts-jest`, `@types/jest`, `jest`, `ts-node` (unless still needed by a script),
@@ -44,12 +44,13 @@ Drop entirely: `typescript-json-serializer`, `reflect-metadata`, `lerna`,
 
 ---
 
-## Phase 0 — Establish a green baseline  ✅ DONE 2026-07-04
+## Phase 0 — Establish a green baseline ✅ DONE 2026-07-04
 
 Goal: prove the repo builds and tests on current versions before changing anything,
 so every later phase has a known-good reference.
 
 **Results:**
+
 - `npm ci` — OK (1123 pkgs; 60 audit vulns inherited from the old deps, expected to
   clear as versions are bumped in later phases).
 - `npm run build` — **green.** Dual `tsc` build emits CJS + ESM + `.d.ts` for all
@@ -67,11 +68,12 @@ so every later phase has a known-good reference.
 
 **⚠️ Critical finding — no offline test safety net.** The entire test suite is live
 integration against the real IMVU API. That means Phase 2 (rewriting the
-serialization layer) would be done *without any test that can run in CI or offline*.
+serialization layer) would be done _without any test that can run in CI or offline_.
 Adding fixture-based deserialization tests is therefore promoted from a Phase 4
 nicety to a **prerequisite for Phase 2** (see Phase 2a').
 
 **Live-API smoke test (read-only, cached session, run 2026-07-04):**
+
 - ✅ Credentials valid; `/login` POST returns `201 success`.
 - ✅ Session caching works: `login()` skips the auth POST when `cookies.json` holds a
   matching `_imvu_avnm` (it equals the username). Runs after the first do **zero**
@@ -85,23 +87,23 @@ nicety to a **prerequisite for Phase 2** (see Phase 2a').
      `import 'reflect-metadata'` existed anywhere, so `Reflect.getMetadata` had no
      store and the serializer read nothing at runtime. Fixed by importing it at the
      top of `packages/client/src/index.ts`.
-  2. **ts-jest emitted no `design:type` metadata.** ts-jest auto-discovers the *root*
+  2. **ts-jest emitted no `design:type` metadata.** ts-jest auto-discovers the _root_
      `tsconfig.json`, which (unlike `tsconfig.base.json`) does not set
      `emitDecoratorMetadata`/`experimentalDecorators`, so the property-type metadata
      the serializer needs was never generated. Fixed by overriding those options (and
      `isolatedModules: false`) in the ts-jest transform in `jest.config.ts`.
-  Verified: the built library (full `tsc`, with the polyfill) deserializes correctly
-  (`id: 283489608`, `username: TroII`), and the read-only test subset went from
-  **0 → 4 passing**. NOTE: both fixes become obsolete after Phase 2 — Valibot needs no
-  runtime metadata and no compiler metadata emission, so this entire failure class
-  disappears. That is the strongest possible argument for the decorator removal.
+     Verified: the built library (full `tsc`, with the polyfill) deserializes correctly
+     (`id: 283489608`, `username: TroII`), and the read-only test subset went from
+     **0 → 4 passing**. NOTE: both fixes become obsolete after Phase 2 — Valibot needs no
+     runtime metadata and no compiler metadata emission, so this entire failure class
+     disappears. That is the strongest possible argument for the decorator removal.
 - ⚠️ **Follow-on bugs surfaced once deserialization worked (NOT yet fixed):**
   - `Fail to deserialize: type 'number' is not assignable to type 'date'` — date
     fields are typed `Date` but the API sends unix timestamps (numbers). Needs a
     date converter (or Valibot transform in Phase 2).
   - `/user/<id>/wishlist?limit=0 does not contain a single resource` — `count()` hits
     a collection endpoint but `Utilities.resource` expects a single object.
-  These are real and belong to the Phase 2 serialization rework, not Bug #2.
+    These are real and belong to the Phase 2 serialization rework, not Bug #2.
 - ❌ **BUG #3 — ESM build output is not loadable by Node.** Importing
   `packages/client/dist/esm/index.js` throws `ERR_UNSUPPORTED_DIR_IMPORT` on
   `./resources`: `tsc --module esnext` does not rewrite directory/extensionless
@@ -119,10 +121,11 @@ follow-on deserialization bugs documented for Phase 2/3.
 
 ---
 
-## Phase 1 — Tooling floor: Node, TS 6, trivial bumps, Prettier 3  🚧 IN PROGRESS
+## Phase 1 — Tooling floor: Node, TS 6, trivial bumps, Prettier 3 ✅ DONE
 
 **Done (2026-07-04), verified: build green on TS 6, read-only test subset unchanged
 at 4 pass / 3 fail (no regression):**
+
 - Node baseline: added `.nvmrc` (22) + root `engines: { node: ">=20" }`; `@types/node`
   → `^24`.
 - Safe dep bumps: `rimraf` ^6, `type-fest` ^5, `dotenv` ^17, `axios` ^1.18,
@@ -131,7 +134,7 @@ at 4 pass / 3 fail (no regression):**
   - **Deferred the `moduleResolution: Node → Bundler` + `module → ESNext` change to
     Phase 3.** Doing it now would break the `tsc -b` CJS build (still in use until
     tsup). Instead added `"ignoreDeprecations": "6.0"` to `tsconfig.base.json` to
-    silence TS 6's new deprecation *errors* for `baseUrl`, `downlevelIteration`, and
+    silence TS 6's new deprecation _errors_ for `baseUrl`, `downlevelIteration`, and
     `moduleResolution=node10` — all three get cleaned up properly in Phase 3.
   - Fixed two real generic-soundness errors TS 6 newly enforces (TS 5 let them slide):
     `URLPaginator` used type-fest's `Class<T>` (whose `prototype: Pick<T, keyof T>`
@@ -145,10 +148,14 @@ at 4 pass / 3 fail (no regression):**
   `axios-cookiejar-support` 4→7 (core HTTP), `commander` 9→15 (tools CLI),
   `image-type` 5→6. Skipped `reflect-metadata` 0.1→0.2 (removed entirely in Phase 2).
 
-**Remaining in Phase 1:** Prettier 2 → 3 as an isolated reformat commit (keep
-`trailingComma: "es5"` for now to minimize churn; revisit `"all"` later). Also bump
-`eslint-plugin-prettier` → ^5 alongside it so `npm run lint` isn't broken before the
-Phase 5 ESLint migration.
+**Prettier 2 → 3 (done, isolated commit):** bumped `prettier` ^3 and
+`eslint-plugin-prettier` ^5 (keeps `npm run lint` working until the Phase 5 ESLint
+migration; `eslint-config-prettier` ^8 already satisfies the v5 peer range). Kept
+`trailingComma: "es5"` to minimize churn (revisit `"all"` later). Added a
+`.prettierignore` (dist, coverage, lockfile, cookies.json, .env, docs, .claude) and
+ran `prettier --write .` — 93 files reformatted, build green, tests unchanged.
+NOTE: lint itself was not run this phase (deferred to Phase 5, which replaces the
+whole ESLint setup); the `eslint-plugin-prettier` bump is precautionary.
 
 ### (original plan below)
 
@@ -193,6 +200,7 @@ The core change. Safe because **all deserialization funnels through one method**
 mechanism there once, then migrate resource files one at a time.
 
 ### 2a'. PREREQUISITE — capture offline deserialization fixtures
+
 Phase 0 proved there is **no offline test coverage**. Before touching the
 serialization layer, capture real API JSON payloads for the main resources
 (`Product`, `User`, `Room`, `Outfit`, etc.) as fixtures and write Vitest/Jest tests
@@ -201,10 +209,12 @@ regression net that makes the decorator→Valibot swap safe and gives CI somethi
 run without live credentials. Do this first.
 
 ### 2a. Add dependencies
+
 - `packages/client`: add `valibot`, `@standard-schema/spec`.
 - `packages/tools`: same (it uses `JsonSerializer` in `SceneViewer.ts`).
 
 ### 2b. Define the resource contract
+
 Give each resource a wire-shape schema and a map-to-class function. Suggested shape:
 
 ```ts
@@ -214,16 +224,18 @@ Give each resource a wire-shape schema and a map-to-class function. Suggested sh
 ```
 
 Keep the class itself (methods + injected `client`) exactly as-is; only the field
-*population* mechanism changes.
+_population_ mechanism changes.
 
 ### 2c. Rewrite `deserialize` once
+
 Replace the `JsonSerializer` call with: validate against `cls.schema` via the
 Standard Schema interface, then `Object.assign(new cls(this), cls.map(parsed))`.
-This is also where you *gain runtime validation the code never had* — decide the
+This is also where you _gain runtime validation the code never had_ — decide the
 failure policy (throw vs. log-and-skip) to match current behavior (it currently
 throws on `!resource`).
 
 ### 2d. Preserve the camelCase↔snake_case DX
+
 The current serializer auto-maps camelCase fields to snake_case API keys via
 `formatPropertyName`, with `@JsonProperty('creator_cid')` for exceptions. Reuse
 that same regex as a **generic key transformer** so most schemas stay clean
@@ -231,8 +243,10 @@ camelCase and only true exceptions (`creator_cid`, `is`, `product_page`, etc.)
 need explicit renames. Build one helper; apply everywhere.
 
 ### 2e. Migrate resources file-by-file
+
 14 files, ~100 fields. Order easiest → hardest; suggest:
 `Resource` (base) → `Product` → `User` → the rest. After each file:
+
 - remove `@JsonObject`/`@JsonProperty` and the import,
 - add the schema + map,
 - run that resource's tests.
@@ -241,6 +255,7 @@ Files: `Resource, Album, Avatar, Chat, Creator, GetMatched, Login, Photo, Produc
 Outfit, ProductSaleEvent, ProfileUser, User, Room` (client) and `SceneViewer` (tools).
 
 ### 2f. Purge decorator infrastructure
+
 - Remove `typescript-json-serializer` and `reflect-metadata` from all packages.
 - In `tsconfig.base.json` delete `emitDecoratorMetadata` and
   `experimentalDecorators`.
@@ -310,7 +325,7 @@ Biggest breaking migration; isolated from runtime so do it after the code settle
    - port `import` resolver settings if you still want `eslint-plugin-import`
      (its flat-config support has caveats — evaluate whether TS + tsup already
      cover what you used it for).
-4. **Prettier + ESLint:** modern guidance is to stop running Prettier *through*
+4. **Prettier + ESLint:** modern guidance is to stop running Prettier _through_
    ESLint. Drop `eslint-plugin-prettier`; keep `eslint-config-prettier` to disable
    conflicting rules, and run `prettier` as its own script/CI check.
 5. Update `lint` scripts (the current ones point at `packages/client/src/**/*`
@@ -338,6 +353,7 @@ Biggest breaking migration; isolated from runtime so do it after the code settle
 ## Phase 7 — CI refresh
 
 Update `.github/workflows/build.yml`:
+
 1. `actions/checkout@v4`, `actions/setup-node@v4`.
 2. Node matrix `[20, 22, 24]` (drop 16); enable `cache: 'npm'`.
 3. Steps: `npm ci` → `npm run build` → `eslint .` → `prettier --check .` →

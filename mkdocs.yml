@@ -1,7 +1,7 @@
-site_name: "IMVU API"
+site_name: 'IMVU API'
 
-repo_name: "imvu.js"
-repo_url: "https://github.com/dhkatz/imvu.js"
+repo_name: 'imvu.js'
+repo_url: 'https://github.com/dhkatz/imvu.js'
 
 nav:
   - Homepage: index.md
@@ -21,14 +21,14 @@ theme:
     - toc.integrate
   language: en
   palette:
-    - media: "(prefers-color-scheme: dark)"
+    - media: '(prefers-color-scheme: dark)'
       primary: indigo
       accent: blue
       scheme: slate
       toggle:
         icon: material/toggle-switch
         name: Switch to light mode
-    - media: "(prefers-color-scheme: light)"
+    - media: '(prefers-color-scheme: light)'
       primary: indigo
       accent: blue
       scheme: default
@@ -44,7 +44,7 @@ markdown_extensions:
       linenums: true
   - pymdownx.details
   - pymdownx.snippets:
-      base_path: "."
+      base_path: '.'
       check_paths: true
   - toc:
       permalink: true
