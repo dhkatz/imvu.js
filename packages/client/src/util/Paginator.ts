@@ -1,4 +1,4 @@
-import { Class } from 'type-fest';
+import { Constructor } from 'type-fest';
 
 import { Client } from '../client';
 import { Resource } from '../resources';
@@ -56,8 +56,8 @@ export class Paginator<T extends Resource> {
 	}
 }
 
-export class URLPaginator<T extends Resource, U extends Class<T>> extends Paginator<T> {
-	public constructor(client: Client, controller: U, url: string) {
+export class URLPaginator<T extends Resource> extends Paginator<T> {
+	public constructor(client: Client, controller: Constructor<T>, url: string) {
 		super(client, {
 			next: async (client) =>
 				client.resources(url, controller, {

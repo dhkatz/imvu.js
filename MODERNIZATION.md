@@ -119,6 +119,39 @@ follow-on deserialization bugs documented for Phase 2/3.
 
 ---
 
+## Phase 1 — Tooling floor: Node, TS 6, trivial bumps, Prettier 3  🚧 IN PROGRESS
+
+**Done (2026-07-04), verified: build green on TS 6, read-only test subset unchanged
+at 4 pass / 3 fail (no regression):**
+- Node baseline: added `.nvmrc` (22) + root `engines: { node: ">=20" }`; `@types/node`
+  → `^24`.
+- Safe dep bumps: `rimraf` ^6, `type-fest` ^5, `dotenv` ^17, `axios` ^1.18,
+  `ws`/`@types/ws` ^8.21/^8.18, `ts-jest` ^29.4 (TS6 peer support).
+- **TypeScript 5 → 6.** Deviations from the original plan, all deliberate:
+  - **Deferred the `moduleResolution: Node → Bundler` + `module → ESNext` change to
+    Phase 3.** Doing it now would break the `tsc -b` CJS build (still in use until
+    tsup). Instead added `"ignoreDeprecations": "6.0"` to `tsconfig.base.json` to
+    silence TS 6's new deprecation *errors* for `baseUrl`, `downlevelIteration`, and
+    `moduleResolution=node10` — all three get cleaned up properly in Phase 3.
+  - Fixed two real generic-soundness errors TS 6 newly enforces (TS 5 let them slide):
+    `URLPaginator` used type-fest's `Class<T>` (whose `prototype: Pick<T, keyof T>`
+    shape defeats `T` inference → resolved to base `Resource`); switched it to
+    `Constructor<T>`. And a `Writable<T>` vs `T` variance cast in `Utilities.resource`.
+  - `ts-jest` now compiles via a dedicated `packages/client/tsconfig.spec.json`
+    (extends the package config, widens `rootDir`/`include` to cover `test/`) so it
+    uses the SAME options as the build — fixes `jar` augmentation + jest globals +
+    metadata emission in one place.
+- **Deferred multi-major deps on critical paths** (dedicated bumps later, with tests):
+  `axios-cookiejar-support` 4→7 (core HTTP), `commander` 9→15 (tools CLI),
+  `image-type` 5→6. Skipped `reflect-metadata` 0.1→0.2 (removed entirely in Phase 2).
+
+**Remaining in Phase 1:** Prettier 2 → 3 as an isolated reformat commit (keep
+`trailingComma: "es5"` for now to minimize churn; revisit `"all"` later). Also bump
+`eslint-plugin-prettier` → ^5 alongside it so `npm run lint` isn't broken before the
+Phase 5 ESLint migration.
+
+### (original plan below)
+
 ## Phase 1 — Tooling floor: Node, TS 6, trivial bumps, Prettier 3
 
 Low-risk, high-leverage. Do this before the decorator migration so the compiler

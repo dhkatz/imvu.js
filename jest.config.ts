@@ -15,20 +15,21 @@ const config: JestConfigWithTsJest = {
       displayName: '@imvu/client',
       preset: 'ts-jest',
       testMatch: ['<rootDir>/packages/client/test/**/*.test.ts'],
-      // ts-jest auto-discovers the root tsconfig.json, which does NOT set
-      // emitDecoratorMetadata/experimentalDecorators (those live in
-      // tsconfig.base.json). Without them the serializer's design:type metadata
-      // is never emitted and deserialization yields empty objects. Force the
-      // decorator-aware options and full (non-isolated) compilation here.
+      // Use a dedicated test tsconfig that extends the package config, so ts-jest
+      // compiles with the SAME options as the build (module/moduleResolution/
+      // esModuleInterop → module augmentations like axios-cookiejar-support's `jar`
+      // resolve correctly; emitDecoratorMetadata + experimentalDecorators from the
+      // base config → the serializer's design:type metadata is emitted). Auto-
+      // discovering the root tsconfig.json instead drops all of these.
+      // isolatedModules:false keeps full type-aware compilation (required for
+      // emitDecoratorMetadata). All of this is removed in Phase 2/4 (Valibot +
+      // Vitest) once decorators and their metadata dependency are gone.
       transform: {
         '^.+\\.tsx?$': [
           'ts-jest',
           {
             isolatedModules: false,
-            tsconfig: {
-              experimentalDecorators: true,
-              emitDecoratorMetadata: true,
-            },
+            tsconfig: 'packages/client/tsconfig.spec.json',
           },
         ],
       },

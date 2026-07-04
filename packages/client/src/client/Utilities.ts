@@ -107,7 +107,7 @@ export class Utilities {
 			resource.data._id = id ? id[0] : '';
 		}
 
-		return cls ? this.deserialize(cls, resource as APIResource<T>) : resource;
+		return cls ? this.deserialize(cls, resource as APIResource<T>) : (resource as APIResource<T>);
 	}
 
 	public async resources<T extends object = Record<string, any>>(
