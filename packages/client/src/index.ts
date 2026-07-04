@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+
 export * from './resources';
 export * from './controllers';
 export * from './client';

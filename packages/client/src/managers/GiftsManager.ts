@@ -1,4 +1,5 @@
-import { BaseManager, Product, User } from '../';
+import { BaseManager } from './BaseManager';
+import { Product, User } from '../resources';
 
 export class GiftsManager extends BaseManager {
 	public async gift(
