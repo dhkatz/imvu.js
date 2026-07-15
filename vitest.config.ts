@@ -1,6 +1,14 @@
+import { fileURLToPath } from 'node:url';
+
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+	resolve: {
+		alias: {
+			// Resolve the workspace package to source so tests don't need a build.
+			'@imvu/rest': fileURLToPath(new URL('./packages/rest/src/index.ts', import.meta.url)),
+		},
+	},
 	test: {
 		// Existing tests use describe/it/expect/beforeAll/afterAll as globals.
 		globals: true,

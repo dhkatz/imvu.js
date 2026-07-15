@@ -31,13 +31,10 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"axios": "^1.18.0",
-		"axios-cookiejar-support": "^4.0.3",
-		"tough-cookie-file-store": "^2.0.3"
+		"@imvu/rest": "^0.1.0",
+		"axios": "^1.18.0"
 	},
 	"devDependencies": {
-		"@types/tough-cookie": "^4.0.2",
-		"@types/tough-cookie-file-store": "^2.0.1",
 		"axios-mock-adapter": "^1.21.5"
 	}
 }

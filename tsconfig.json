@@ -6,6 +6,9 @@
   },
   "references": [
     {
+      "path": "./packages/rest"
+    },
+    {
       "path": "./packages/chkn"
     },
     {

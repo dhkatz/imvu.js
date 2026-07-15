@@ -1,48 +1,36 @@
 import { Constructor } from 'type-fest';
-
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { CookieJar, Store } from 'tough-cookie';
-import { FileCookieStore } from 'tough-cookie-file-store';
-import { wrapper } from 'axios-cookiejar-support';
+import { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { EventEmitter } from 'events';
+
+import { REST, APIResource, APISuccessResponse } from '@imvu/rest';
 
 import { BaseController } from '../controllers';
 import { Avatar, GetMatched, Product, Resource, Room, User } from '../resources';
 import { AccountManager } from '../managers';
-import { APIResource, APIResponse, APISuccessResponse } from '../types';
 import { Utilities } from './Utilities';
 
 /**
- * The main client for interacting with the IMVU API controllers.
+ * The main client for interacting with the IMVU API. Wraps a low-level {@link REST}
+ * instance with resource classes, controllers, and managers.
  */
 export class Client extends EventEmitter {
-	protected username = '';
-	protected password = '';
-	protected sauce = '';
-	protected cid = 0;
-
-	public ready = false;
-	public authenticated = false;
-
-	public readonly http: AxiosInstance;
-	public readonly cookies: CookieJar;
-	protected readonly store: Store;
+	public readonly rest: REST;
 
 	public readonly utils: Utilities = new Utilities(this);
 
-	public constructor() {
+	public constructor(rest: REST = new REST()) {
 		super();
 
-		this.store = new FileCookieStore('./cookies.json');
-		this.cookies = new CookieJar(this.store, { rejectPublicSuffixes: false });
-		this.http = wrapper(
-			axios.create({
-				baseURL: 'https://api.imvu.com',
-				jar: this.cookies,
-				withCredentials: true,
-				validateStatus: () => true,
-			})
-		);
+		this.rest = rest;
+	}
+
+	/** The underlying axios instance (used by managers for raw POST/DELETE calls). */
+	public get http(): AxiosInstance {
+		return this.rest.http;
+	}
+
+	public get authenticated(): boolean {
+		return this.rest.authenticated;
 	}
 
 	public readonly users = new BaseController<User, { username?: string }>(this, 'user', User);
@@ -61,58 +49,18 @@ export class Client extends EventEmitter {
 	}
 
 	/**
-	 * Logs the client in and establishes a WebSocket connection with IMVU.
-	 * @param {string} username The username of the account to log in with
-	 * @param {string} password The password of the account to log in with
-	 * @param options
-	 * @returns {Promise<void>}
+	 * Log the client in, then set up the account (client user + avatar).
 	 * @example
 	 * await client.login('username', 'password');
 	 */
 	public async login(username: string, password: string, options: Record<string, any> = {}): Promise<void> {
-		const cookies = await this.cookies.getCookies('https://imvu.com/');
-
-		const session = cookies.find((c) => c.key === '_imvu_avnm');
-
-		if (session?.value.toLowerCase() !== username.toLowerCase()) {
-			await this.request('/login', {
-				method: 'POST',
-				data: {
-					gdpr_cookie_acceptance: true,
-					username,
-					password,
-					remember_device: true,
-					'2fa_code': options.twoFactorCode,
-				},
-			});
-		}
-
-		this.username = username;
-		this.password = password;
-
-		// Set up the "sauce", basically a JSON authentication token
-		// The token must be included with every non-GET request
-
-		const data = await this.request('/login/me');
-
-		const resource = data.denormalized[data.id];
-
-		this.sauce = resource.data.sauce;
-		this.cid = parseInt(resource?.relations?.quick_chat_profile ?? '0', 10);
-
-		for (const method of ['post', 'put', 'patch', 'delete'] as const) {
-			this.http.defaults.headers[method]['x-imvu-sauce'] = this.sauce;
-			this.http.defaults.headers[method]['x-imvu-application'] = 'next_desktop/1';
-		}
-
-		this.authenticated = true;
+		await this.rest.login(username, password, options);
 
 		// Set up the client user, including the base user and avatar.
-
-		const user = await this.users.fetch(this.cid);
+		const user = await this.users.fetch(this.rest.cid);
 
 		if (!user) {
-			throw new Error(`Unable to fetch client user ${this.cid}`);
+			throw new Error(`Unable to fetch client user ${this.rest.cid}`);
 		}
 
 		const avatar = await this.resource(`/avatar/avatar-${user.id}`, Avatar);
@@ -121,25 +69,18 @@ export class Client extends EventEmitter {
 	}
 
 	public async logout(): Promise<void> {
-		return;
+		return this.rest.logout();
 	}
 
-	public async request<T extends object = Record<string, any>>(
+	public request<T extends object = Record<string, any>>(
 		url: string,
-		config: AxiosRequestConfig = {}
+		config?: AxiosRequestConfig
 	): Promise<APISuccessResponse<T>> {
-		const { data } = await this.http.request<APIResponse<T>>({ url, ...config });
-
-		if (data.status === 'failure') {
-			throw new Error(`(${data.status}) ${data.message} (${data.error})`);
-		}
-
-		return data;
+		return this.rest.request<T>(url, config);
 	}
 
 	/**
-	 * Convenience method for fetching a resource from the IMVU API.
-	 * This will automatically attempt to deserialize the response into the specified type.
+	 * Fetch a resource from the IMVU API, deserialized into `cls` when provided.
 	 */
 	public async resource<T extends object = Record<string, any>>(
 		url: string,
@@ -148,10 +89,15 @@ export class Client extends EventEmitter {
 	public async resource<T extends Resource>(url: string, cls: Constructor<T>, config?: AxiosRequestConfig): Promise<T>;
 	public async resource<T extends Resource>(
 		url: string,
-		cls?: Constructor<T> | AxiosRequestConfig,
+		clsOrConfig?: Constructor<T> | AxiosRequestConfig,
 		config?: AxiosRequestConfig
 	): Promise<T | APIResource<T>> {
-		return this.utils.resource(url, cls as Constructor<T>, config);
+		const cls = typeof clsOrConfig === 'function' ? clsOrConfig : undefined;
+		const cfg = typeof clsOrConfig === 'object' ? clsOrConfig : config;
+
+		const node = await this.rest.resource<T>(url, cfg);
+
+		return cls ? this.utils.deserialize(cls, node) : node;
 	}
 
 	public async resources<T extends object = Record<string, any>>(
@@ -165,9 +111,14 @@ export class Client extends EventEmitter {
 	): Promise<T[]>;
 	public async resources<T extends Resource>(
 		url: string,
-		cls?: Constructor<T> | AxiosRequestConfig,
+		clsOrConfig?: Constructor<T> | AxiosRequestConfig,
 		config?: AxiosRequestConfig
 	): Promise<T[] | APIResource<T>[]> {
-		return this.utils.resources(url, cls as Constructor<T>, config);
+		const cls = typeof clsOrConfig === 'function' ? clsOrConfig : undefined;
+		const cfg = typeof clsOrConfig === 'object' ? clsOrConfig : config;
+
+		const nodes = await this.rest.resources<T>(url, cfg);
+
+		return cls ? nodes.map((node) => this.utils.deserialize(cls, node)) : nodes;
 	}
 }
