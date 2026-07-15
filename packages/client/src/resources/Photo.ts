@@ -1,24 +1,22 @@
 import { Resource } from './Resource';
 import { User } from './User';
-import { JsonObject, JsonProperty } from 'typescript-json-serializer';
 import { Album } from './Album';
 
-@JsonObject()
 export class Photo extends Resource<PhotoRelations> {
-	@JsonProperty()
 	public title = '';
-
-	@JsonProperty()
 	public caption = '';
-
-	@JsonProperty()
 	public keywords = '';
-
-	@JsonProperty()
 	public shareable = true;
-
-	@JsonProperty()
 	public pid = -1;
+
+	public _patch(data: Record<string, any>): void {
+		super._patch(data);
+		if ('title' in data) this.title = data.title;
+		if ('caption' in data) this.caption = data.caption;
+		if ('keywords' in data) this.keywords = data.keywords;
+		if ('shareable' in data) this.shareable = data.shareable;
+		if ('pid' in data) this.pid = data.pid;
+	}
 
 	public get id() {
 		return `${this.pid}`;

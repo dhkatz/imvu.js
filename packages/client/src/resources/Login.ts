@@ -1,17 +1,16 @@
 import { Resource } from './Resource';
-import { JsonObject, JsonProperty } from 'typescript-json-serializer';
 
-@JsonObject()
 export class Login extends Resource {
-	@JsonProperty()
 	public user: { id: string } = { id: '' };
-
-	@JsonProperty()
 	public sauce = '';
-
-	@JsonProperty('session_id')
 	public sessionId = '';
-
-	@JsonProperty()
 	public source = '';
+
+	public _patch(data: Record<string, any>): void {
+		super._patch(data);
+		if ('user' in data) this.user = data.user;
+		if ('sauce' in data) this.sauce = data.sauce;
+		if ('session_id' in data) this.sessionId = data.session_id;
+		if ('source' in data) this.source = data.source;
+	}
 }

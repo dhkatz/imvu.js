@@ -1,19 +1,18 @@
-import { JsonObject, JsonProperty } from 'typescript-json-serializer';
-
 import { Resource } from './Resource';
 import { User } from './User';
 import { Photo } from './Photo';
 
-@JsonObject()
 export class Album extends Resource<AlbumRelations> {
-	@JsonProperty()
 	public title = '';
-
-	@JsonProperty()
 	public visibility = 0;
-
-	@JsonProperty()
 	public description = '';
+
+	public _patch(data: Record<string, any>): void {
+		super._patch(data);
+		if ('title' in data) this.title = data.title;
+		if ('visibility' in data) this.visibility = data.visibility;
+		if ('description' in data) this.description = data.description;
+	}
 
 	public async owner(): Promise<User | null> {
 		return this.relationship('owner', User);

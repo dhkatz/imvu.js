@@ -1,28 +1,24 @@
 import { Product, Resource } from '../resources';
-import { JsonObject, JsonProperty } from 'typescript-json-serializer';
 
-@JsonObject()
 export class Outfit extends Resource<OutfitRelations> {
-	@JsonProperty()
 	public outfitName = '';
-
-	@JsonProperty()
 	public dirty = '0';
-
-	@JsonProperty()
 	public fullImage = '';
-
-	@JsonProperty()
 	public outfitImage = '';
-
-	@JsonProperty()
 	public rating = 'GA';
-
-	@JsonProperty()
 	public privacy = '0';
-
-	@JsonProperty()
 	public pids: number[] = [];
+
+	public _patch(data: Record<string, any>): void {
+		super._patch(data);
+		if ('outfit_name' in data) this.outfitName = data.outfit_name;
+		if ('dirty' in data) this.dirty = data.dirty;
+		if ('full_image' in data) this.fullImage = data.full_image;
+		if ('outfit_image' in data) this.outfitImage = data.outfit_image;
+		if ('rating' in data) this.rating = data.rating;
+		if ('privacy' in data) this.privacy = data.privacy;
+		if ('pids' in data) this.pids = data.pids;
+	}
 
 	public async *products(): AsyncIterableIterator<Product> {
 		yield* this.paginatedRelationship('products', Product);

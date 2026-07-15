@@ -30,7 +30,7 @@
 		"build:esm": "tsc --outDir dist/esm --module esnext --target esnext",
 		"clean": "rimraf ./dist",
 		"lint": "eslint packages/client/src/**/* && tsc --noEmit",
-		"test": "jest --ci --verbose --forceExit --detectOpenHandles --coverage",
+		"test": "vitest run",
 		"postversion": "git push && git push --tags",
 		"prepublish": "npm run build"
 	},
@@ -40,7 +40,6 @@
 		"csharp-binary-stream": "^1.0.3",
 		"image-type": "^5.1.0",
 		"jszip": "^3.10.1",
-		"lzma-purejs": "github:elderapo/lzma-purejs",
-		"typescript-json-serializer": "^5.1.0"
+		"lzma-purejs": "github:elderapo/lzma-purejs"
 	}
 }

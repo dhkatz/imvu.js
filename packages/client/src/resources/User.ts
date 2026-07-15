@@ -1,59 +1,45 @@
-import { JsonObject, JsonProperty } from 'typescript-json-serializer';
-
 import { GetMatched, Product, ProfileUser, Room } from './index';
 
 import { Resource } from './Resource';
 import { Creator } from './Creator';
 
-@JsonObject()
 export class User extends Resource<UserRelations> {
-	@JsonProperty()
-	public created: Date = new Date();
-
-	@JsonProperty()
-	public registered: Date = new Date();
-
-	@JsonProperty()
-	public gender?: string; // TODO: Add interface/class
-
-	@JsonProperty()
+	public created = ''; // ISO 8601 string on the wire
+	public registered = 0; // unix seconds on the wire
+	public gender?: string;
 	public displayName = '';
-
-	@JsonProperty()
 	public age?: number;
-
-	@JsonProperty()
 	public country = '';
-
-	@JsonProperty()
-	public state?: string;
-
-	@JsonProperty()
+	public state: string | null = null;
 	public avatarImage = '';
-
-	@JsonProperty()
 	public avatarPortraitImage = '';
-
-	@JsonProperty()
 	public username = '';
-
-	@JsonProperty()
 	public isVip = false;
-
-	@JsonProperty()
 	public isAp = false;
-
-	@JsonProperty()
 	public isCreator = false;
-
-	@JsonProperty()
 	public isAdult = false;
-
-	@JsonProperty('is_ageverified')
 	public isAgeVerified = false;
-
-	@JsonProperty()
 	public isStaff = false;
+
+	public _patch(data: Record<string, any>): void {
+		super._patch(data);
+		if ('created' in data) this.created = data.created;
+		if ('registered' in data) this.registered = data.registered;
+		if ('gender' in data) this.gender = data.gender;
+		if ('display_name' in data) this.displayName = data.display_name;
+		if ('age' in data) this.age = data.age;
+		if ('country' in data) this.country = data.country;
+		if ('state' in data) this.state = data.state;
+		if ('avatar_image' in data) this.avatarImage = data.avatar_image;
+		if ('avatar_portrait_image' in data) this.avatarPortraitImage = data.avatar_portrait_image;
+		if ('username' in data) this.username = data.username;
+		if ('is_vip' in data) this.isVip = data.is_vip;
+		if ('is_ap' in data) this.isAp = data.is_ap;
+		if ('is_creator' in data) this.isCreator = data.is_creator;
+		if ('is_adult' in data) this.isAdult = data.is_adult;
+		if ('is_ageverified' in data) this.isAgeVerified = data.is_ageverified;
+		if ('is_staff' in data) this.isStaff = data.is_staff;
+	}
 
 	public async *wishlist(): AsyncIterableIterator<Product> {
 		yield* this.paginatedRelationship('wishlist', Product);

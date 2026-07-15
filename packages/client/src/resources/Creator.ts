@@ -1,23 +1,21 @@
 import { Resource } from './Resource';
 import { Product } from './Product';
-import { JsonObject, JsonProperty } from 'typescript-json-serializer';
 
-@JsonObject()
 export class Creator extends Resource<CreatorRelations> {
-	@JsonProperty('creator_tier')
 	public tier = 0;
-
-	@JsonProperty()
 	public isPro = false;
-
-	@JsonProperty()
 	public isActive = false;
-
-	@JsonProperty()
 	public isTopSeller = false;
-
-	@JsonProperty()
 	public isVeteran = false;
+
+	public _patch(data: Record<string, any>): void {
+		super._patch(data);
+		if ('creator_tier' in data) this.tier = data.creator_tier;
+		if ('is_pro' in data) this.isPro = data.is_pro;
+		if ('is_active' in data) this.isActive = data.is_active;
+		if ('is_top_seller' in data) this.isTopSeller = data.is_top_seller;
+		if ('is_veteran' in data) this.isVeteran = data.is_veteran;
+	}
 
 	public async *products(): AsyncIterableIterator<Product> {
 		yield* this.paginatedRelationship('products', Product);

@@ -29,7 +29,7 @@
 		"build:esm": "tsc --outDir dist/esm --module esnext --target esnext",
 		"clean": "rimraf ./dist",
 		"lint": "eslint packages/client/src/**/* && tsc --noEmit",
-		"test": "jest --ci --verbose --forceExit --detectOpenHandles --coverage",
+		"test": "vitest run",
 		"postversion": "git push && git push --tags",
 		"prepublish": "npm run build"
 	},

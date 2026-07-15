@@ -1,0 +1,125 @@
+{
+  "url": "https://api.imvu.com/avatar/avatar-283489608",
+  "id": "283489608",
+  "data": {
+    "look_url": "https://api.imvu.com/look/53900678%2C12182900%2C13759128%2C15531366%2C21560857%2C26992565%2C30844762%2C41750499%2C42845296%2C50460989%2C50902542%2C55720868%2C43025071%2C49379512%2C33215586",
+    "asset_url": "https://asset-server-akm.imvu.com/asset/avatar/cb86/LDI2kCfIvn1PHMEUIbhOAFL2tSLR-rrB7Vl9_N0XT3x_ZEDLPxn0Q-yOtxrL5W6_k0LPZxQcx65XHDYbV7p7mJnLKnKteRmNRL7QsLpXMaucR2So6cS_f9TDKTBQWSn3Q-IJkZApL7NoDSYJSmqMoZfPhtjw_bjGAUsFzycuHpXIjJCyuBERmppxrzLOZVAWev3sByBu7pZdVlXdSXuust5Ie6TaTgtjdfpm3qCcr35BobiXo-qxX9_VFyH_20duvEQ-SpN4dXzEOVPzWJhHeJ7rMVrrQ9B3nEI-5avcEZvj5LRKUPegLfJ0ohZP2waJnsj598SebSs5nhZVi2VZ2q4Z8-OmvTReI4EliQIWdPY%3D",
+    "products": [
+      {
+        "id": "https://api.imvu.com/product/product-53900678",
+        "product_id": 53900678,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-12182900",
+        "product_id": 12182900,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-13759128",
+        "product_id": 13759128,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-15531366",
+        "product_id": 15531366,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-21560857",
+        "product_id": 21560857,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-26992565",
+        "product_id": 26992565,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-30844762",
+        "product_id": 30844762,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-41750499",
+        "product_id": 41750499,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-42845296",
+        "product_id": 42845296,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-50460989",
+        "product_id": 50460989,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-50902542",
+        "product_id": 50902542,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-55720868",
+        "product_id": 55720868,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-43025071",
+        "product_id": 43025071,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-49379512",
+        "product_id": 49379512,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      },
+      {
+        "id": "https://api.imvu.com/product/product-33215586",
+        "product_id": 33215586,
+        "owned": true,
+        "published": true,
+        "rating": "GA"
+      }
+    ],
+    "gender": "male",
+    "legacy_message": "*putOnOutfit 53900678 12182900 13759128 15531366 21560857 26992565 30844762 41750499 42845296 50460989 50902542 55720868 43025071 49379512 33215586"
+  },
+  "relations": {
+    "user": "https://api.imvu.com/user/user-283489608",
+    "products": "https://api.imvu.com/avatar/avatar-283489608/products"
+  },
+  "updates": {
+    "queue": "inv:/avatar/avatar-283489608",
+    "mount": "node"
+  }
+}

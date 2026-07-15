@@ -1,57 +1,43 @@
-import { JsonObject, JsonProperty } from 'typescript-json-serializer';
-
 import { Resource } from './Resource';
 import { User } from './User';
 
-@JsonObject()
 export class Product extends Resource<ProductRelations> {
-	@JsonProperty('product_name')
 	public name = '';
-
-	@JsonProperty('creator_cid')
 	public creatorId = -1;
-
-	@JsonProperty()
 	public creatorName = '';
-
-	@JsonProperty()
 	public rating = ''; // TODO Add interface/enum/class
-
-	@JsonProperty('product_price')
 	public price = -1;
-
-	@JsonProperty()
 	public profit = 0;
-
-	@JsonProperty()
 	public discountPrice = -1;
-
-	@JsonProperty('product_page')
 	public page = '';
-
-	@JsonProperty()
 	public creatorPage = '';
-
-	@JsonProperty()
 	public isBundle = false;
-
-	@JsonProperty('product_image')
 	public image = '';
-
-	@JsonProperty()
 	public gender: string | null = null; // TODO: Update to interface/enum/class
-
-	@JsonProperty()
 	public categories: string[] = [];
-
-	@JsonProperty({ name: 'is' })
 	public types: string[] = [];
-
-	@JsonProperty()
 	public tags: string[] = [];
-
-	@JsonProperty()
 	public isPurchasable = false;
+
+	public _patch(data: Record<string, any>): void {
+		super._patch(data);
+		if ('product_name' in data) this.name = data.product_name;
+		if ('creator_cid' in data) this.creatorId = data.creator_cid;
+		if ('creator_name' in data) this.creatorName = data.creator_name;
+		if ('rating' in data) this.rating = data.rating;
+		if ('product_price' in data) this.price = data.product_price;
+		if ('profit' in data) this.profit = data.profit;
+		if ('discount_price' in data) this.discountPrice = data.discount_price;
+		if ('product_page' in data) this.page = data.product_page;
+		if ('creator_page' in data) this.creatorPage = data.creator_page;
+		if ('is_bundle' in data) this.isBundle = data.is_bundle;
+		if ('product_image' in data) this.image = data.product_image;
+		if ('gender' in data) this.gender = data.gender;
+		if ('categories' in data) this.categories = data.categories;
+		if ('is' in data) this.types = data.is;
+		if ('tags' in data) this.tags = data.tags;
+		if ('is_purchasable' in data) this.isPurchasable = data.is_purchasable;
+	}
 
 	public async creator(): Promise<User | null> {
 		return this.relationship('creator', User);

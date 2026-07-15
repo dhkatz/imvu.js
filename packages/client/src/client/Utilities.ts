@@ -1,16 +1,11 @@
 import { Client } from './Client';
 import { Constructor, Writable } from 'type-fest';
 import { APIResource } from '../types';
-import { JsonSerializer } from 'typescript-json-serializer';
 import { AxiosRequestConfig } from 'axios';
-import { Resource } from '../resources';
+import { Resource, ResourceConstructor } from '../resources';
 
 export class Utilities {
 	public constructor(private client: Client) {}
-
-	private readonly serializer = new JsonSerializer({
-		formatPropertyName: (name: string) => name.replace(/([A-Z])/g, '_$1').toLowerCase(),
-	});
 
 	public async id<T extends Resource<any>>(resource: T | string | number, user = false): Promise<string> {
 		if (typeof resource === 'string') {
@@ -46,18 +41,10 @@ export class Utilities {
 	}
 
 	public deserialize<T extends Resource<any>>(cls: Constructor<T>, data: APIResource<T>): T {
-		const instance = new cls(this);
-
-		const resource = this.serializer.deserialize<T>(data.data, instance);
-
-		if (!resource || Array.isArray(resource)) {
-			throw new Error(`Unable to deserialize '${cls.name}'`);
-		}
-
-		if (data.relations) resource.relations = data.relations;
-		if (data.updates) resource.updates = data.updates;
-
-		return resource;
+		// Every resource class inherits the `build` factory (validate → construct)
+		// from Resource; delegate to it. The cast bridges the plain `Constructor<T>`
+		// call sites use to the richer `ResourceConstructor<T>` `build` needs.
+		return (cls as unknown as ResourceConstructor<T>).build(this.client, data);
 	}
 
 	/**

@@ -1,7 +1,6 @@
 import { Client, Avatar, PartialProduct, Product } from '@imvu/client';
 
 import { BaseExtension } from './BaseExtenstion';
-import { JsonSerializer } from 'typescript-json-serializer';
 
 export interface SceneViewerOptions {
 	load?: boolean;
@@ -69,10 +68,6 @@ export class Scene {
 
 	public furniture: Product[] = [];
 
-	protected serializer = new JsonSerializer({
-		formatPropertyName: (name: string) => name.replace(/([A-Z])/g, '_$1').toLowerCase(),
-	});
-
 	public constructor(
 		public client: Client,
 		public data: SceneData
@@ -90,19 +85,14 @@ export class Scene {
 					return null;
 				}
 
+				// Synthetic avatar assembled from URL-parsed product ids (not an API
+				// payload), so just construct and assign the fields directly.
 				const avatar = new Avatar(this.client);
 
 				const ids = products.map((p) => p.product_id);
 
-				this.serializer.deserializeObject(
-					{
-						look_url: `https://api.imvu.com/look/${ids.join('%2C')}`,
-						asset_url: '',
-						legacy_message: `*putOnOutfit ${ids.join(' ')}`,
-						products,
-					},
-					avatar
-				);
+				avatar.lookUrl = `https://api.imvu.com/look/${ids.join('%2C')}`;
+				avatar._products = products;
 
 				return avatar;
 			})
