@@ -1,21 +1,7 @@
 {
-  "files": [],
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "disableSourceOfProjectReferenceRedirect": true,
-    "esModuleInterop": true
+    "types": ["node"]
   },
-  "references": [
-    {
-      "path": "./packages/rest"
-    },
-    {
-      "path": "./packages/chkn"
-    },
-    {
-      "path": "./packages/client"
-    },
-    {
-      "path": "./packages/imq"
-    }
-  ]
+  "include": ["*.ts"]
 }

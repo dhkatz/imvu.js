@@ -7,14 +7,19 @@
 	"type": "module",
 	"exports": {
 		".": {
-			"types": "./dist/types/index.d.ts",
-			"module": "./dist/esm/index.js",
-			"import": "./dist/esm/index.js",
-			"require": "./dist/cjs/index.js"
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			},
+			"require": {
+				"types": "./dist/index.d.cts",
+				"default": "./dist/index.cjs"
+			}
 		}
 	},
-	"main": "./dist/cjs/index.js",
-	"types": "./dist/cjs/index.d.ts",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"sideEffects": false,
 	"repository": {
 		"type": "git",
@@ -24,9 +29,8 @@
 		"access": "public"
 	},
 	"scripts": {
-		"build": "npm run clean && npm run build:cjs && npm run build:esm",
-		"build:cjs": "tsc -b",
-		"build:esm": "tsc --outDir dist/esm --module esnext --target esnext",
+		"build": "tsup",
+		"typecheck": "tsc --noEmit",
 		"clean": "rimraf ./dist",
 		"lint": "eslint packages/client/src/**/* && tsc --noEmit",
 		"test": "vitest run",
@@ -34,6 +38,7 @@
 		"prepublish": "npm run build"
 	},
 	"dependencies": {
+		"@imvu/client": "^0.1.0",
 		"ws": "^8.21.0"
 	},
 	"devDependencies": {

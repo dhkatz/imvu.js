@@ -8,9 +8,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build:cjs && npm run build:esm",
-    "build:cjs": "tsc --build",
-    "build:esm": "npm run -ws build:esm",
+    "build": "npm run build -w @imvu/rest && npm run build -w @imvu/chkn && npm run build -w @imvu/client && npm run build -w @imvu/imq && npm run build -w @imvu/tools",
+    "typecheck": "npm run typecheck --workspaces --if-present",
     "docs:build": "docker build -t imvu/docs ./docs/",
     "docs:serve": "docker run --rm -it -p 8000:8000 -v %cd%:/docs imvu/docs",
     "test": "vitest run",
@@ -42,6 +41,7 @@
     "prettier": "^3.0.0",
     "rimraf": "^6.0.0",
     "ts-node": "^10.9.1",
+    "tsup": "^8.5.1",
     "type-fest": "^5.0.0",
     "typescript": "^6.0.0",
     "vitest": "^4.0.0"

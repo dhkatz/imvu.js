@@ -1,14 +1,7 @@
 {
 	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
-		"rootDir": "./src",
-		"outDir": "./dist/cjs",
 		"types": ["node"]
 	},
-	"include": ["./src/**/*.ts"],
-	"references": [
-		{
-			"path": "../client"
-		}
-	]
+	"include": ["./src/**/*.ts"]
 }

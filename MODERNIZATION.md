@@ -1,10 +1,29 @@
 # imvu.js Modernization Plan
 
-_Written 2026-07-04. Target end-state: TypeScript 6, Vitest (no SWC), tsup builds,
-ESLint flat config v10, Prettier 3, Changesets for publishing, decorator-free
-serialization via Valibot behind the Standard Schema interface._
+_Written 2026-07-04._
 
-## Guiding decisions (already made)
+## Current status (2026-07-07) — READ FIRST; supersedes older phase text below
+
+The serialization approach evolved well past the original Valibot plan. Reality now:
+
+- **Decorator-free _and_ validation-free.** After exploring decorators → Valibot, we
+  landed on **discord.js-style `_patch(data)`** per resource: inline field assignment
+  (+ renames, `in`-guards for partial IMQ updates), no runtime validation — trust the
+  wire types, rely on tests for drift. `Resource.build` = `new` + `_patch`. Removed
+  `typescript-json-serializer`, `reflect-metadata`, and Valibot; zero decorators
+  monorepo-wide.
+- **New `@imvu/rest` package** — the low-level layer (cookie jar + axios + auth + raw
+  `resource()`/`resources()` + API wire types). `@imvu/client` composes it. Lets the
+  upcoming 3D app fetch raw typed JSON without class overhead.
+- **Vitest** (globals, no SWC), **tsup** builds (ESM+CJS+DTS; fixed the broken ESM
+  output), TypeScript 6 (`moduleResolution: Bundler`), Prettier 3, Node 22.
+- **Packages (5):** `rest`, `client`, `imq`, `chkn`, `tools`.
+- **Done:** Phases 0–4 + tsup (Phase 3). **Remaining:** ESLint flat config (5),
+  Changesets (6), CI (7).
+- Note: `ignoreDeprecations: "6.0"` is still in `tsconfig.base.json` — tsup's dts
+  generator injects `baseUrl`, which TS 6 flags; not removable until tsup/TS change.
+
+## Guiding decisions (original — Valibot/Standard-Schema parts are OBSOLETE, see above)
 
 - **Drop decorators** (`typescript-json-serializer` + `reflect-metadata` +
   `emitDecoratorMetadata`) in favor of **Valibot** schemas, accessed through the
@@ -338,7 +357,19 @@ payloads correctly (add fixtures if the live-API tests can't run offline).
 
 ---
 
-## Phase 3 — Build: raw tsc → tsup
+## Phase 3 — Build: raw tsc → tsup ✅ DONE (2026-07-07)
+
+Shared root `tsup.config.ts` (ESM+CJS+DTS, `target: node20`, `skipNodeModulesBundle`);
+each package `build: tsup`; root build runs them in topological order (rest → chkn →
+client → imq → tools) so DTS resolves cross-package deps. Modernized
+`tsconfig.base.json` (`module: ESNext`, `moduleResolution: Bundler`, `target: ES2022`;
+dropped `composite`/project-references, `baseUrl`, `downlevelIteration`); per-package
+`typecheck: tsc --noEmit`. Rewrote every `exports` map to tsup's output (conditional
+`import`/`require` with per-condition `types`). Fixed two missing deps (`imq`/`tools`
+now declare `@imvu/client`). **Verified: ESM now loads in Node** (the old
+`ERR_MODULE_NOT_FOUND` is gone), build/typecheck/tests all green.
+
+### (original plan)
 
 Now that esbuild can handle the code (no metadata), replace the fragile
 dual-`tsc` scripts.
