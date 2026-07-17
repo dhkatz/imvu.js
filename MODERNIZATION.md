@@ -21,8 +21,9 @@ NodeNext` + explicit `.js` extensions on relative imports (the real fix for the
   broken ESM); `composite` project references give dependency-aware builds
   (`tsc -b` on one package builds its deps first). No `ignoreDeprecations` — TS7-safe.
 - **Packages (5):** `rest`, `client`, `imq`, `chkn`, `tools`.
-- **Done:** Phases 0–6 (ESLint flat config + Lerna→Changesets landed).
+- **Done:** Phases 0–6 + 8 (ESLint flat config, Lerna→Changesets, dependency bumps).
   **Remaining:** CI (7). See the "TypeScript 7 / dependency freshness" note below.
+  Node floor is now **>=22** (Node 20 is EOL). oxlint/oxfmt evaluated — see below.
 
 **Build tool: we tried tsup, then reverted to `tsc`.** tsup fixed the broken ESM by
 bundling, but its dts generator injects `baseUrl` (needs `ignoreDeprecations`, a TS7
@@ -53,25 +54,34 @@ Options, in order of preference:
 2. Dual-toolchain: keep `typescript@6` for lint/editor, add
    `@typescript/native-preview` (`tsgo`) just for fast builds. Not worth the
    complexity for a 5-package repo — the native speed win is marginal at this size.
-3. Force TS7 now and drop/replace typescript-eslint. Regresses Phase 5; no.
+3. **Swap ESLint → oxlint, which unblocks TS7** (see the oxlint note below). oxlint
+   has its own Rust parser and never loads the TS compiler API, so it's immune to the
+   typescript-eslint peer cap. This is the most interesting path if TS7 is a priority.
 
-**Prettier — keep it.** Not redundant with ESLint (we deliberately separated the two
-in Phase 5; `eslint-config-prettier` disables conflicting rules, Prettier runs as its
-own `format`/`format:check`). The only real alternative is Biome (format + lint in one
-Rust tool), which would replace _both_ ESLint and Prettier — not worth churning the
-setup we just built, and its TS lint coverage isn't 1:1 with typescript-eslint. Revisit
-only if lint/format speed becomes a pain.
+**oxlint / oxfmt (evaluated 2026-07-17).**
 
-**Other packages — a dependency-bump pass is warranted (future phase 8).** `npm
-outdated` flags, most-to-least important:
+- **oxlint** is mature (**1.74.0**, stable 1.x): a Rust linter, ~50–100× faster than
+  ESLint, with its own parser — **no TypeScript compiler API dependency**. That's the
+  key point: it is _not_ subject to typescript-eslint's `<6.1.0` cap, so adopting it
+  **removes the one blocker to TS7**. It ships the eslint core + typescript-eslint
+  _syntactic_ rules; it does **not** do type-aware linting — but we don't use any
+  (our config has no `parserOptions.project`), so we lose nothing. Recommendation:
+  **worth doing**, especially as the enabler for TS7. Migration ≈ port the small
+  `eslint.config.mjs` rule set to `.oxlintrc.json`, verify the few rules we rely on
+  (`no-unused-vars`, `no-explicit-any` off, `require-yield`, `no-empty-object-type`;
+  confirm `preserve-caught-error` exists or replace it), drop `eslint` +
+  `typescript-eslint` + `@eslint/js` + `globals`.
+- **oxfmt** is **pre-1.0 (0.59.0)** — formatter output isn't stable yet, and
+  `@prettier/plugin-oxc` (0.2.1) is likewise pre-1.0. **Hold**; keep Prettier (stable,
+  cleanly separated from lint). Revisit oxfmt at 1.0.
 
-- `@imvu/rest` auth layer (touches security): `axios-cookiejar-support` 4→7,
-  `tough-cookie` 4→6, `tough-cookie-file-store` 2→3. Review these carefully — major
-  bumps, and the cookie libs have had advisories historically.
-- `tools` (peripheral, low risk): `commander` 9→15, `csharp-binary-stream` 1→2,
-  `image-type` 5→6.
-- `client` test dep: `axios-mock-adapter` 1→2.
-- `@types/node` 24→26 — keep aligned with the lowest supported Node (24 is fine).
+**Prettier — keep it (for now).** Not redundant with the linter (we deliberately
+separated the two in Phase 5). The Rust alternatives (oxfmt, Biome's formatter) aren't
+stable enough to justify churning it. Revisit alongside oxfmt 1.0.
+
+**Other packages — dependency-bump pass done (Phase 8, see below).** `npm audit` now
+reports 0 vulnerabilities. Remaining deliberately-not-bumped: `@types/node` 24 (keep
+aligned with the lowest supported Node), and `axios`/`ws` are already current.
 
 ## Guiding decisions (original — Valibot/Standard-Schema parts are OBSOLETE, see above)
 
@@ -568,15 +578,43 @@ still green.
 Update `.github/workflows/build.yml`:
 
 1. `actions/checkout@v4`, `actions/setup-node@v4`.
-2. Node matrix `[20, 22, 24]` (drop 16); enable `cache: 'npm'`.
-3. Steps: `npm ci` → `npm run build` → `eslint .` → `prettier --check .` →
-   `vitest run --coverage`.
+2. Node matrix `[22, 24]` (drop 16 and 20 — Node 20 is EOL and the floor is now
+   `>=22`); enable `cache: 'npm'`.
+3. Steps: `npm ci` → `npm run build` → `npm run lint` → `npm run format:check` →
+   `vitest run --coverage`. (If oxlint is adopted, the lint step becomes `oxlint`.)
 4. Keep the IMVU secrets for the live tests, but make the pure/unit tests run
    without them so PRs from forks aren't blocked.
 5. Optional: add a `release.yml` using the Changesets GitHub Action to open a
-   "Version Packages" PR and publish on merge.
+   "Version Packages" PR and publish on merge. This is also where a
+   `@changesets/changelog-github` swap would get its `GITHUB_TOKEN`.
 
 **Gate:** CI green on the matrix; release workflow validated on a dry run.
+
+---
+
+## Phase 8 — Dependency bumps ✅ DONE 2026-07-17
+
+Done ahead of CI (Phase 7 still pending). `npm audit` → **0 vulnerabilities**.
+
+- **`@imvu/rest` auth layer:** `tough-cookie` 4→6, `tough-cookie-file-store` 2→3,
+  `axios-cookiejar-support` 4→7. Dropped now-obsolete `@types/tough-cookie` +
+  `@types/tough-cookie-file-store` (both libs bundle their own types).
+  - _Breaking change caught:_ `tough-cookie-file-store@3` moved `FileCookieStore` from
+    a **named** export to the **default** export. `tsc -b` missed it (incremental build
+    info didn't recheck `rest.ts` when only `node_modules` changed) — surfaced at
+    runtime as `FileCookieStore is not a constructor`. Fixed the import; now validated
+    with a forced clean build + an offline cookie round-trip.
+- **Node floor `>=20` → `>=22`.** Node 20 is EOL (April 2026); cookiejar-support@7 and
+  commander@15 both require `>=22`.
+- **`tools`:** `commander` 9→15, `image-type` 5→6 (the latter clears the last audit
+  advisory). Verified with a `imvu-tools --help` CLI smoke.
+- **Removed dead deps:** `csharp-binary-stream` (tools) and `axios-mock-adapter`
+  (client) — declared but referenced nowhere.
+- **Left as-is:** `axios` ^1.18, `ws` ^8.21 (current); `@types/node` 24 (track lowest
+  supported Node).
+
+**Gate (verified):** clean `tsc -b`, `eslint .`, offline tests (5/5), CLI smoke, and
+`npm audit` clean.
 
 ---
 
