@@ -29,8 +29,5 @@
 	"dependencies": {
 		"@imvu/rest": "^0.1.0",
 		"axios": "^1.18.0"
-	},
-	"devDependencies": {
-		"axios-mock-adapter": "^1.21.5"
 	}
 }
