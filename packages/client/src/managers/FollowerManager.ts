@@ -1,8 +1,8 @@
-import { ProfileUser, User } from '../resources';
-import { BaseManager } from './BaseManager';
-import { APIResponse } from '../types';
+import { ProfileUser, User } from '../resources/index.js';
+import { BaseManager } from './BaseManager.js';
+import { APIResponse } from '../types.js';
 
-import { URLPaginator } from '../util/Paginator';
+import { URLPaginator } from '../util/Paginator.js';
 
 export class FollowerManager extends BaseManager {
 	public async *followers(): AsyncIterableIterator<User> {}

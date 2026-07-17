@@ -1,4 +1,4 @@
-import { IMQManager } from './IMQManager';
+import { IMQManager } from './IMQManager.js';
 import { Client } from '@imvu/client';
 
 async function main() {

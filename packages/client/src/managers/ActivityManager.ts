@@ -1,5 +1,5 @@
-import { BaseManager } from '../managers';
-import { URLPaginator } from '../util/Paginator';
+import { BaseManager } from '../managers/index.js';
+import { URLPaginator } from '../util/Paginator.js';
 
 type Activity = any;
 

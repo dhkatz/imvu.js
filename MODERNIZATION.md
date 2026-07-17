@@ -15,13 +15,21 @@ The serialization approach evolved well past the original Valibot plan. Reality 
 - **New `@imvu/rest` package** — the low-level layer (cookie jar + axios + auth + raw
   `resource()`/`resources()` + API wire types). `@imvu/client` composes it. Lets the
   upcoming 3D app fetch raw typed JSON without class overhead.
-- **Vitest** (globals, no SWC), **tsup** builds (ESM+CJS+DTS; fixed the broken ESM
-  output), TypeScript 6 (`moduleResolution: Bundler`), Prettier 3, Node 22.
+- **Vitest** (globals, no SWC), TypeScript 6, Prettier 3, Node 22.
+- **Build: plain `tsc -b`, ESM-only** (NOT tsup — see below). `moduleResolution:
+  NodeNext` + explicit `.js` extensions on relative imports (the real fix for the
+  broken ESM); `composite` project references give dependency-aware builds
+  (`tsc -b` on one package builds its deps first). No `ignoreDeprecations` — TS7-safe.
 - **Packages (5):** `rest`, `client`, `imq`, `chkn`, `tools`.
-- **Done:** Phases 0–4 + tsup (Phase 3). **Remaining:** ESLint flat config (5),
+- **Done:** Phases 0–4, build (Phase 3). **Remaining:** ESLint flat config (5),
   Changesets (6), CI (7).
-- Note: `ignoreDeprecations: "6.0"` is still in `tsconfig.base.json` — tsup's dts
-  generator injects `baseUrl`, which TS 6 flags; not removable until tsup/TS change.
+
+**Build tool: we tried tsup, then reverted to `tsc`.** tsup fixed the broken ESM by
+bundling, but its dts generator injects `baseUrl` (needs `ignoreDeprecations`, a TS7
+risk) and it dropped project references (no dependency-aware builds). The broken ESM
+was really just extensionless imports — fixed natively with NodeNext + `.js`
+extensions, which also keeps `tsc -b`'s dependency-aware builds and is TS7-clean.
+ESM-only for now (packages are `type: module`; add CJS later if a consumer needs it).
 
 ## Guiding decisions (original — Valibot/Standard-Schema parts are OBSOLETE, see above)
 
@@ -357,17 +365,19 @@ payloads correctly (add fixtures if the live-API tests can't run offline).
 
 ---
 
-## Phase 3 — Build: raw tsc → tsup ✅ DONE (2026-07-07)
+## Phase 3 — Build ✅ DONE (2026-07-07, revised 2026-07-17)
 
-Shared root `tsup.config.ts` (ESM+CJS+DTS, `target: node20`, `skipNodeModulesBundle`);
-each package `build: tsup`; root build runs them in topological order (rest → chkn →
-client → imq → tools) so DTS resolves cross-package deps. Modernized
-`tsconfig.base.json` (`module: ESNext`, `moduleResolution: Bundler`, `target: ES2022`;
-dropped `composite`/project-references, `baseUrl`, `downlevelIteration`); per-package
-`typecheck: tsc --noEmit`. Rewrote every `exports` map to tsup's output (conditional
-`import`/`require` with per-condition `types`). Fixed two missing deps (`imq`/`tools`
-now declare `@imvu/client`). **Verified: ESM now loads in Node** (the old
-`ERR_MODULE_NOT_FOUND` is gone), build/typecheck/tests all green.
+**Final: plain `tsc -b`, ESM-only** (we tried tsup first — see the status banner at
+the top for why we reverted). Modernized `tsconfig.base.json` to `module`/
+`moduleResolution: NodeNext`, `target: ES2022`, `composite: true` (project
+references), dropped `baseUrl`/`downlevelIteration`/`ignoreDeprecations`. Ran a
+codemod adding explicit `.js` extensions to all 124 relative imports (the actual fix
+for the broken ESM). Each package `build: tsc -b`; root `build: tsc -b` walks the
+reference graph. ESM-only `exports` (`{ types, default }`). Fixed two missing deps
+(`imq`/`tools` now declare `@imvu/client`) and a NodeNext augmentation gap (declared
+axios's `jar` ourselves in `rest`). **Verified: ESM loads in Node** (old
+`ERR_MODULE_NOT_FOUND` gone), **dependency-aware builds work** (`tsc -b` on `client`
+builds `rest` first), build/tests green.
 
 ### (original plan)
 

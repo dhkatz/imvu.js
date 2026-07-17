@@ -1,4 +1,4 @@
-import { Product, Resource } from '../resources';
+import { Product, Resource } from '../resources/index.js';
 
 export class Outfit extends Resource<OutfitRelations> {
 	public outfitName = '';

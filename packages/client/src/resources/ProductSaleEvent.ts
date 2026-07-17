@@ -1,4 +1,4 @@
-import { Resource, Product, User } from '../resources';
+import { Resource, Product, User } from '../resources/index.js';
 
 export class ProductSaleEvent extends Resource<ProductSaleEventRelations> {
 	public timestamp = ''; // ISO datetime on the wire (purchased_datetime)

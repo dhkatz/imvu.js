@@ -3,7 +3,18 @@ import { CookieJar, Store } from 'tough-cookie';
 import { FileCookieStore } from 'tough-cookie-file-store';
 import { wrapper } from 'axios-cookiejar-support';
 
-import { APIResource, APIResponse, APISuccessResponse } from './types';
+import { APIResource, APIResponse, APISuccessResponse } from './types.js';
+
+// axios-cookiejar-support augments axios with `jar`, but that augmentation doesn't
+// merge reliably under moduleResolution: NodeNext — declare it explicitly.
+declare module 'axios' {
+	interface CreateAxiosDefaults {
+		jar?: CookieJar;
+	}
+	interface AxiosRequestConfig {
+		jar?: CookieJar;
+	}
+}
 
 export interface RESTOptions {
 	/** API base URL. Defaults to `https://api.imvu.com`. */

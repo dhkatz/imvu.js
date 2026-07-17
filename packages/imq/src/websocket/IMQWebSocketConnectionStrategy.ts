@@ -1,9 +1,9 @@
 import { Constructor } from 'type-fest';
 import WebSocket from 'ws';
 
-import { IMQConnectionStrategy } from '../IMQConnectionStrategy';
-import { IMQWebSocketStream } from './IMQWebSocketStream';
-import { IMQTranscoder } from '../IMQTranscoder';
+import { IMQConnectionStrategy } from '../IMQConnectionStrategy.js';
+import { IMQWebSocketStream } from './IMQWebSocketStream.js';
+import { IMQTranscoder } from '../IMQTranscoder.js';
 
 export class IMQWebSocketConnectionStrategy extends IMQConnectionStrategy {
 	private readonly socketFactory: Constructor<WebSocket>;

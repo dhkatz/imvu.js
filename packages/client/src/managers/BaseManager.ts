@@ -1,5 +1,5 @@
-import { Client } from '../client';
-import { AccountManager } from './AccountManager';
+import { Client } from '../client/index.js';
+import { AccountManager } from './AccountManager.js';
 
 export class BaseManager {
 	public constructor(protected client: Client) {}

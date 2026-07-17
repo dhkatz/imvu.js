@@ -1,4 +1,4 @@
-import { IMQStream, IMQStreamState } from '../IMQStream';
+import { IMQStream, IMQStreamState } from '../IMQStream.js';
 import WebSocket from 'ws';
 
 export class IMQWebSocketStream extends IMQStream {

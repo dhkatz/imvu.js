@@ -1,9 +1,9 @@
-import { IMQConnectionStrategy } from './IMQConnectionStrategy';
-import { IMQStream } from './IMQStream';
+import { IMQConnectionStrategy } from './IMQConnectionStrategy.js';
+import { IMQStream } from './IMQStream.js';
 import { EventEmitter } from 'events';
 import { MessageEvent } from 'ws';
-import { IMQWebSocketConnectionStrategy } from './websocket/IMQWebSocketConnectionStrategy';
-import { ClientEvent, EventNameToType } from './Events';
+import { IMQWebSocketConnectionStrategy } from './websocket/IMQWebSocketConnectionStrategy.js';
+import { ClientEvent, EventNameToType } from './Events.js';
 
 export enum Status {
 	CLOSED,

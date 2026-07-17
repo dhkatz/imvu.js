@@ -1,8 +1,8 @@
 import { Constructor } from 'type-fest';
 
-import { Resource } from '../resources';
-import { Client } from '../client';
-import { APIResource } from '../types';
+import { Resource } from '../resources/index.js';
+import { Client } from '../client/index.js';
+import { APIResource } from '../types.js';
 
 export class BaseController<
 	TResource extends Resource | object = Record<string, any>,

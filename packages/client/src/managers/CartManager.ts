@@ -1,6 +1,6 @@
-import { URLPaginator } from '../util/Paginator';
-import { BaseManager } from './BaseManager';
-import { Product } from '../resources';
+import { URLPaginator } from '../util/Paginator.js';
+import { BaseManager } from './BaseManager.js';
+import { Product } from '../resources/index.js';
 
 export class CartManager extends BaseManager {
 	public get base(): string {

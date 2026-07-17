@@ -1,6 +1,6 @@
-import { Resource } from './Resource';
-import { User } from './User';
-import { Album } from './Album';
+import { Resource } from './Resource.js';
+import { User } from './User.js';
+import { Album } from './Album.js';
 
 export class Photo extends Resource<PhotoRelations> {
 	public title = '';

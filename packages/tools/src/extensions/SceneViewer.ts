@@ -1,6 +1,6 @@
 import { Client, Avatar, PartialProduct, Product } from '@imvu/client';
 
-import { BaseExtension } from './BaseExtenstion';
+import { BaseExtension } from './BaseExtenstion.js';
 
 export interface SceneViewerOptions {
 	load?: boolean;

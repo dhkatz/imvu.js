@@ -1,4 +1,4 @@
-import { IMQStream } from './IMQStream';
+import { IMQStream } from './IMQStream.js';
 
 export abstract class IMQConnectionStrategy {
 	public url = '';

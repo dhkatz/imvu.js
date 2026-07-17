@@ -4,10 +4,10 @@ import { EventEmitter } from 'events';
 
 import { REST, APIResource, APISuccessResponse } from '@imvu/rest';
 
-import { BaseController } from '../controllers';
-import { Avatar, GetMatched, Product, Resource, Room, User } from '../resources';
-import { AccountManager } from '../managers';
-import { Utilities } from './Utilities';
+import { BaseController } from '../controllers/index.js';
+import { Avatar, GetMatched, Product, Resource, Room, User } from '../resources/index.js';
+import { AccountManager } from '../managers/index.js';
+import { Utilities } from './Utilities.js';
 
 /**
  * The main client for interacting with the IMVU API. Wraps a low-level {@link REST}

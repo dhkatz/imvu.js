@@ -1,6 +1,6 @@
-import { BaseManager } from './BaseManager';
-import { Product } from '../resources';
-import { URLPaginator } from '../util/Paginator';
+import { BaseManager } from './BaseManager.js';
+import { Product } from '../resources/index.js';
+import { URLPaginator } from '../util/Paginator.js';
 
 export class WishlistManager extends BaseManager {
 	public get base(): string {

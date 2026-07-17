@@ -1,6 +1,6 @@
-import { BaseManager } from './BaseManager';
-import { Room } from '../resources';
-import { URLPaginator } from '../util/Paginator';
+import { BaseManager } from './BaseManager.js';
+import { Room } from '../resources/index.js';
+import { URLPaginator } from '../util/Paginator.js';
 
 export class RoomManager extends BaseManager {
 	public async *recent(): AsyncIterableIterator<Room> {

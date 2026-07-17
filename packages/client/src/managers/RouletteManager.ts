@@ -1,5 +1,5 @@
-import { BaseManager } from './BaseManager';
-import { DateMapped } from '../types';
+import { BaseManager } from './BaseManager.js';
+import { DateMapped } from '../types.js';
 
 export type RouletteResponse = DateMapped<{
 	status: 'available' | 'redeemed';

@@ -1,5 +1,5 @@
-import { Product } from './Product';
-import { Resource } from './Resource';
+import { Product } from './Product.js';
+import { Resource } from './Resource.js';
 
 export type PartialProduct = { id: string; product_id: number; owned: boolean; rating: string };
 

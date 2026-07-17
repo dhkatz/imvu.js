@@ -1,4 +1,4 @@
-import { BaseManager } from './BaseManager';
+import { BaseManager } from './BaseManager.js';
 
 export class OutfitManager extends BaseManager {
 	public get base(): string {

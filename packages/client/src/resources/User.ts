@@ -1,7 +1,7 @@
-import { GetMatched, Product, ProfileUser, Room } from './index';
+import { GetMatched, Product, ProfileUser, Room } from './index.js';
 
-import { Resource } from './Resource';
-import { Creator } from './Creator';
+import { Resource } from './Resource.js';
+import { Creator } from './Creator.js';
 
 export class User extends Resource<UserRelations> {
 	public created = ''; // ISO 8601 string on the wire

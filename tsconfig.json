@@ -1,7 +1,10 @@
 {
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "types": ["node"]
-  },
-  "include": ["*.ts"]
+  "files": [],
+  "references": [
+    { "path": "./packages/rest" },
+    { "path": "./packages/chkn" },
+    { "path": "./packages/client" },
+    { "path": "./packages/imq" },
+    { "path": "./packages/tools" }
+  ]
 }

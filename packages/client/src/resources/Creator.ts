@@ -1,5 +1,5 @@
-import { Resource } from './Resource';
-import { Product } from './Product';
+import { Resource } from './Resource.js';
+import { Product } from './Product.js';
 
 export class Creator extends Resource<CreatorRelations> {
 	public tier = 0;

@@ -1,7 +1,7 @@
-import { Client } from '../client';
-import { APIResource } from '../types';
+import { Client } from '../client/index.js';
+import { APIResource } from '../types.js';
 import { Constructor } from 'type-fest';
-import { URLPaginator } from '../util/Paginator';
+import { URLPaginator } from '../util/Paginator.js';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface ResourceOptions {}

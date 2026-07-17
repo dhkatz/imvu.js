@@ -1,4 +1,4 @@
-import { IMQStream } from '../IMQStream';
+import { IMQStream } from '../IMQStream.js';
 
 export class IMQHttpStream extends IMQStream {
 	public XMLHttpRequest: typeof XMLHttpRequest;

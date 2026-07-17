@@ -1,5 +1,5 @@
-import { IMQConnection, Status } from './IMQConnection';
-import { IMQQueue } from './message/IMQQueue';
+import { IMQConnection, Status } from './IMQConnection.js';
+import { IMQQueue } from './message/IMQQueue.js';
 
 const STATUS = {
 	[Status.CONNECTING]: 'connecting',

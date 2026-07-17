@@ -1,6 +1,6 @@
-import { BaseManager } from './BaseManager';
-import { URLPaginator } from '../util/Paginator';
-import { User } from '../resources';
+import { BaseManager } from './BaseManager.js';
+import { URLPaginator } from '../util/Paginator.js';
+import { User } from '../resources/index.js';
 
 /**
  * Manage a client's friends list.

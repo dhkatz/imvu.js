@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { IMQQueue } from './IMQQueue';
+import { IMQQueue } from './IMQQueue.js';
 
 export class IMQStateMount extends EventEmitter {
 	private state: any = {};

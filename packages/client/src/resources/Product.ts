@@ -1,5 +1,5 @@
-import { Resource } from './Resource';
-import { User } from './User';
+import { Resource } from './Resource.js';
+import { User } from './User.js';
 
 export class Product extends Resource<ProductRelations> {
 	public name = '';

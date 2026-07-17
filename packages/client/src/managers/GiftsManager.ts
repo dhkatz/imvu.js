@@ -1,5 +1,5 @@
-import { BaseManager } from './BaseManager';
-import { Product, User } from '../resources';
+import { BaseManager } from './BaseManager.js';
+import { Product, User } from '../resources/index.js';
 
 export class GiftsManager extends BaseManager {
 	public async gift(user: User | string | number, product: Product | string | number, message = ''): Promise<boolean> {

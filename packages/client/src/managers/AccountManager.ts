@@ -1,9 +1,9 @@
-import { URLPaginator } from '../util/Paginator';
-import { Client } from '../client';
-import { Avatar, Product, User } from '../resources';
+import { URLPaginator } from '../util/Paginator.js';
+import { Client } from '../client/index.js';
+import { Avatar, Product, User } from '../resources/index.js';
 
-import { BaseManager, FollowerManager, FriendManager, RouletteManager, WalletManager, WishlistManager } from './index';
-import { GiftsManager } from './GiftsManager';
+import { BaseManager, FollowerManager, FriendManager, RouletteManager, WalletManager, WishlistManager } from './index.js';
+import { GiftsManager } from './GiftsManager.js';
 
 export class AccountManager extends BaseManager {
 	public readonly friends: FriendManager;

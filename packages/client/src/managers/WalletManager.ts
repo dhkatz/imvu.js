@@ -1,5 +1,5 @@
-import { BaseManager } from './BaseManager';
-import { Client } from '../client';
+import { BaseManager } from './BaseManager.js';
+import { Client } from '../client/index.js';
 
 export class WalletManager extends BaseManager {
 	constructor(client: Client) {

@@ -4,7 +4,7 @@ import JSZip from 'jszip';
 
 import { Product } from '@imvu/client';
 
-import { BaseExtension } from './BaseExtenstion';
+import { BaseExtension } from './BaseExtenstion.js';
 
 export type ProductManifest = {
 	id: number;

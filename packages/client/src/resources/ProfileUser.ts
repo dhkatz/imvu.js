@@ -1,4 +1,4 @@
-import { Resource } from './Resource';
+import { Resource } from './Resource.js';
 
 export class ProfileUser extends Resource<ProfileUserRelations> {
 	public image = '';

@@ -1,7 +1,7 @@
 import { Constructor } from 'type-fest';
 
-import { Client } from '../client';
-import { Resource } from '../resources';
+import { Client } from '../client/index.js';
+import { Resource } from '../resources/index.js';
 
 export interface PaginatorOptions<T extends Resource> {
 	next: (client: Client, offset: number) => Promise<T[]>;

@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
 
-import { IMQMessageMount } from './IMQMessageMount';
-import { IMQStateMount } from './IMQStateMount';
-import { IMQManager } from '../IMQManager';
+import { IMQMessageMount } from './IMQMessageMount.js';
+import { IMQStateMount } from './IMQStateMount.js';
+import { IMQManager } from '../IMQManager.js';
 
 export class IMQQueue extends EventEmitter {
 	public subscribers: Record<string, Set<(data: any) => void>> = {};

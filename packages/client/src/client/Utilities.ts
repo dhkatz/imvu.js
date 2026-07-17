@@ -1,7 +1,7 @@
-import { Client } from './Client';
+import { Client } from './Client.js';
 import { Constructor } from 'type-fest';
-import { APIResource } from '../types';
-import { Resource, ResourceConstructor } from '../resources';
+import { APIResource } from '../types.js';
+import { Resource, ResourceConstructor } from '../resources/index.js';
 
 export class Utilities {
 	public constructor(private client: Client) {}
