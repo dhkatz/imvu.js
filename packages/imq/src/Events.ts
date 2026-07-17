@@ -81,7 +81,13 @@ export interface SendMessageEvent extends RecordEvent {
 }
 
 export type GatewayEvent =
-	ResultEvent | JoinedQueueEvent | LeftQueueEvent | CreateMountEvent | SentMessageEvent | StateChangedEvent | PongEvent;
+	| ResultEvent
+	| JoinedQueueEvent
+	| LeftQueueEvent
+	| CreateMountEvent
+	| SentMessageEvent
+	| StateChangedEvent
+	| PongEvent;
 
 export type GatewayMessage = GatewayEvent['record'];
 

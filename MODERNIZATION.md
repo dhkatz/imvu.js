@@ -21,10 +21,11 @@ NodeNext` + explicit `.js` extensions on relative imports (the real fix for the
   broken ESM); `composite` project references give dependency-aware builds
   (`tsc -b` on one package builds its deps first). No `ignoreDeprecations` — TS7-safe.
 - **Packages (5):** `rest`, `client`, `imq`, `chkn`, `tools`.
-- **Done:** Phases 0–6, 8, 9, 10. Highlights: `_patch` serialization, Vitest,
-  `@imvu/rest` split, `tsc`/NodeNext ESM build, Changesets, dep bumps, **oxlint**
-  (replaced ESLint), and **TypeScript 7** (native Go compiler). Node floor is **>=22**
-  (Node 20 is EOL). **Remaining:** CI (Phase 7). See per-phase notes below.
+- **Done:** Phases 0–6, 8–12. Highlights: `_patch` serialization, Vitest,
+  `@imvu/rest` split, `tsc`/NodeNext ESM build, Changesets, dep bumps, and a full
+  **Oxc toolchain** — **oxlint** (replaced ESLint) with **type-aware** linting via
+  tsgo, **oxfmt** (replaced Prettier) — on **TypeScript 7** (native Go compiler). Node
+  floor is **>=22** (Node 20 is EOL). **Remaining:** CI (Phase 7). Per-phase notes below.
 
 **Build tool: we tried tsup, then reverted to `tsc`.** tsup fixed the broken ESM by
 bundling, but its dts generator injects `baseUrl` (needs `ignoreDeprecations`, a TS7
@@ -41,8 +42,7 @@ Besides being ~50–100× faster, that independence is what **unblocked TypeScri
 typescript-eslint peers on `typescript <6.1.0`, so it could not run on the TS7 native
 compiler; oxlint has no such cap. Config is `.oxlintrc.json` (typescript plugin,
 `correctness: error`, plus our three tweaks). oxlint can additionally do type-aware
-linting by leveraging the native `tsgo`/TS7 compiler — **not enabled yet**; a possible
-follow-up now that we're on TS7 (would add rules like `no-floating-promises`).
+linting by leveraging the native `tsgo`/TS7 compiler — **now enabled** (Phase 11).
 
 **TypeScript 7 (Phase 10, done).** `typescript@7.0.2` is the **native (Go) compiler**
 (ships a per-platform binary via optional deps). The native `tsc -b` handles our full
@@ -51,10 +51,15 @@ contract: build mode, `composite` project references, clean/force, and complete 
 were needed — the repo was kept TS7-ready throughout (NodeNext, no deprecated options,
 no `ignoreDeprecations`).
 
-**Prettier — kept.** oxfmt is still pre-1.0 (0.59.0), as is `@prettier/plugin-oxc`
-(0.2.1); formatter output isn't stable yet. Prettier stays (cleanly separated from
-lint — we don't enable oxlint's `style` category, so nothing conflicts). Revisit at
-oxfmt 1.0.
+**oxfmt (Phase 12, done).** Replaced Prettier with **oxfmt** — completing the
+single-Oxc toolchain (oxlint + oxfmt, both Rust, both fast). A prototype showed it's a
+near-perfect drop-in: with the migrated config it diverged from Prettier on **1 of 102
+files** (a long union type broken to multiline, arguably nicer), and it handles
+`.ts`/`.json`/`.md`. Config `.oxfmtrc.json` (migrated from `.prettierrc` via
+`oxfmt --migrate=prettier`: singleQuote, trailingComma es5, printWidth 120, ignore
+patterns). Removed `prettier`, `.prettierrc.json`, `.prettierignore`. The one accepted
+caveat: oxfmt is pre-1.0 (0.59.0), so a future version may reflow files — low-stakes
+here (a reflow is a cheap commit).
 
 **Dependency freshness (Phase 8, done).** `npm audit` reports 0 vulnerabilities.
 Deliberately not bumped: `@types/node` 24 (track the lowest supported Node),
@@ -640,6 +645,43 @@ stopped expanding globs without `--glob`, so `rimraf packages/*/dist` failed on 
 literal `*` → added `--glob`.
 
 **Gate:** clean/force `tsc -b`, oxlint, offline tests, `format:check` all green.
+
+---
+
+## Phase 11 — Type-aware linting (oxlint + tsgo) ✅ DONE 2026-07-17
+
+Enabled oxlint's type-aware linting, which runs typescript-eslint-equivalent rules
+against real type info via the `tsgolint` backend (leverages the native TS7 `tsgo`).
+
+- Add `oxlint-tsgolint`. `lint`/`lint:fix` → `tsc -b && oxlint --type-aware` (the
+  build makes cross-package `.d.ts` available for the type graph); bare `oxlint` stays
+  fast/syntactic for editors and quick runs.
+- `.oxlintrc.json`: enable `typescript/no-misused-promises`; disable
+  `typescript/restrict-template-expressions` (fires on our loose wire types — relations
+  are `string | undefined` under `Partial`, same rationale as `no-explicit-any: off`).
+  Kept the `no-unsafe-*` family **off** — it would flood the `any`-heavy `_patch` layer.
+- Real bugs fixed: `no-floating-promises` flagged two fire-and-forget `handleCallback`
+  dispatches in IMQ and an unawaited `main()` in an example → marked `void`.
+
+**Gate:** type-aware lint, bare lint, build, offline tests, `format:check` green.
+
+---
+
+## Phase 12 — Formatter: Prettier → oxfmt ✅ DONE 2026-07-17
+
+Replaced Prettier with **oxfmt**, completing the single-Oxc toolchain (see the stance
+note near the top for the prototype data — 1/102 files diverged).
+
+- Add `oxfmt`; `oxfmt --migrate=prettier` → `.oxfmtrc.json`; remove `prettier`,
+  `.prettierrc.json`, `.prettierignore`.
+- Scripts: `format` → `oxfmt`, `format:check` → `oxfmt --check`.
+- Formats `.ts`/`.json`/`.md`; respects `.gitignore` (ignore patterns carried into
+  `.oxfmtrc.json`). Only reflow was one long union type in `imq/src/Events.ts`.
+
+**Caveat:** oxfmt is pre-1.0 (0.59.0) — a future version may reflow files. Accepted as
+low-stakes; revisit pinning strategy if it churns.
+
+**Gate:** `oxfmt --check`, type-aware lint, build, offline tests all green.
 
 ---
 
