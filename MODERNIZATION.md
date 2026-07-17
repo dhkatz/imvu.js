@@ -21,8 +21,8 @@ NodeNext` + explicit `.js` extensions on relative imports (the real fix for the
   broken ESM); `composite` project references give dependency-aware builds
   (`tsc -b` on one package builds its deps first). No `ignoreDeprecations` — TS7-safe.
 - **Packages (5):** `rest`, `client`, `imq`, `chkn`, `tools`.
-- **Done:** Phases 0–5 (ESLint flat config landed). **Remaining:** Changesets (6),
-  CI (7).
+- **Done:** Phases 0–6 (ESLint flat config + Lerna→Changesets landed).
+  **Remaining:** CI (7). See the "TypeScript 7 / dependency freshness" note below.
 
 **Build tool: we tried tsup, then reverted to `tsc`.** tsup fixed the broken ESM by
 bundling, but its dts generator injects `baseUrl` (needs `ignoreDeprecations`, a TS7
@@ -30,6 +30,48 @@ risk) and it dropped project references (no dependency-aware builds). The broken
 was really just extensionless imports — fixed natively with NodeNext + `.js`
 extensions, which also keeps `tsc -b`'s dependency-aware builds and is TS7-clean.
 ESM-only for now (packages are `type: module`; add CJS later if a consumer needs it).
+
+## TypeScript 7 & dependency freshness (assessed 2026-07-17)
+
+**TypeScript 7 — GA, but hold for now (tooling blocker).** `typescript@latest` is
+now **7.0.2**, and it's the **native (Go) compiler** — the package ships per-platform
+binaries via optional deps (`@typescript/typescript-<os>-<arch>`). We're on 6.0.3. The
+codebase is already TS7-ready (NodeNext, `.js` extensions, no deprecated options, no
+`ignoreDeprecations`), so the source needs no changes.
+
+The blocker is **typescript-eslint** (adopted in Phase 5): its latest (8.64.x) peers
+on `typescript >=4.8.4 <6.1.0` — it does **not** support TS7 yet, and there's no
+`next`/canary channel that widens it. Because the native compiler exposes a reduced JS
+API, typescript-eslint can't run against TS7 until it ships a port. Installing TS7
+today would break `npm run lint`.
+
+Options, in order of preference:
+
+1. **Stay on TS6, flip when typescript-eslint ships TS7 support.** TS6 is Microsoft's
+   intended bridge release for exactly this window. Zero downside; the source is
+   already compatible. _Recommended._
+2. Dual-toolchain: keep `typescript@6` for lint/editor, add
+   `@typescript/native-preview` (`tsgo`) just for fast builds. Not worth the
+   complexity for a 5-package repo — the native speed win is marginal at this size.
+3. Force TS7 now and drop/replace typescript-eslint. Regresses Phase 5; no.
+
+**Prettier — keep it.** Not redundant with ESLint (we deliberately separated the two
+in Phase 5; `eslint-config-prettier` disables conflicting rules, Prettier runs as its
+own `format`/`format:check`). The only real alternative is Biome (format + lint in one
+Rust tool), which would replace _both_ ESLint and Prettier — not worth churning the
+setup we just built, and its TS lint coverage isn't 1:1 with typescript-eslint. Revisit
+only if lint/format speed becomes a pain.
+
+**Other packages — a dependency-bump pass is warranted (future phase 8).** `npm
+outdated` flags, most-to-least important:
+
+- `@imvu/rest` auth layer (touches security): `axios-cookiejar-support` 4→7,
+  `tough-cookie` 4→6, `tough-cookie-file-store` 2→3. Review these carefully — major
+  bumps, and the cookie libs have had advisories historically.
+- `tools` (peripheral, low risk): `commander` 9→15, `csharp-binary-stream` 1→2,
+  `image-type` 5→6.
+- `client` test dep: `axios-mock-adapter` 1→2.
+- `@types/node` 24→26 — keep aligned with the lowest supported Node (24 is fine).
 
 ## Guiding decisions (original — Valibot/Standard-Schema parts are OBSOLETE, see above)
 
@@ -491,18 +533,33 @@ one rule rather than the whole legacy plugin.
 
 ---
 
-## Phase 6 — Publishing: drop Lerna → Changesets
+## Phase 6 — Publishing: drop Lerna → Changesets ✅ DONE
 
-1. Remove `lerna` and `lerna.json`.
-2. Add `@changesets/cli`; run `npx changeset init` (creates `.changeset/`).
-3. Configure `.changeset/config.json`: `access: "public"`, link to the two
-   publishable packages (`@imvu/client`, `@imvu/imq`); keep `chkn`/`tools` private
-   (they already are).
-4. Workflow: `changeset` to record intent → `changeset version` to bump +
-   changelog → `changeset publish` to release. Remove the old
-   `postversion`/`prepublish` git-push hooks in each package (Changesets/CI owns this).
+**What landed:**
 
-**Gate:** a dry-run `changeset version` produces sane bumps + changelogs.
+1. Removed `lerna` (devDep) and `lerna.json`.
+2. Added `@changesets/cli`; ran `changeset init` (`.changeset/config.json` + README).
+3. `.changeset/config.json`: `access: "public"`, `baseBranch: "master"` (this repo's
+   default branch — _not_ `main`), default changelog generator,
+   `updateInternalDependencies: "patch"`. Publishable packages (`@imvu/rest`,
+   `@imvu/client`, `@imvu/imq`) are picked up automatically; `chkn`/`tools` are
+   excluded automatically because they're `private: true`. No `fixed`/`linked` —
+   packages version independently (revisit if we want lockstep pre-1.0 releases).
+4. Root scripts: `changeset` (record intent), `version` (`changeset version` — bump +
+   changelog), `release` (`npm run build && changeset publish`). Removed the old
+   per-package `postversion`/`prepublish` git-push hooks from `imq`/`chkn`/`tools`
+   (Changesets + the CI release action own versioning/publishing now).
+
+**Note on the changelog generator:** kept the default `@changesets/cli/changelog`
+(zero-config, no token, works offline) rather than `@changesets/changelog-github`.
+Swap to the GitHub generator in Phase 7 when the release workflow provides a token —
+it adds PR/author links but errors without `GITHUB_TOKEN`.
+
+**Gate (verified):** `changeset status` lists the right packages; a throwaway
+`changeset version` bumped `@imvu/rest` 0.1.0→0.1.1, wrote its CHANGELOG, consumed the
+changeset, and correctly did _not_ cascade to `@imvu/client` (its `^0.1.0` range
+already satisfies `0.1.1`). Reverted after validation. `eslint`/`prettier`/build/tests
+still green.
 
 ---
 

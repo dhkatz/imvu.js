@@ -24,9 +24,7 @@
 	"scripts": {
 		"build": "tsc -b",
 		"clean": "rimraf ./dist",
-		"test": "vitest run",
-		"postversion": "git push && git push --tags",
-		"prepublish": "npm run build"
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@imvu/client": "^0.1.0",
