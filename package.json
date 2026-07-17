@@ -9,7 +9,7 @@
   },
   "scripts": {
     "build": "tsc -b",
-    "clean": "tsc -b --clean && rimraf packages/*/dist",
+    "clean": "tsc -b --clean && rimraf --glob packages/*/dist",
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "format": "prettier --write .",
@@ -42,7 +42,7 @@
     "rimraf": "^6.0.0",
     "ts-node": "^10.9.1",
     "type-fest": "^5.0.0",
-    "typescript": "^6.0.0",
+    "typescript": "^7.0.0",
     "vitest": "^4.0.0"
   },
   "dependencies": {
