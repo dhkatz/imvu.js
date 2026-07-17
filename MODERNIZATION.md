@@ -21,9 +21,10 @@ NodeNext` + explicit `.js` extensions on relative imports (the real fix for the
   broken ESM); `composite` project references give dependency-aware builds
   (`tsc -b` on one package builds its deps first). No `ignoreDeprecations` — TS7-safe.
 - **Packages (5):** `rest`, `client`, `imq`, `chkn`, `tools`.
-- **Done:** Phases 0–6 + 8 (ESLint flat config, Lerna→Changesets, dependency bumps).
-  **Remaining:** CI (7). See the "TypeScript 7 / dependency freshness" note below.
-  Node floor is now **>=22** (Node 20 is EOL). oxlint/oxfmt evaluated — see below.
+- **Done:** Phases 0–6, 8, 9, 10. Highlights: `_patch` serialization, Vitest,
+  `@imvu/rest` split, `tsc`/NodeNext ESM build, Changesets, dep bumps, **oxlint**
+  (replaced ESLint), and **TypeScript 7** (native Go compiler). Node floor is **>=22**
+  (Node 20 is EOL). **Remaining:** CI (Phase 7). See per-phase notes below.
 
 **Build tool: we tried tsup, then reverted to `tsc`.** tsup fixed the broken ESM by
 bundling, but its dts generator injects `baseUrl` (needs `ignoreDeprecations`, a TS7
@@ -32,56 +33,32 @@ was really just extensionless imports — fixed natively with NodeNext + `.js`
 extensions, which also keeps `tsc -b`'s dependency-aware builds and is TS7-clean.
 ESM-only for now (packages are `type: module`; add CJS later if a consumer needs it).
 
-## TypeScript 7 & dependency freshness (assessed 2026-07-17)
+## Lint / formatter / TypeScript stance (as of 2026-07-17)
 
-**TypeScript 7 — GA, but hold for now (tooling blocker).** `typescript@latest` is
-now **7.0.2**, and it's the **native (Go) compiler** — the package ships per-platform
-binaries via optional deps (`@typescript/typescript-<os>-<arch>`). We're on 6.0.3. The
-codebase is already TS7-ready (NodeNext, `.js` extensions, no deprecated options, no
-`ignoreDeprecations`), so the source needs no changes.
+**oxlint (Phase 9, done).** Replaced ESLint + typescript-eslint with **oxlint 1.74**
+— a Rust linter with its own parser and **no TypeScript compiler API dependency**.
+Besides being ~50–100× faster, that independence is what **unblocked TypeScript 7**:
+typescript-eslint peers on `typescript <6.1.0`, so it could not run on the TS7 native
+compiler; oxlint has no such cap. Config is `.oxlintrc.json` (typescript plugin,
+`correctness: error`, plus our three tweaks). oxlint can additionally do type-aware
+linting by leveraging the native `tsgo`/TS7 compiler — **not enabled yet**; a possible
+follow-up now that we're on TS7 (would add rules like `no-floating-promises`).
 
-The blocker is **typescript-eslint** (adopted in Phase 5): its latest (8.64.x) peers
-on `typescript >=4.8.4 <6.1.0` — it does **not** support TS7 yet, and there's no
-`next`/canary channel that widens it. Because the native compiler exposes a reduced JS
-API, typescript-eslint can't run against TS7 until it ships a port. Installing TS7
-today would break `npm run lint`.
+**TypeScript 7 (Phase 10, done).** `typescript@7.0.2` is the **native (Go) compiler**
+(ships a per-platform binary via optional deps). The native `tsc -b` handles our full
+contract: build mode, `composite` project references, clean/force, and complete emit
+(`.js`/`.d.ts`/maps, NodeNext `.js` extensions preserved). No source/tsconfig changes
+were needed — the repo was kept TS7-ready throughout (NodeNext, no deprecated options,
+no `ignoreDeprecations`).
 
-Options, in order of preference:
+**Prettier — kept.** oxfmt is still pre-1.0 (0.59.0), as is `@prettier/plugin-oxc`
+(0.2.1); formatter output isn't stable yet. Prettier stays (cleanly separated from
+lint — we don't enable oxlint's `style` category, so nothing conflicts). Revisit at
+oxfmt 1.0.
 
-1. **Stay on TS6, flip when typescript-eslint ships TS7 support.** TS6 is Microsoft's
-   intended bridge release for exactly this window. Zero downside; the source is
-   already compatible. _Recommended._
-2. Dual-toolchain: keep `typescript@6` for lint/editor, add
-   `@typescript/native-preview` (`tsgo`) just for fast builds. Not worth the
-   complexity for a 5-package repo — the native speed win is marginal at this size.
-3. **Swap ESLint → oxlint, which unblocks TS7** (see the oxlint note below). oxlint
-   has its own Rust parser and never loads the TS compiler API, so it's immune to the
-   typescript-eslint peer cap. This is the most interesting path if TS7 is a priority.
-
-**oxlint / oxfmt (evaluated 2026-07-17).**
-
-- **oxlint** is mature (**1.74.0**, stable 1.x): a Rust linter, ~50–100× faster than
-  ESLint, with its own parser — **no TypeScript compiler API dependency**. That's the
-  key point: it is _not_ subject to typescript-eslint's `<6.1.0` cap, so adopting it
-  **removes the one blocker to TS7**. It ships the eslint core + typescript-eslint
-  _syntactic_ rules; it does **not** do type-aware linting — but we don't use any
-  (our config has no `parserOptions.project`), so we lose nothing. Recommendation:
-  **worth doing**, especially as the enabler for TS7. Migration ≈ port the small
-  `eslint.config.mjs` rule set to `.oxlintrc.json`, verify the few rules we rely on
-  (`no-unused-vars`, `no-explicit-any` off, `require-yield`, `no-empty-object-type`;
-  confirm `preserve-caught-error` exists or replace it), drop `eslint` +
-  `typescript-eslint` + `@eslint/js` + `globals`.
-- **oxfmt** is **pre-1.0 (0.59.0)** — formatter output isn't stable yet, and
-  `@prettier/plugin-oxc` (0.2.1) is likewise pre-1.0. **Hold**; keep Prettier (stable,
-  cleanly separated from lint). Revisit oxfmt at 1.0.
-
-**Prettier — keep it (for now).** Not redundant with the linter (we deliberately
-separated the two in Phase 5). The Rust alternatives (oxfmt, Biome's formatter) aren't
-stable enough to justify churning it. Revisit alongside oxfmt 1.0.
-
-**Other packages — dependency-bump pass done (Phase 8, see below).** `npm audit` now
-reports 0 vulnerabilities. Remaining deliberately-not-bumped: `@types/node` 24 (keep
-aligned with the lowest supported Node), and `axios`/`ws` are already current.
+**Dependency freshness (Phase 8, done).** `npm audit` reports 0 vulnerabilities.
+Deliberately not bumped: `@types/node` 24 (track the lowest supported Node),
+`axios`/`ws` (already current).
 
 ## Guiding decisions (original — Valibot/Standard-Schema parts are OBSOLETE, see above)
 
@@ -615,6 +592,54 @@ Done ahead of CI (Phase 7 still pending). `npm audit` → **0 vulnerabilities**.
 
 **Gate (verified):** clean `tsc -b`, `eslint .`, offline tests (5/5), CLI smoke, and
 `npm audit` clean.
+
+---
+
+## Phase 9 — Lint: ESLint → oxlint ✅ DONE 2026-07-17
+
+Replaced the Phase 5 ESLint flat config with **oxlint 1.74** (see the stance note near
+the top). Rust linter, own parser, no TS compiler API → immune to typescript-eslint's
+`<6.1.0` cap, which is what unblocks Phase 10.
+
+- Add `oxlint`; remove `eslint`, `typescript-eslint`, `@eslint/js`, `globals`,
+  `eslint-config-prettier`; delete `eslint.config.mjs`.
+- `.oxlintrc.json`: `plugins: ["typescript"]`, `categories.correctness: error`,
+  `ignorePatterns` for dist/coverage/docs, and the same three tweaks we had
+  (`no-unused-vars {args:none, varsIgnorePattern:^_, caughtErrors:none}`,
+  `typescript/no-explicit-any: off`, `no-undef: off`).
+- Scripts: `lint`/`lint:fix` → `oxlint` / `oxlint --fix`. Prettier untouched; no
+  `eslint-config-prettier` needed (we don't enable oxlint's `style` category).
+
+Coverage checked against a throwaway file: oxlint catches `require-yield` and
+`no-unused-vars` and honors the `^_` ignore. It also flagged a real dead assignment
+ESLint missed (`this.client = client` in `Paginator`'s constructor, where `client` is
+already a parameter property) — removed. Dropped the vestigial `eslint-disable` on
+`ResourceOptions` (the rule isn't in oxlint's `correctness`).
+
+**Gate:** `npm run lint` (oxlint), build, `format:check`, offline tests all green.
+
+**Deferred (optional):** enable oxlint **type-aware** linting via `tsgo`/TS7
+(`options.typeAware`) to gain rules like `no-floating-promises` / `no-misused-promises`
+— valuable for the async API layer, but a separate pass (will surface new findings).
+
+---
+
+## Phase 10 — TypeScript 6 → 7 (native Go compiler) ✅ DONE 2026-07-17
+
+Bumped `typescript` ^6 → ^7 (**7.0.2**, the native Go compiler; pulls a per-platform
+binary such as `@typescript/typescript-win32-x64`). Enabled by Phase 9.
+
+Verified the native `tsc -b` satisfies our full build contract: build mode + `composite`
+project references (client→rest builds its dep first), `--clean`, `--force`, and
+complete emit (`.js`/`.d.ts`/`.d.ts.map`/`.js.map`, NodeNext `.js` extensions preserved
+in declarations). **No source or tsconfig changes** — the repo was kept TS7-ready
+throughout.
+
+Also fixed a pre-existing, TS7-unrelated `clean`-script bug surfaced here: rimraf@6
+stopped expanding globs without `--glob`, so `rimraf packages/*/dist` failed on the
+literal `*` → added `--glob`.
+
+**Gate:** clean/force `tsc -b`, oxlint, offline tests, `format:check` all green.
 
 ---
 
