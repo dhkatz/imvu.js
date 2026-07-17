@@ -20,7 +20,6 @@ export class Paginator<T extends Resource> {
 		protected client: Client,
 		protected options: PaginatorOptions<T>
 	) {
-		this.client = client;
 		this.limit = options.limit ?? this.limit;
 	}
 

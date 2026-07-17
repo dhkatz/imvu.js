@@ -3,7 +3,6 @@ import { APIResource } from '../types.js';
 import { Constructor } from 'type-fest';
 import { URLPaginator } from '../util/Paginator.js';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ResourceOptions {}
 
 /** A resource class: constructable, with a `build` factory. */
