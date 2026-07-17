@@ -226,7 +226,7 @@ export class IMQManager {
 				});
 			}
 		} else if (c) {
-			this.handleCallback(c);
+			void this.handleCallback(c);
 		}
 	}
 
@@ -244,7 +244,7 @@ export class IMQManager {
 			c = this.messageCallbacks.find((c) => c.opId === opId);
 		}
 
-		this.handleCallback(c.function, error);
+		void this.handleCallback(c.function, error);
 	}
 
 	private receiveQueue(queue: string, action: 'joined' | 'left', userId: string) {

@@ -8,6 +8,8 @@
   "rules": {
     "no-unused-vars": ["error", { "args": "none", "varsIgnorePattern": "^_", "caughtErrors": "none" }],
     "typescript/no-explicit-any": "off",
-    "no-undef": "off"
+    "no-undef": "off",
+    "typescript/no-misused-promises": "error",
+    "typescript/restrict-template-expressions": "off"
   }
 }

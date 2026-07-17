@@ -16,4 +16,4 @@ async function main() {
 	console.log(`Found user ${user.username} with id ${user.id}`);
 }
 
-main();
+void main();
