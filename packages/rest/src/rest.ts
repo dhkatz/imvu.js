@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { CookieJar, Store } from 'tough-cookie';
-import { FileCookieStore } from 'tough-cookie-file-store';
+import FileCookieStore from 'tough-cookie-file-store';
 import { wrapper } from 'axios-cookiejar-support';
 
 import { APIResource, APIResponse, APISuccessResponse } from './types.js';
