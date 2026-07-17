@@ -10,7 +10,10 @@ export class IMQQueue extends EventEmitter {
 	public messageMounts: Map<string, IMQMessageMount> = new Map();
 	public stateMounts: Map<string, IMQStateMount> = new Map();
 
-	public constructor(private manager: IMQManager, public readonly name: string) {
+	public constructor(
+		private manager: IMQManager,
+		public readonly name: string
+	) {
 		super();
 	}
 

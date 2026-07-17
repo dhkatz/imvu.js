@@ -2,7 +2,14 @@ import { URLPaginator } from '../util/Paginator.js';
 import { Client } from '../client/index.js';
 import { Avatar, Product, User } from '../resources/index.js';
 
-import { BaseManager, FollowerManager, FriendManager, RouletteManager, WalletManager, WishlistManager } from './index.js';
+import {
+	BaseManager,
+	FollowerManager,
+	FriendManager,
+	RouletteManager,
+	WalletManager,
+	WishlistManager,
+} from './index.js';
 import { GiftsManager } from './GiftsManager.js';
 
 export class AccountManager extends BaseManager {

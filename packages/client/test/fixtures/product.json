@@ -1,80 +1,70 @@
 {
-  "url": "https://api.imvu.com/product/product-51522827",
-  "id": "51522827",
-  "data": {
-    "product_id": 51522827,
-    "product_name": "✖ 90'S Glasses. C",
-    "creator_cid": 157473407,
-    "creator_name": "Raters",
-    "rating": "GA",
-    "product_price": 609,
-    "product_page": "https://www.imvu.com/shop/product.php?products_id=51522827",
-    "creator_page": "https://www.imvu.com/shop/web_search.php?manufacturers_id=157473407",
-    "is_bundle": false,
-    "profit": 100,
-    "derivation_profit": 100,
-    "allows_derivation": 0,
-    "allow_third_party_bundle": 1,
-    "product_image": "https://userimages-akm.imvu.com/productdata/images_c9a0f05b4f1d67ca73ef1dbc61e40428.gif",
-    "category_path": [
-      {
-        "id": 3117,
-        "name": "Accessories"
-      },
-      {
-        "id": 71,
-        "name": "Male Accessories"
-      },
-      {
-        "id": 3140,
-        "name": "Eyewear"
-      },
-      {
-        "id": 416,
-        "name": "Glasses"
-      }
-    ],
-    "gender": "male",
-    "categories": [
-      "Accessories",
-      "Male Accessories",
-      "Eyewear",
-      "Glasses"
-    ],
-    "look_url": null,
-    "is": [
-      "avatar_attachment",
-      "clothing_product"
-    ],
-    "compatible_body_patterns": [
-      191
-    ],
-    "has_plus_badge": false,
-    "is_plus_badge_compatible": false,
-    "gender_restriction": "none",
-    "is_bundable": 1,
-    "is_visible": true,
-    "is_wearable_in_pure": true,
-    "allow_delete": true,
-    "is_nft": false,
-    "is_boosted": false,
-    "is_purchasable": true,
-    "supports_youtube": false,
-    "default_orientation": "Unknown",
-    "tags": [],
-    "discount_price": 579,
-    "preview_image_supports_no_redirect": true,
-    "preview_image": "https://api.imvu.com/rendered_image/product-51522827",
-    "allow_derived_nft_minting": 0
-  },
-  "relations": {
-    "creator": "https://api.imvu.com/user/user-157473407",
-    "uml_products": "https://api.imvu.com/product/product-51522827/uml_products",
-    "ancestor_products": "https://api.imvu.com/product/product-51522827/ancestor_products",
-    "derivation_fee": "https://api.imvu.com/derivation_fee/derivation_fee-51522827",
-    "allow_nft": "https://api.imvu.com/product/product-51522827/allow_nft/allow_nft-51522827",
-    "parent": "https://api.imvu.com/product/product-50585005",
-    "look_model": "https://api.imvu.com/look_model/look_model-product-51522827"
-  },
-  "updates": {}
+	"url": "https://api.imvu.com/product/product-51522827",
+	"id": "51522827",
+	"data": {
+		"product_id": 51522827,
+		"product_name": "✖ 90'S Glasses. C",
+		"creator_cid": 157473407,
+		"creator_name": "Raters",
+		"rating": "GA",
+		"product_price": 609,
+		"product_page": "https://www.imvu.com/shop/product.php?products_id=51522827",
+		"creator_page": "https://www.imvu.com/shop/web_search.php?manufacturers_id=157473407",
+		"is_bundle": false,
+		"profit": 100,
+		"derivation_profit": 100,
+		"allows_derivation": 0,
+		"allow_third_party_bundle": 1,
+		"product_image": "https://userimages-akm.imvu.com/productdata/images_c9a0f05b4f1d67ca73ef1dbc61e40428.gif",
+		"category_path": [
+			{
+				"id": 3117,
+				"name": "Accessories"
+			},
+			{
+				"id": 71,
+				"name": "Male Accessories"
+			},
+			{
+				"id": 3140,
+				"name": "Eyewear"
+			},
+			{
+				"id": 416,
+				"name": "Glasses"
+			}
+		],
+		"gender": "male",
+		"categories": ["Accessories", "Male Accessories", "Eyewear", "Glasses"],
+		"look_url": null,
+		"is": ["avatar_attachment", "clothing_product"],
+		"compatible_body_patterns": [191],
+		"has_plus_badge": false,
+		"is_plus_badge_compatible": false,
+		"gender_restriction": "none",
+		"is_bundable": 1,
+		"is_visible": true,
+		"is_wearable_in_pure": true,
+		"allow_delete": true,
+		"is_nft": false,
+		"is_boosted": false,
+		"is_purchasable": true,
+		"supports_youtube": false,
+		"default_orientation": "Unknown",
+		"tags": [],
+		"discount_price": 579,
+		"preview_image_supports_no_redirect": true,
+		"preview_image": "https://api.imvu.com/rendered_image/product-51522827",
+		"allow_derived_nft_minting": 0
+	},
+	"relations": {
+		"creator": "https://api.imvu.com/user/user-157473407",
+		"uml_products": "https://api.imvu.com/product/product-51522827/uml_products",
+		"ancestor_products": "https://api.imvu.com/product/product-51522827/ancestor_products",
+		"derivation_fee": "https://api.imvu.com/derivation_fee/derivation_fee-51522827",
+		"allow_nft": "https://api.imvu.com/product/product-51522827/allow_nft/allow_nft-51522827",
+		"parent": "https://api.imvu.com/product/product-50585005",
+		"look_model": "https://api.imvu.com/look_model/look_model-product-51522827"
+	},
+	"updates": {}
 }
