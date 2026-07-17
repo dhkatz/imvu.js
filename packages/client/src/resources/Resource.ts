@@ -3,7 +3,7 @@ import { APIResource } from '../types.js';
 import { Constructor } from 'type-fest';
 import { URLPaginator } from '../util/Paginator.js';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ResourceOptions {}
 
 /** A resource class: constructable, with a `build` factory. */
@@ -50,11 +50,7 @@ export abstract class Resource<TRelations = APIResource['relations'], TUpdates =
 	 * (see MODERNIZATION.md). Fields keep their defaults until `_patch` overwrites
 	 * them, so an instance is never in an unset state.
 	 */
-	public static build<T extends Resource<any>>(
-		this: ResourceConstructor<T>,
-		client: Client,
-		node: APIResource
-	): T {
+	public static build<T extends Resource<any>>(this: ResourceConstructor<T>, client: Client, node: APIResource): T {
 		const instance = new this(client);
 
 		instance._patch((node.data ?? {}) as Record<string, any>);

@@ -25,7 +25,7 @@ export class Utilities {
 						return id[0];
 					}
 				} catch (error) {
-					throw new Error(`No users found with the username "${resource}"!`);
+					throw new Error(`No users found with the username "${resource}"!`, { cause: error });
 				}
 
 				throw new Error(`No users found with the username "${resource}"!`);

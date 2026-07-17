@@ -31,7 +31,7 @@ export class ProfileUser extends Resource<ProfileUserRelations> {
 	}
 
 	public async *subscriptions() {
-		return this.following();
+		yield* this.following();
 	}
 
 	public async *followers(): AsyncIterableIterator<ProfileUser> {
@@ -39,7 +39,7 @@ export class ProfileUser extends Resource<ProfileUserRelations> {
 	}
 
 	public async *subscribers() {
-		return this.followers();
+		yield* this.followers();
 	}
 
 	public async follow(): Promise<boolean> {

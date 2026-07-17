@@ -17,12 +17,12 @@ The serialization approach evolved well past the original Valibot plan. Reality 
   upcoming 3D app fetch raw typed JSON without class overhead.
 - **Vitest** (globals, no SWC), TypeScript 6, Prettier 3, Node 22.
 - **Build: plain `tsc -b`, ESM-only** (NOT tsup — see below). `moduleResolution:
-  NodeNext` + explicit `.js` extensions on relative imports (the real fix for the
+NodeNext` + explicit `.js` extensions on relative imports (the real fix for the
   broken ESM); `composite` project references give dependency-aware builds
   (`tsc -b` on one package builds its deps first). No `ignoreDeprecations` — TS7-safe.
 - **Packages (5):** `rest`, `client`, `imq`, `chkn`, `tools`.
-- **Done:** Phases 0–4, build (Phase 3). **Remaining:** ESLint flat config (5),
-  Changesets (6), CI (7).
+- **Done:** Phases 0–5 (ESLint flat config landed). **Remaining:** Changesets (6),
+  CI (7).
 
 **Build tool: we tried tsup, then reverted to `tsc`.** tsup fixed the broken ESM by
 bundling, but its dts generator injects `baseUrl` (needs `ignoreDeprecations`, a TS7
@@ -231,14 +231,14 @@ mechanism there once, then migrate resource files one at a time.
 - Fixtures captured (offline safety net): `product`, `user`, `avatar` in
   `packages/client/test/fixtures/`. **PII scrubbed** from `user.json` (`email`,
   `unique_id`) — the `/user` response for the current user includes personal data.
-**Architecture — schema-on-class + `build` factory (final, after iterating through
-static-schema → serialization-layer+registry → this).** The registry was dropped
-because a global mutable singleton defeats tree-shaking (all resources always
-bundle), conflicts with `sideEffects: false`, and is fragile to import order /
-deep-imports. Final shape:
+  **Architecture — schema-on-class + `build` factory (final, after iterating through
+  static-schema → serialization-layer+registry → this).** The registry was dropped
+  because a global mutable singleton defeats tree-shaking (all resources always
+  bundle), conflicts with `sideEffects: false`, and is fragile to import order /
+  deep-imports. Final shape:
 
 - `serialization/parse.ts` — the only shared engine: `parseResource(schema, rename,
-  payload) → { data, issues }` (resilient `safeParse` + per-field salvage), plus
+payload) → { data, issues }` (resilient `safeParse` + per-field salvage), plus
   `toSnakeCase`, `resourceEntries` (`_id`), and a typed `Rename<S>`.
 - Each resource file owns its schema: `export const ProductSchema = v.object({...})`
   (camelCase, source of truth) + `static schema` / `static rename` on the class.
@@ -281,7 +281,8 @@ publicly exported (`Album`, `Creator`, `Login`, `Outfit`, `Photo`,
 `ProductSaleEvent`) are now exported from the resources barrel (return types of
 public methods like `user.creator()`).
 Verified: build green; offline **46/46** (fixtures for Product/User/Avatar + posture
-+ contract for all 13); live 4-pass, no unexpected drift warnings, no regression.
+
+- contract for all 13); live 4-pass, no unexpected drift warnings, no regression.
 
 **Decorators fully removed monorepo-wide (2026-07-06).** `tools`' only usage
 (`SceneViewer` deserializing a client `Avatar` via `typescript-json-serializer`) was
@@ -440,27 +441,53 @@ env vars as before.
 
 ---
 
-## Phase 5 — Lint: ESLint 8 → 10 flat config
+## Phase 5 — Lint: ESLint 8 → 10 flat config ✅ DONE
 
-Biggest breaking migration; isolated from runtime so do it after the code settles.
+Biggest breaking migration; isolated from runtime so it was done after the code settled.
 
-1. Remove `.eslintrc.json`, `@typescript-eslint/eslint-plugin`,
-   `@typescript-eslint/parser`.
-2. Add `eslint@^10`, `typescript-eslint@^8` (unified package),
-   `eslint-config-prettier`.
-3. Create `eslint.config.js` (flat):
-   - spread `typescript-eslint`'s recommended configs,
-   - port the one custom rule (`@typescript-eslint/no-explicit-any: off`),
-   - port `import` resolver settings if you still want `eslint-plugin-import`
-     (its flat-config support has caveats — evaluate whether TS + tsup already
-     cover what you used it for).
-4. **Prettier + ESLint:** modern guidance is to stop running Prettier _through_
-   ESLint. Drop `eslint-plugin-prettier`; keep `eslint-config-prettier` to disable
-   conflicting rules, and run `prettier` as its own script/CI check.
-5. Update `lint` scripts (the current ones point at `packages/client/src/**/*`
-   from every package — fix each to lint its own `src`).
+**What landed:**
 
-**Gate:** `eslint .` clean; `prettier --check .` clean.
+1. Removed `.eslintrc.json`, `@typescript-eslint/eslint-plugin`,
+   `@typescript-eslint/parser`, `eslint-plugin-prettier`, `eslint-plugin-import`
+   (+ its resolvers).
+2. Added `eslint@^10`, `typescript-eslint@^8` (unified package), `@eslint/js`,
+   `globals`, `eslint-config-prettier@^10`.
+3. Created `eslint.config.mjs` (flat): `js.configs.recommended` +
+   `tseslint.configs.recommended`, then a rules block:
+   - `@typescript-eslint/no-explicit-any: off` (dynamic wire format),
+   - `no-undef: off` (TS handles resolution; redundant + wrong for types),
+   - `@typescript-eslint/no-unused-vars` tuned to `{ args: 'none',
+varsIgnorePattern: '^_', caughtErrors: 'none' }` — `args: 'none'` because
+     many imq callback/interface signatures carry unused params by contract.
+   - `eslint-config-prettier/flat` last, so Prettier owns formatting.
+4. **Prettier + ESLint:** stopped running Prettier _through_ ESLint. Dropped
+   `eslint-plugin-prettier`; kept `eslint-config-prettier` and run `prettier` as
+   its own `format` / `format:check` script.
+5. Replaced the broken per-package `lint` scripts (all pointed at
+   `packages/client/src/**/*`) with root `lint` / `lint:fix` = `eslint .`.
+
+**Dropped `eslint-plugin-import`** — TS (NodeNext + `.js` extensions) already
+enforces resolvable imports at build time. `no-cycle` was the only rule worth
+keeping; if cycles resurface, add `eslint-plugin-import-x` (flat-native) for that
+one rule rather than the whole legacy plugin.
+
+**Real issues the new config surfaced (all fixed, not suppressed):**
+
+- `require-yield` (ESLint 10 core): `ProfileUser.subscriptions`/`subscribers`
+  were `async *` generators that `return`ed their delegate instead of `yield*`-ing
+  it — a genuine bug. Fixed to `yield*`.
+- `preserve-caught-error` (ESLint 10 core): `Utilities.id` re-threw without a
+  `cause`. Now `new Error(msg, { cause: error })`.
+- `no-empty-object-type`: renamed the stale
+  `// eslint-disable-next-line @typescript-eslint/no-empty-interface` on
+  `ResourceOptions` to the current rule name.
+- Dead scratch file `packages/imq/src/EventTest.ts` (a TS-inference playground,
+  imported by nothing — its types are duplicated for real in `Events.ts`) deleted.
+- `DateMapped` used `` `${infer N}_datetime` `` with `N` unused → `` `${string}_datetime` ``.
+- Wired the empty `@imvu/tools` entry (`src/index.ts` was two dead imports) into a
+  real commander program; removed the unused `products` destructure in the CLI stub.
+
+**Gate:** `eslint .` clean ✅; build ✅; offline tests ✅.
 
 ---
 

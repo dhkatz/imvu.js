@@ -51,5 +51,5 @@ export interface APISuccessResponse<T extends object = Record<string, any>> {
 export type APIResponse<T extends object = Record<string, any>> = APIErrorResponse | APISuccessResponse<T>;
 
 export type DateMapped<T extends Record<string, any>> = {
-	[K in keyof T]: K extends `${infer N}_datetime` ? Date : T[K] extends object ? DateMapped<T[K]> : T[K];
+	[K in keyof T]: K extends `${string}_datetime` ? Date : T[K] extends object ? DateMapped<T[K]> : T[K];
 };

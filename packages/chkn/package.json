@@ -25,7 +25,6 @@
 	"scripts": {
 		"build": "tsc -b",
 		"clean": "rimraf ./dist",
-		"lint": "eslint packages/client/src/**/* && tsc --noEmit",
 		"test": "vitest run",
 		"postversion": "git push && git push --tags",
 		"prepublish": "npm run build"

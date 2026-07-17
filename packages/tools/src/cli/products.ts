@@ -8,6 +8,6 @@ export function products(program: Command) {
 		.description('Download the CHKN file for product(s)')
 		.option('-p, --products <products>', 'Product to download')
 		.action(async (options) => {
-			const { products } = options;
+			// TODO: download the CHKN file(s) for `options.products`.
 		});
 }
