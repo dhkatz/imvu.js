@@ -163,9 +163,9 @@ export class REST {
 				if (!resource) return null;
 
 				const fields = resource.data as Record<string, any>;
-				if (!fields.id) {
+				if (!fields._id) {
 					const id = (ref ?? itemUrl).match(/\d+(?:-\d+)?$/);
-					fields.id = id ? id[0] : '';
+					fields._id = id ? id[0] : '';
 				}
 
 				return resource;
