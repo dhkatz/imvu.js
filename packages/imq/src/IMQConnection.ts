@@ -1,11 +1,11 @@
-import { IMQConnectionStrategy } from './IMQConnectionStrategy.js';
-import { IMQStream } from './IMQStream.js';
-import { EventEmitter } from 'events';
-import { MessageEvent } from 'ws';
-import { IMQWebSocketConnectionStrategy } from './websocket/IMQWebSocketConnectionStrategy.js';
-import { ClientEvent, EventNameToType } from './Events.js';
+import { EventEmitter } from 'node:events';
+import WebSocket from 'ws';
 
-export enum Status {
+import { IMQStream } from './IMQStream.js';
+import { IMQWebSocketStream } from './websocket/IMQWebSocketStream.js';
+import { decode, encode, type ClientMessage, type DecodedMessage, type EncodeInputMap } from './Events.js';
+
+export enum IMQConnectionState {
 	CLOSED,
 	CONNECTING,
 	AUTHENTICATING,
@@ -13,153 +13,197 @@ export enum Status {
 	WAITING,
 }
 
-type Timeout = ReturnType<typeof setTimeout>;
+export interface IMQConnectionOptions {
+	/** IMQ WebSocket URL, e.g. `wss://imq.imvu.com:444/streaming/imvu_pre`. */
+	url: string;
+	/** The user's legacy cid. */
+	userId: string;
+	/** The session/auth cookie ("sauce"). */
+	sessionId: string;
+	/** Arbitrary connect metadata (e.g. `{ app: 'imvu_next', platform_type: 'big' }`). */
+	metadata?: Record<string, string>;
+	/**
+	 * Transport factory. Defaults to a `ws`-backed WebSocket stream. Override to
+	 * supply a different transport — or a test double.
+	 */
+	createStream?: (url: string) => IMQStream;
+	/** Monotonic op_id generator, shared with the manager. Defaults to an internal counter. */
+	newOpId?: () => number;
+	/** Ping keepalive interval, ms. Default 15_000. */
+	pingInterval?: number;
+	/** Disconnect if no server frame arrives within this window, ms. Default 60_000. */
+	serverTimeoutInterval?: number;
+	/** Reconnect backoff schedule, ms; the last value is reused once exhausted. Default [5s,15s,45s,90s,180s]. */
+	reconnect?: readonly number[];
+	/**
+	 * Invoked before each reconnect attempt with the time since the last server
+	 * frame. Return partial options to merge in (e.g. a refreshed `sessionId`).
+	 */
+	onReconnect?: (msSinceLastMessage: number) => Promise<Partial<IMQConnectionOptions> | void>;
+}
 
-export class IMQConnection extends EventEmitter {
-	private strategy: IMQConnectionStrategy;
+/** `state` carries the new state and, for `WAITING`, the epoch ms at which the next attempt fires. */
+interface IMQConnectionEvents {
+	state: [state: IMQConnectionState, reconnectAt?: number];
+	message: [message: DecodedMessage];
+}
+
+const DEFAULT_PING_INTERVAL = 15_000;
+const DEFAULT_SERVER_TIMEOUT = 60_000;
+const DEFAULT_RECONNECT: readonly number[] = [5_000, 15_000, 45_000, 90_000, 180_000];
+
+type Timer = ReturnType<typeof setTimeout>;
+
+const counter = (): (() => number) => {
+	let next = 0;
+	return () => next++;
+};
+
+/**
+ * The IMQ connection state machine: opens a transport, performs the
+ * connect/authenticate handshake, keeps the link alive with pings and a server
+ * timeout, and reconnects with backoff. Unlike IMVU's original it drives a
+ * single transport (no strategy rotation) — cleaner for a standalone library;
+ * swap transports via {@link IMQConnectionOptions.createStream}.
+ */
+export class IMQConnection extends EventEmitter<IMQConnectionEvents> {
+	private state = IMQConnectionState.CLOSED;
 	private stream?: IMQStream;
-	private state = Status.CLOSED;
-
-	private connectRetryTimerHandle?: Timeout;
-	private connectRetryIntervalIndex = 0;
-	private currentStrategyIndex = 0;
+	private reconnectIndex = 0;
 	private lastMessageTime = 0;
-	private receivedMessageTimerHandle?: Timeout;
-	private pingTimerHandle?: Timeout;
 
-	public constructor(private config: Record<string, any> = {}) {
+	private reconnectTimer?: Timer;
+	private pingTimer?: Timer;
+	private serverTimeoutTimer?: Timer;
+
+	private readonly createStream: (url: string) => IMQStream;
+	private readonly newOpId: () => number;
+	private readonly pingInterval: number;
+	private readonly serverTimeoutInterval: number;
+	private readonly reconnectSchedule: readonly number[];
+
+	public constructor(private options: IMQConnectionOptions) {
 		super();
 
-		this.strategy = new IMQWebSocketConnectionStrategy(config);
-
-		this.config.onPreReconnectCallback =
-			this.config.onPreReconnectCallback ||
-			((d: any) => {
-				d(null, null);
-			});
-
-		this.config.pingInterval = this.config.pingInterval || 15e3;
-		this.config.reconnect = this.config.reconnect ?? [5e3, 15e3, 45e3, 9e4, 18e4];
-		this.config.serverTimeoutInterval = this.config.serverTimeoutInterval || 60e3;
+		this.createStream = options.createStream ?? ((url) => new IMQWebSocketStream(new WebSocket(url)));
+		this.newOpId = options.newOpId ?? counter();
+		this.pingInterval = options.pingInterval ?? DEFAULT_PING_INTERVAL;
+		this.serverTimeoutInterval = options.serverTimeoutInterval ?? DEFAULT_SERVER_TIMEOUT;
+		this.reconnectSchedule = options.reconnect ?? DEFAULT_RECONNECT;
 	}
 
-	get status() {
+	public get status(): IMQConnectionState {
 		return this.state;
 	}
 
-	private set status(state: Status) {
-		this.state = state;
-
-		if (state === Status.WAITING) {
-			this.emit('state', state); // TODO: Add time
-		} else {
-			this.emit('state', state);
-		}
-	}
-
-	public connect() {
-		if (this.status !== Status.WAITING && this.status !== Status.CLOSED) {
-			return; // Already connected/connecting
+	public connect(): void {
+		if (this.state !== IMQConnectionState.CLOSED && this.state !== IMQConnectionState.WAITING) {
+			return; // already connecting/connected
 		}
 
-		this.clearConnectRetryTimer();
-		this.status = Status.CONNECTING;
+		this.clearReconnectTimer();
+		this.setState(IMQConnectionState.CONNECTING);
 
-		if (this.currentStrategyIndex >= this.config.strategies.length) {
-			this.currentStrategyIndex = 0;
-		}
-
-		this.strategy = this.config.strategies[this.currentStrategyIndex++];
-
-		console.log(`Connecting to IMQ via '${this.strategy.url}' as user '${this.config.user}'`);
-
-		this.stream = this.strategy.connect();
-		this.stream.on('open', () => this.onOpen());
-		this.stream.on('close', () => this.onClose());
-		this.stream.on('error', (error: Error) => this.onError(error));
-		this.stream.on('message', (message: MessageEvent) => this.onMessage(message));
+		this.stream = this.createStream(this.options.url);
+		this.stream.on('open', this.handleOpen);
+		this.stream.on('message', this.handleMessage);
+		this.stream.on('error', this.handleError);
+		this.stream.on('close', this.handleClose);
 
 		this.scheduleServerTimeout();
 	}
 
-	public send(a: any, b: any, id: number) {
-		this._send(a, b);
-	}
-
-	public close() {
-		console.log('Disconnecting from IMQ');
-
-		this.reset();
+	public close(): void {
+		this.reconnectIndex = 0;
 		this.disconnect();
-
-		this.status = Status.CLOSED;
+		this.setState(IMQConnectionState.CLOSED);
 	}
 
-	private onOpen() {
-		this.status = Status.AUTHENTICATING;
+	/** Encode and send a client message, (re)scheduling the ping keepalive. */
+	public send<T extends ClientMessage>(
+		record: T,
+		...args: EncodeInputMap[T] extends void ? [] : [EncodeInputMap[T]]
+	): void {
+		this.schedulePing();
+		this.stream?.send(encode(record, ...args));
+	}
+
+	private setState(state: IMQConnectionState, reconnectAt?: number): void {
+		this.state = state;
+		this.emit('state', state, reconnectAt);
+	}
+
+	private handleOpen = (): void => {
+		this.setState(IMQConnectionState.AUTHENTICATING);
+		// Sent directly (no ping schedule) until we're authenticated.
 		this.stream?.send(
-			this.strategy.encode('msg_c2g_connect', {
-				user_id: this.config.userId,
-				cookie: this.config.sessionId,
-				metadata: this.config.metadata,
+			encode('msg_c2g_connect', {
+				userId: this.options.userId,
+				cookie: this.options.sessionId,
+				metadata: this.options.metadata,
+				opId: this.newOpId(),
 			})
 		);
-	}
+	};
 
-	private onMessage(message: MessageEvent) {
+	private handleMessage = (raw: string): void => {
 		this.scheduleServerTimeout();
 		this.lastMessageTime = Date.now();
 
-		const event = this.strategy.decode(message.data);
-
-		if (this.status === Status.AUTHENTICATING) {
-			if (event.type === 'msg_g2c_result') {
-				if (!event.data.error) {
-					console.log('IMQ authenticated');
-
-					this._send('msg_c2g_open_floodgates', {});
-					this.onAuthenticated();
-				} else {
-					console.log(`Failed to authenticate with IMQ: ${event.data.error}`);
-				}
-			} else {
-				console.log(`unexpected message type during IMQ authentication: ${event.type}`);
-
-				this.onDisconnected();
-			}
-		} else if (event.type !== 'msg_g2c_pong') {
-			this.emit('message', event);
+		let message: DecodedMessage;
+		try {
+			message = decode(raw);
+		} catch (error) {
+			console.warn('IMQ: failed to decode frame', error);
+			return;
 		}
+
+		if (this.state === IMQConnectionState.AUTHENTICATING) {
+			this.handleAuthMessage(message);
+			return;
+		}
+
+		// Pongs only exist to reset the server timeout (already done above).
+		if (message.type !== 'msg_g2c_pong') {
+			this.emit('message', message);
+		}
+	};
+
+	private handleAuthMessage(message: DecodedMessage): void {
+		if (message.type !== 'msg_g2c_result') {
+			console.warn(`IMQ: unexpected message during authentication: ${message.type}`);
+			this.onDisconnected();
+			return;
+		}
+
+		if (message.data.status !== 0) {
+			console.warn(`IMQ: authentication failed: ${message.data.errorMessage ?? 'unknown error'}`);
+			this.onDisconnected();
+			return;
+		}
+
+		this.send('msg_c2g_open_floodgates');
+		this.reconnectIndex = 0;
+		this.setState(IMQConnectionState.AUTHENTICATED);
 	}
 
-	private onError(err: any) {
-		console.log('IMQ WebSocket error!');
-	}
+	private handleError = (error: Error): void => {
+		console.warn('IMQ: stream error', error);
+	};
 
-	private onClose() {
+	private handleClose = (): void => {
 		this.onDisconnected();
-	}
+	};
 
-	private onDisconnected() {
+	private onDisconnected(): void {
 		this.disconnect();
-		console.log('Connection to IMQ closed');
 		this.reconnect();
 	}
 
-	private onAuthenticated() {
-		this.status = Status.AUTHENTICATED;
-		this.reset();
-	}
-
-	private reset() {
-		this.currentStrategyIndex = 0;
-		this.connectRetryIntervalIndex = 0;
-	}
-
-	private disconnect() {
-		this.clearConnectRetryTimer();
-		this.clearServerTimer();
+	private disconnect(): void {
+		this.clearReconnectTimer();
 		this.clearPingTimer();
+		this.clearServerTimeout();
 
 		if (this.stream) {
 			this.stream.removeAllListeners();
@@ -168,88 +212,59 @@ export class IMQConnection extends EventEmitter {
 		}
 	}
 
-	private clearConnectRetryTimer() {
-		if (this.connectRetryTimerHandle) {
-			clearTimeout(this.connectRetryTimerHandle);
-			this.connectRetryTimerHandle = undefined;
+	private reconnect(): void {
+		const delay =
+			this.reconnectSchedule[this.reconnectIndex] ?? this.reconnectSchedule[this.reconnectSchedule.length - 1];
+		this.reconnectIndex = Math.min(this.reconnectIndex + 1, this.reconnectSchedule.length - 1);
+
+		this.setState(IMQConnectionState.WAITING, Date.now() + delay);
+
+		this.reconnectTimer = setTimeout(() => {
+			void this.attemptReconnect();
+		}, delay);
+	}
+
+	private async attemptReconnect(): Promise<void> {
+		const override = await this.options.onReconnect?.(Date.now() - this.lastMessageTime);
+		if (override) {
+			this.options = { ...this.options, ...override };
+		}
+		this.connect();
+	}
+
+	private schedulePing(): void {
+		this.clearPingTimer();
+		this.pingTimer = setTimeout(() => this.send('msg_c2g_ping'), this.pingInterval);
+	}
+
+	private clearPingTimer(): void {
+		if (this.pingTimer) {
+			clearTimeout(this.pingTimer);
+			this.pingTimer = undefined;
 		}
 	}
 
-	private reconnect() {
-		if (this.currentStrategyIndex < this.config.strategies.length) {
-			this.status = Status.WAITING;
-			this.connect();
-			return;
-		}
-
-		if (this.connectRetryIntervalIndex === this.config.reconnect.length) {
-			this.connectRetryIntervalIndex = 0;
-		}
-
-		const timeout = this.config.reconnect[this.connectRetryIntervalIndex++];
-
-		console.log(`Reconnecting to IMQ in ${timeout / 1000} seconds`);
-
-		this.status = Status.WAITING;
-
-		this.connectRetryTimerHandle = setTimeout(() => {
-			this.config.onPreReconnectCallback((err: any, config: any) => {
-				if (err) {
-					console.log(`Error in IMQ pre-reconnect callback: ${err}`);
-					this.reconnect();
-				} else {
-					this.config = { ...this.config, ...config };
-					this.currentStrategyIndex = 0;
-					this.connect();
-				}
-			}, Date.now() - this.lastMessageTime);
-		}, timeout);
+	private scheduleServerTimeout(): void {
+		this.clearServerTimeout();
+		this.serverTimeoutTimer = setTimeout(() => this.onServerTimeout(), this.serverTimeoutInterval);
 	}
 
-	private _send<T extends ClientEvent['record']>(
-		record: T,
-		event: Omit<EventNameToType<ClientEvent, 'record', T>, 'record'>
-	) {
-		this.schedulePing();
-
-		this.stream?.send(this.strategy.encode(record, event));
-	}
-
-	private scheduleServerTimeout() {
-		this.clearServerTimer();
-
-		this.receivedMessageTimerHandle = setTimeout(() => {
-			this.onServerTimeout();
-		}, this.config.serverTimeoutInterval);
-	}
-
-	private clearServerTimer() {
-		if (this.receivedMessageTimerHandle) {
-			clearTimeout(this.receivedMessageTimerHandle);
-			this.receivedMessageTimerHandle = undefined;
+	private clearServerTimeout(): void {
+		if (this.serverTimeoutTimer) {
+			clearTimeout(this.serverTimeoutTimer);
+			this.serverTimeoutTimer = undefined;
 		}
 	}
 
-	private onServerTimeout() {
-		console.log(`No message from IMQ server for ${this.config.serverTimeoutInterval / 1000} seconds, disconnecting`);
+	private onServerTimeout(): void {
+		console.warn(`IMQ: no server frame for ${this.serverTimeoutInterval / 1000}s, disconnecting`);
 		this.onDisconnected();
 	}
 
-	private schedulePing() {
-		this.clearPingTimer();
-		this.pingTimerHandle = setTimeout(() => {
-			this.sendPing();
-		}, this.config.pingInterval);
-	}
-
-	private clearPingTimer() {
-		if (this.pingTimerHandle) {
-			clearTimeout(this.pingTimerHandle);
-			this.pingTimerHandle = undefined;
+	private clearReconnectTimer(): void {
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = undefined;
 		}
-	}
-
-	private sendPing() {
-		this._send('msg_c2g_ping', {});
 	}
 }

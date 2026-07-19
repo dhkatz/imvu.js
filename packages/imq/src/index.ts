@@ -1,21 +1,34 @@
-import { IMQManager } from './IMQManager.js';
-import { Client } from '@imvu/client';
+export { IMQManager } from './IMQManager.js';
+export type { IMQManagerOptions, IMQStatus, ResultCallback } from './IMQManager.js';
 
-async function main() {
-	const client = new Client();
+export { IMQConnection, IMQConnectionState } from './IMQConnection.js';
+export type { IMQConnectionOptions } from './IMQConnection.js';
 
-	await client.login(process.env.IMVU_USERNAME!, process.env.IMVU_PASSWORD!);
+export { IMQStream, IMQStreamState } from './IMQStream.js';
+export type { IMQStreamEvents } from './IMQStream.js';
+export { IMQWebSocketStream } from './websocket/IMQWebSocketStream.js';
 
-	const manager = new IMQManager({
-		url: '', // Get from /login/me using client (relations.imq)
-		metadata: {
-			app: 'imvu_next',
-			platform_type: 'big',
-		},
-		userId: '', // User.legacy_cid
-	});
+export { IMQQueue } from './message/IMQQueue.js';
+export type { SubscriberUpdate } from './message/IMQQueue.js';
+export { IMQMessageMount } from './message/IMQMessageMount.js';
+export type { IMQMessage, IMQSubscriberEvent } from './message/IMQMessageMount.js';
+export { IMQStateMount } from './message/IMQStateMount.js';
+export type { IMQStateEvent } from './message/IMQStateMount.js';
 
-	await manager.connect();
-}
-
-main().catch(console.error);
+export { encode, decode, ImqMessageUnknown } from './Events.js';
+export type {
+	ClientMessage,
+	GatewayMessage,
+	DecodedMessage,
+	EncodeInputMap,
+	ConnectInput,
+	SendMessageInput,
+	StateChangeInput,
+	SubscribeInput,
+	QueueSubscription,
+	ResultMessage,
+	QueueMembershipMessage,
+	CreateMountMessage,
+	ReceivedMessage,
+	StateChangedMessage,
+} from './Events.js';

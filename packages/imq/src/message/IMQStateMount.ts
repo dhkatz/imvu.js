@@ -1,65 +1,78 @@
-import { EventEmitter } from 'events';
-import { IMQQueue } from './IMQQueue.js';
+import { EventEmitter } from 'node:events';
 
-export class IMQStateMount extends EventEmitter {
-	private state: any = {};
+import type { StateChangedMessage } from '../Events.js';
+import type { IMQQueue, SubscriberUpdate } from './IMQQueue.js';
+import type { IMQSubscriberEvent } from './IMQMessageMount.js';
+
+export interface IMQStateEvent {
+	userId?: string;
+	queueName: string;
+	mountName: string;
+	delta?: Record<string, string>;
+	state: Record<string, string>;
+}
+
+interface IMQStateMountEvents {
+	state: [event: IMQStateEvent];
+	subscriber: [event: IMQSubscriberEvent];
+}
+
+/** A state mount: tracks a `key -> value` map and emits `state` on every change. */
+export class IMQStateMount extends EventEmitter<IMQStateMountEvents> {
+	private state: Record<string, string> = {};
 
 	public constructor(
-		private queue: IMQQueue,
+		private readonly queue: IMQQueue,
 		public readonly name: string
 	) {
 		super();
 	}
 
-	private applyDelta(initial: any, next: any) {
-		for (const [key, value] of Object.entries(next)) {
-			if (value === '') {
-				delete initial[key];
-			} else {
-				initial[key] = value;
-			}
-		}
-
-		return initial;
+	/** Replace the whole state (initial mount snapshot). */
+	public reset(state: Record<string, string>): void {
+		this.state = { ...state };
+		this.emit('state', { queueName: this.queue.name, mountName: this.name, state: { ...this.state } });
 	}
 
-	public reset(state: any) {
-		this.state = state;
-
-		this.emit('stateChange', {
-			queue: this.queue.name,
-			name: this.name,
-			state: this.state,
+	public handleStateChange(data: StateChangedMessage): void {
+		this.state = this.applyDelta(this.state, data.delta);
+		this.emit('state', {
+			userId: data.userId,
+			queueName: this.queue.name,
+			mountName: this.name,
+			delta: data.delta,
+			state: { ...this.state },
 		});
 	}
 
-	public handleStateChange(m: any) {
-		this.state = this.applyDelta(this.state, m.delta);
-
-		this.emit('stateChange', {
-			user_id: m.user_id,
-			queue: this.queue.name,
-			mount: this.name,
-			delta: m.delta,
-			state: this.state,
+	public handleSubscriberUpdate(update: SubscriberUpdate, subscribers: string[]): void {
+		this.emit('subscriber', {
+			userId: update.userId,
+			action: update.action,
+			queueName: this.queue.name,
+			mountName: this.name,
+			subscribers,
 		});
 	}
 
-	public handleSubscriberUpdate(a: any, b: any) {
-		this.emit('subscriberUpdate', {
-			user_id: a.userId,
-			action: a.action,
-			queue: this.queue.name,
-			mount: this.name,
-			subscribers: b,
-		});
+	public send(delta: Record<string, string>, callback?: (errorMessage?: string) => void): void {
+		this.queue.sendStateChange(this.name, delta, callback);
 	}
 
-	public unsubscribe() {
+	public unsubscribe(): void {
 		this.queue.unsubscribe(this.name);
 	}
 
-	public get subscribers() {
-		return this.queue.subscribers;
+	/** An empty-string value clears the key; everything else is set. */
+	private applyDelta(state: Record<string, string>, delta: Record<string, string>): Record<string, string> {
+		const next = { ...state };
+		for (const [key, value] of Object.entries(delta)) {
+			if (value === '') {
+				delete next[key];
+			} else {
+				next[key] = value;
+			}
+		}
+		return next;
 	}
 }

@@ -1,42 +1,63 @@
-import { EventEmitter } from 'events';
-import { IMQQueue } from './IMQQueue.js';
+import { EventEmitter } from 'node:events';
 
-export class IMQMessageMount extends EventEmitter {
+import type { ReceivedMessage } from '../Events.js';
+import type { IMQQueue, SubscriberUpdate } from './IMQQueue.js';
+
+export interface IMQMessage {
+	userId: string;
+	queueName: string;
+	mountName: string;
+	message: unknown;
+	opId?: number;
+}
+
+export interface IMQSubscriberEvent {
+	userId: string;
+	action: 'joined' | 'left';
+	queueName: string;
+	mountName: string;
+	subscribers: string[];
+}
+
+interface IMQMessageMountEvents {
+	message: [message: IMQMessage];
+	subscriber: [event: IMQSubscriberEvent];
+}
+
+/** A message mount: emits `message` for each incoming message on the mount. */
+export class IMQMessageMount extends EventEmitter<IMQMessageMountEvents> {
 	public constructor(
-		private queue: IMQQueue,
-		private name: string
+		private readonly queue: IMQQueue,
+		public readonly name: string
 	) {
 		super();
 	}
 
-	public handleMessage(m: any) {
+	public handleMessage(data: ReceivedMessage): void {
 		this.emit('message', {
-			user_id: m.user_id,
-			queue: this.queue.name,
-			mount: this.name,
-			op_id: m.op_id,
+			userId: data.userId,
+			queueName: this.queue.name,
+			mountName: this.name,
+			message: data.message,
+			opId: data.opId,
 		});
 	}
 
-	public handleSubscriberUpdate(a: any, b: any) {
-		this.emit('subscriberUpdate', {
-			user_id: a.userId,
-			action: a.action,
-			queue: this.queue.name,
-			mount: this.name,
-			subscribers: b,
+	public handleSubscriberUpdate(update: SubscriberUpdate, subscribers: string[]): void {
+		this.emit('subscriber', {
+			userId: update.userId,
+			action: update.action,
+			queueName: this.queue.name,
+			mountName: this.name,
+			subscribers,
 		});
 	}
 
-	public sendMessage(a: any, b: any) {
-		this.queue.sendMessage(this.name, a, b);
+	public send(message: unknown, callback?: (errorMessage?: string) => void): void {
+		this.queue.sendMessage(this.name, message, callback);
 	}
 
-	public unsubscribe() {
+	public unsubscribe(): void {
 		this.queue.unsubscribe(this.name);
-	}
-
-	public get subscribers() {
-		return this.queue.subscribers;
 	}
 }

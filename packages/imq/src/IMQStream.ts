@@ -1,4 +1,4 @@
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'node:events';
 
 export enum IMQStreamState {
 	CONNECTING = 0,
@@ -7,18 +7,23 @@ export enum IMQStreamState {
 	CLOSED = 3,
 }
 
-export class IMQStream extends EventEmitter {
+/** Events an {@link IMQStream} emits to its {@link IMQConnection}. */
+export interface IMQStreamEvents {
+	open: [];
+	message: [data: string];
+	error: [error: Error];
+	close: [];
+}
+
+/**
+ * A bidirectional transport for IMQ frames. Concrete streams (e.g. WebSocket)
+ * extend this and translate their native events into {@link IMQStreamEvents}.
+ * Kept abstract so the connection can be driven by any transport — real or a
+ * test double.
+ */
+export abstract class IMQStream extends EventEmitter<IMQStreamEvents> {
 	protected state = IMQStreamState.CONNECTING;
 
-	public constructor(public config: Record<string, unknown>) {
-		super();
-	}
-
-	public send(data: any) {
-		throw new Error('IMQStream send method must be overridden');
-	}
-
-	public close() {
-		throw new Error('IMQStream close method must be overridden');
-	}
+	public abstract send(data: string): void;
+	public abstract close(): void;
 }

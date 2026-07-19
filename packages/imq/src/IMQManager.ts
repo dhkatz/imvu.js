@@ -1,49 +1,69 @@
-import { IMQConnection, Status } from './IMQConnection.js';
+import { IMQConnection, IMQConnectionState, type IMQConnectionOptions } from './IMQConnection.js';
+import type { CreateMountMessage, DecodedMessage, ResultMessage } from './Events.js';
 import { IMQQueue } from './message/IMQQueue.js';
+import type { IMQMessageMount } from './message/IMQMessageMount.js';
+import type { IMQStateMount } from './message/IMQStateMount.js';
 
-const STATUS = {
-	[Status.CONNECTING]: 'connecting',
-	[Status.AUTHENTICATED]: 'connected',
-	[Status.CLOSED]: 'disconnected',
-	[Status.WAITING]: 'disconnected',
-	[Status.AUTHENTICATING]: 'authenticating',
-} as const;
+export type IMQManagerOptions = IMQConnectionOptions;
 
+export type IMQStatus = 'disconnected' | 'connecting' | 'authenticating' | 'connected' | 'unknown';
+
+/** Fired for the result of a message/unsubscribe carrying an op_id. */
+export type ResultCallback = (errorMessage?: string, result?: ResultMessage) => void;
+
+const STATUS: Record<IMQConnectionState, IMQStatus> = {
+	[IMQConnectionState.CLOSED]: 'disconnected',
+	[IMQConnectionState.CONNECTING]: 'connecting',
+	[IMQConnectionState.AUTHENTICATING]: 'authenticating',
+	[IMQConnectionState.AUTHENTICATED]: 'connected',
+	[IMQConnectionState.WAITING]: 'disconnected',
+};
+
+const AUTH_ERROR = 'Cannot send data: Not authenticated!';
+
+/**
+ * Top-level IMQ client: owns the connection, tracks subscribed queues, and
+ * routes gateway messages to the right queue/mount. Subscribe to a mount and
+ * listen for its events:
+ *
+ * ```ts
+ * const manager = new IMQManager({ url, userId, sessionId });
+ * await manager.connect();
+ * manager.subscribeMessage('queue', 'mount').on('message', (m) => console.log(m));
+ * ```
+ */
 export class IMQManager {
-	private connection: IMQConnection;
-	private messageOpId = 0;
+	public readonly queues = new Map<string, IMQQueue>();
 
-	private queuedSubscriptions: Array<() => void> = [];
+	private readonly connection: IMQConnection;
+	private readonly newOpId: () => number;
+	private readonly opIdCallbacks = new Map<number, ResultCallback>();
 
-	messageCallbacks: any[] = [];
+	private status: IMQStatus = 'disconnected';
+	private connectAt: number | undefined;
 
-	private state: { status: (typeof STATUS)[Status]; connectAt?: number } = {
-		status: 'disconnected',
-		connectAt: Date.now(),
-	};
+	public constructor(options: IMQManagerOptions) {
+		// One shared op_id counter across the connect frame and manager sends.
+		this.newOpId = options.newOpId ?? counter();
+		this.connection = new IMQConnection({ ...options, newOpId: this.newOpId });
 
-	public queues: Map<string, IMQQueue> = new Map();
-
-	public constructor(private config: any) {
-		this.connection = new IMQConnection(config);
-
-		this.connection.on('state', (state: any) => {
-			this.onConnectionState(state);
-		});
-
-		this.connection.on('message', (message: any) => {
-			this.onMessage(message);
-		});
+		this.connection.on('state', (state, reconnectAt) => this.onConnectionState(state, reconnectAt));
+		this.connection.on('message', (message) => this.onMessage(message));
 	}
 
-	public async connect(callback?: any): Promise<void> {
-		return new Promise((resolve, reject) => {
-			if (this.connection.status === Status.AUTHENTICATED) {
-				return resolve(callback?.());
-			}
+	public get state(): { status: IMQStatus; connectAt?: number } {
+		return { status: this.status, connectAt: this.connectAt };
+	}
 
-			const onState = (status: Status) => {
-				if (status === Status.AUTHENTICATED) {
+	/** Open the connection (if needed) and resolve once authenticated. */
+	public connect(): Promise<void> {
+		if (this.connection.status === IMQConnectionState.AUTHENTICATED) {
+			return Promise.resolve();
+		}
+
+		return new Promise((resolve) => {
+			const onState = (state: IMQConnectionState): void => {
+				if (state === IMQConnectionState.AUTHENTICATED) {
 					this.connection.off('state', onState);
 					resolve();
 				}
@@ -51,235 +71,169 @@ export class IMQManager {
 
 			this.connection.on('state', onState);
 
-			if (this.connection.status === Status.WAITING || this.connection.status === Status.CLOSED) {
+			if (
+				this.connection.status === IMQConnectionState.CLOSED ||
+				this.connection.status === IMQConnectionState.WAITING
+			) {
 				this.connection.connect();
 			}
 		});
 	}
 
-	public subscribeState(a: any, name: string, c: any) {
-		const queueState = () => {
-			this.subscribeQueue(
-				a,
-				(f: any) => {
-					return f.getStateMount(name);
-				},
-				c
-			);
-		};
-
-		if (this.connection.status !== Status.AUTHENTICATED) {
-			this.queuedSubscriptions.push(queueState);
-		} else {
-			queueState();
-		}
-	}
-
-	public subscribeMessage(a: any, b: any, c: any) {
-		const queueMessage = () => {
-			this.subscribeQueue(
-				a,
-				(f: any) => {
-					return f.getMessageMount(b);
-				},
-				c
-			);
-		};
-
-		if (this.connection.status !== Status.AUTHENTICATED) {
-			this.queuedSubscriptions.push(queueMessage);
-		} else {
-			queueMessage();
-		}
-	}
-
-	public close() {
+	public close(): void {
 		this.connection.close();
-
-		for (const [, queue] of this.queues) {
-			for (const [, mount] of queue.messageMounts) {
-				mount.removeAllListeners();
-			}
-
-			queue.messageMounts.clear();
-
-			for (const [, mount] of queue.stateMounts) {
-				mount.removeAllListeners();
-			}
-
-			queue.stateMounts.clear();
+		for (const queue of this.queues.values()) {
+			queue.dispose();
 		}
-
 		this.queues.clear();
+		this.opIdCallbacks.clear();
 	}
 
-	public sendMessage(queueName: string, mountName: string, message: any, callback?: any) {
-		const data = {
-			queueName,
-			mountName,
-			message,
-			op_id: this.messageOpId++,
-		};
-
-		this.send('msg_c2g_send_message', data, callback);
+	/** Subscribe to a message mount; returns the mount to listen on. */
+	public subscribeMessage(queueName: string, mountName: string): IMQMessageMount {
+		return this.getOrSubscribeQueue(queueName).getMessageMount(mountName);
 	}
 
-	public sendStateChange(queueName: string, mountName: string, delta: any, callback?: any) {
-		this.send(
-			'msg_c2g_state_change',
-			{
-				queueName,
-				mountName,
-				delta,
-			},
-			callback
-		);
+	/** Subscribe to a state mount; returns the mount to listen on. */
+	public subscribeState(queueName: string, mountName: string): IMQStateMount {
+		return this.getOrSubscribeQueue(queueName).getStateMount(mountName);
 	}
 
-	private onConnectionState(status: Status, connectAt?: number) {
-		this.state = {
-			status: STATUS[status] ?? 'unknown',
-			connectAt: connectAt ?? this.state.connectAt,
-		};
+	public sendMessage(queueName: string, mountName: string, message: unknown, callback?: ResultCallback): void {
+		if (this.connection.status !== IMQConnectionState.AUTHENTICATED) {
+			callback?.(AUTH_ERROR);
+			return;
+		}
 
-		if (status === Status.AUTHENTICATED) {
-			this.queues.forEach((queue) => {
-				this.send('msg_c2g_subscribe', [queue.name]);
-			});
-
-			this.queuedSubscriptions.forEach((subscriber) => {
-				subscriber();
-			});
-
-			this.queuedSubscriptions = [];
+		const opId = this.newOpId();
+		this.connection.send('msg_c2g_send_message', { queueName, mountName, message, opId });
+		if (callback) {
+			this.opIdCallbacks.set(opId, callback);
 		}
 	}
 
-	private subscribeQueue(name: string, callback: any, c: any) {
-		if (!this.queues.has(name)) {
-			this.send('msg_c2g_subscribe', [name]);
+	/** State changes are fire-and-forget (no op_id result); `callback` only reports the not-authenticated case. */
+	public sendStateChange(
+		queueName: string,
+		mountName: string,
+		delta: Record<string, string>,
+		callback?: ResultCallback
+	): void {
+		if (this.connection.status !== IMQConnectionState.AUTHENTICATED) {
+			callback?.(AUTH_ERROR);
+			return;
 		}
 
-		c(null, callback(this.getOrCreateQueue(name)));
+		this.connection.send('msg_c2g_state_change', { queueName, mountName, delta });
 	}
 
-	public unsubscribeQueue(name: string, callback?: (err: string) => void) {
-		if (this.queues.has(name)) {
-			this.queues.delete(name);
+	public unsubscribeQueue(queueName: string, callback?: ResultCallback): void {
+		this.queues.delete(queueName);
+
+		if (this.connection.status !== IMQConnectionState.AUTHENTICATED) {
+			callback?.(AUTH_ERROR);
+			return;
 		}
 
-		this._unsubscribeQueue(name, (err: string) => {
-			if (err && err !== 'Cannot send data: Not authenticated!') {
-				console.error('Error unsubscribing from queue', name, ':', err);
+		const opId = this.newOpId();
+		this.connection.send('msg_c2g_unsubscribe', { subscriptions: [{ name: queueName, opId }] });
+		if (callback) {
+			this.opIdCallbacks.set(opId, callback);
+		}
+	}
+
+	private getOrSubscribeQueue(queueName: string): IMQQueue {
+		const existing = this.queues.get(queueName);
+		if (existing) {
+			return existing;
+		}
+
+		const queue = new IMQQueue(this, queueName);
+		this.queues.set(queueName, queue);
+
+		if (this.connection.status === IMQConnectionState.AUTHENTICATED) {
+			this.sendSubscribe(queueName);
+		}
+		// Otherwise it's (re)subscribed on the next AUTHENTICATED transition.
+
+		return queue;
+	}
+
+	private sendSubscribe(queueName: string): void {
+		this.connection.send('msg_c2g_subscribe', { subscriptions: [{ name: queueName, opId: this.newOpId() }] });
+	}
+
+	private onConnectionState(state: IMQConnectionState, reconnectAt?: number): void {
+		this.status = STATUS[state] ?? 'unknown';
+		if (reconnectAt !== undefined) {
+			this.connectAt = reconnectAt;
+		}
+
+		if (state === IMQConnectionState.AUTHENTICATED) {
+			// (Re)subscribe every queue we care about — covers first connect and reconnects.
+			for (const queueName of this.queues.keys()) {
+				this.sendSubscribe(queueName);
 			}
-
-			if (callback) {
-				callback(err);
-			}
-		});
+		}
 	}
 
-	private _unsubscribeQueue(name: string, callback: (err: string) => void) {
-		this.send('msg_c2g_unsubscribe', [name], callback);
-	}
-
-	private onMessage(message: any) {
-		const { type, data } = message;
-
-		switch (type) {
+	private onMessage(message: DecodedMessage): void {
+		switch (message.type) {
 			case 'msg_g2c_result':
-				this.receiveOpId(data.opId, data.error);
+				this.onResult(message.data);
+				break;
+			case 'msg_g2c_joined_queue':
+				this.getOrCreateQueue(message.data.queueName).dispatchSubscriberUpdate({
+					userId: message.data.userId,
+					action: 'joined',
+				});
 				break;
 			case 'msg_g2c_left_queue':
-			case 'msg_g2c_joined_queue':
-				this.receiveQueue(data.queueName, type.split('_')[2], data.userId);
+				this.queues.get(message.data.queueName)?.dispatchSubscriberUpdate({
+					userId: message.data.userId,
+					action: 'left',
+				});
 				break;
 			case 'msg_g2c_create_mount':
-				this.receiveMount(data);
+				this.onCreateMount(message.data);
 				break;
 			case 'msg_g2c_send_message':
-				this.receiveMessage(data);
+				this.queues.get(message.data.queueName)?.dispatchMessage(message.data.mountName, message.data);
 				break;
 			case 'msg_g2c_state_change':
-				this.receiveStateChange(data);
+				this.queues.get(message.data.queueName)?.dispatchState(message.data.mountName, message.data);
 				break;
-			default:
-				this.onUnhandledMessage(data);
 		}
 	}
 
-	private handleCallback(a: Promise<any> | ((a: any) => void), error?: string) {
-		if (typeof a === 'function') {
-			a(error);
+	private onResult(data: ResultMessage): void {
+		const callback = this.opIdCallbacks.get(data.opId);
+		if (callback) {
+			this.opIdCallbacks.delete(data.opId);
+			callback(data.errorMessage, data);
+		}
+	}
+
+	private onCreateMount(data: CreateMountMessage): void {
+		const queue = this.getOrCreateQueue(data.queueName);
+		if (data.type === 'message') {
+			queue.initMessageMount(data.mountName);
 		} else {
-			return a;
+			queue.initStateMount(data.mountName, data.state ?? {});
 		}
 	}
 
-	private send(type: string, b: any, c?: any) {
-		if (this.connection.status === Status.AUTHENTICATED) {
-			this.connection.send(type, b, b.op_id);
-			if (c && b.op_id) {
-				this.messageCallbacks.push({
-					op_id: b.op_id,
-					function: c,
-				});
-			}
-		} else if (c) {
-			void this.handleCallback(c);
+	private getOrCreateQueue(queueName: string): IMQQueue {
+		let queue = this.queues.get(queueName);
+		if (!queue) {
+			queue = new IMQQueue(this, queueName);
+			this.queues.set(queueName, queue);
 		}
-	}
-
-	private getOrCreateQueue(name: string): IMQQueue {
-		if (!this.queues.has(name)) {
-			this.queues.set(name, new IMQQueue(this, name));
-		}
-
-		return this.queues.get(name)!;
-	}
-
-	private receiveOpId(opId: number, error?: string) {
-		let c = null;
-		if (opId) {
-			c = this.messageCallbacks.find((c) => c.opId === opId);
-		}
-
-		void this.handleCallback(c.function, error);
-	}
-
-	private receiveQueue(queue: string, action: 'joined' | 'left', userId: string) {
-		this.getOrCreateQueue(queue).dispatchSubscriberUpdate({
-			action,
-			userId,
-		});
-	}
-
-	private receiveMount(message: any) {
-		switch (message.type) {
-			case 'message':
-				this.getOrCreateQueue(message.queueName).initMessageMount(message.mountName);
-				break;
-			case 'state':
-				this.getOrCreateQueue(message.queueName).initStateMount(message.mountName, message.state);
-				break;
-			default:
-				console.warn('Unhandled mount type', message);
-		}
-	}
-
-	private receiveMessage(message: any) {
-		if (this.queues.has(message.queueName)) {
-			this.queues.get(message.queueName)?.dispatchMessage(message.mountName, { ...message });
-		}
-	}
-
-	private receiveStateChange(message: any) {
-		if (this.queues.has(message.queueName)) {
-			this.queues.get(message.queueName)?.dispatchState(message.mountName, { ...message });
-		}
-	}
-
-	private onUnhandledMessage(message: any) {
-		console.warn('Unhandled IMQ message', message);
+		return queue;
 	}
 }
+
+const counter = (): (() => number) => {
+	let next = 0;
+	return () => next++;
+};
