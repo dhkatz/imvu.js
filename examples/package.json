@@ -1,0 +1,6 @@
+{
+  "name": "@imvu/examples",
+  "private": true,
+  "type": "module",
+  "description": "Runnable usage examples for the @imvu/* packages."
+}
