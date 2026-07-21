@@ -33,14 +33,17 @@ export class IMQMessageMount extends EventEmitter<IMQMessageMountEvents> {
 		super();
 	}
 
-	public handleMessage(data: ReceivedMessage): void {
-		this.emit('message', {
+	/** Emit (and return, so the queue can re-emit at queue level) the message event. */
+	public handleMessage(data: ReceivedMessage): IMQMessage {
+		const event: IMQMessage = {
 			userId: data.userId,
 			queueName: this.queue.name,
 			mountName: this.name,
 			message: data.message,
 			opId: data.opId,
-		});
+		};
+		this.emit('message', event);
+		return event;
 	}
 
 	public handleSubscriberUpdate(update: SubscriberUpdate, subscribers: string[]): void {

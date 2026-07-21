@@ -28,21 +28,30 @@ export class IMQStateMount extends EventEmitter<IMQStateMountEvents> {
 		super();
 	}
 
-	/** Replace the whole state (initial mount snapshot). */
-	public reset(state: Record<string, string>): void {
+	/** Replace the whole state (initial mount snapshot); returns the emitted event. */
+	public reset(state: Record<string, string>): IMQStateEvent {
 		this.state = { ...state };
-		this.emit('state', { queueName: this.queue.name, mountName: this.name, state: { ...this.state } });
+		const event: IMQStateEvent = {
+			queueName: this.queue.name,
+			mountName: this.name,
+			state: { ...this.state },
+		};
+		this.emit('state', event);
+		return event;
 	}
 
-	public handleStateChange(data: StateChangedMessage): void {
+	/** Apply a delta and emit (and return) the resulting state event. */
+	public handleStateChange(data: StateChangedMessage): IMQStateEvent {
 		this.state = this.applyDelta(this.state, data.delta);
-		this.emit('state', {
+		const event: IMQStateEvent = {
 			userId: data.userId,
 			queueName: this.queue.name,
 			mountName: this.name,
 			delta: data.delta,
 			state: { ...this.state },
-		});
+		};
+		this.emit('state', event);
+		return event;
 	}
 
 	public handleSubscriberUpdate(update: SubscriberUpdate, subscribers: string[]): void {

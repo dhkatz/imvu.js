@@ -1,6 +1,9 @@
-import { IMQManager, IMQStream, ImqMessageUnknown, decode, encode } from '../src';
+import { IMQManager, IMQStream, ImqMessageUnknown, decode, encode, type IMQManagerOptions } from '../src';
 
 const b64 = (value: string) => Buffer.from(value, 'utf8').toString('base64');
+
+/** Silences the connection's warn-level diagnostics in tests that expect disconnects. */
+const silentLogger = { warn: () => {} };
 
 /** A test double for the transport: records what the connection sends, and lets the test push frames in. */
 class FakeStream extends IMQStream {
@@ -29,7 +32,32 @@ class FakeStream extends IMQStream {
 	public find(record: string): any {
 		return this.records().find((frame) => frame.record === record);
 	}
+
+	public count(record: string): number {
+		return this.records().filter((frame) => frame.record === record).length;
+	}
 }
+
+const newManager = (overrides: Partial<IMQManagerOptions> = {}) => {
+	const stream = new FakeStream();
+	const manager = new IMQManager({
+		url: 'wss://test',
+		userId: 'user-1',
+		sessionId: 'sauce',
+		metadata: { app: 'imvu_next' },
+		...overrides,
+		createStream: () => stream, // one reused stream, so reconnect tests can drive it again
+	});
+	return { manager, stream };
+};
+
+/** Drive the connect → authenticate handshake to completion. */
+const authenticate = async (manager: IMQManager, stream: FakeStream) => {
+	const connected = manager.connect();
+	stream.open();
+	stream.receive({ record: 'msg_g2c_result', op_id: 0, status: 0 });
+	await connected;
+};
 
 describe('IMQ codec', () => {
 	it('encodes a connect frame (base64 cookie + metadata records)', () => {
@@ -112,26 +140,6 @@ describe('IMQ codec', () => {
 });
 
 describe('IMQManager handshake (mock stream)', () => {
-	const newManager = () => {
-		const stream = new FakeStream();
-		const manager = new IMQManager({
-			url: 'wss://test',
-			userId: 'user-1',
-			sessionId: 'sauce',
-			metadata: { app: 'imvu_next' },
-			createStream: () => stream,
-		});
-		return { manager, stream };
-	};
-
-	/** Drive the connect → authenticate handshake to completion. */
-	const authenticate = async (manager: IMQManager, stream: FakeStream) => {
-		const connected = manager.connect();
-		stream.open();
-		stream.receive({ record: 'msg_g2c_result', op_id: 0, status: 0 });
-		await connected;
-	};
-
 	it('connects, authenticates, and opens the floodgates', async () => {
 		const { manager, stream } = newManager();
 		await authenticate(manager, stream);
@@ -173,6 +181,34 @@ describe('IMQManager handshake (mock stream)', () => {
 		manager.close();
 	});
 
+	it('discovers mounts via queue-level events', async () => {
+		const { manager, stream } = newManager();
+		await authenticate(manager, stream);
+
+		const queue = manager.subscribe('room-1');
+		const mounts: unknown[] = [];
+		const messages: unknown[] = [];
+		queue.on('mount', (m) => mounts.push(m));
+		queue.on('message', (m) => messages.push(m));
+
+		stream.receive({ record: 'msg_g2c_create_mount', type: 1, queue: 'room-1', mount: 'chat' });
+		stream.receive({
+			record: 'msg_g2c_send_message',
+			queue: 'room-1',
+			mount: 'chat',
+			user_id: b64('user-2'),
+			message: b64(JSON.stringify({ text: 'hi' })),
+			op_id: 8,
+		});
+
+		expect(mounts).toEqual([{ queueName: 'room-1', mountName: 'chat', mountType: 'message' }]);
+		expect(messages).toEqual([
+			{ userId: 'user-2', queueName: 'room-1', mountName: 'chat', message: { text: 'hi' }, opId: 8 },
+		]);
+
+		manager.close();
+	});
+
 	it('fires the op_id callback when a result arrives', async () => {
 		const { manager, stream } = newManager();
 		await authenticate(manager, stream);
@@ -196,5 +232,90 @@ describe('IMQManager handshake (mock stream)', () => {
 		manager.sendMessage('room-1', 'chat', { text: 'nope' }, callback);
 
 		expect(callback).toHaveBeenCalledWith('Cannot send data: Not authenticated!');
+	});
+});
+
+describe('IMQManager lifecycle', () => {
+	it('emits status transitions', async () => {
+		const { manager, stream } = newManager();
+		const statuses: string[] = [];
+		manager.on('status', (s) => statuses.push(s));
+
+		await authenticate(manager, stream);
+
+		expect(statuses).toEqual(['connecting', 'authenticating', 'connected']);
+		manager.close();
+		expect(statuses.at(-1)).toBe('disconnected');
+	});
+
+	it('emits error on authentication failure', () => {
+		const { manager, stream } = newManager({ logger: silentLogger });
+		const errors: Error[] = [];
+		manager.on('error', (e) => errors.push(e));
+
+		void manager.connect();
+		stream.open();
+		stream.receive({ record: 'msg_g2c_result', op_id: 0, status: 1, error_message: 'bad session' });
+
+		expect(errors).toHaveLength(1);
+		expect(errors[0].message).toMatch(/authentication failed: bad session/);
+
+		manager.close();
+	});
+
+	it('rejects connect() after the timeout when auth never lands', async () => {
+		vi.useFakeTimers();
+		try {
+			const { manager, stream } = newManager({ logger: silentLogger });
+			const promise = manager.connect({ timeout: 1000 });
+			stream.open(); // connects + sends the connect frame, but no auth result ever arrives
+
+			// Attach the rejection handler before advancing so the rejection is never briefly unhandled.
+			const assertion = expect(promise).rejects.toThrow(/timed out after 1000ms/);
+			await vi.advanceTimersByTimeAsync(1000);
+			await assertion;
+
+			manager.close();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('reconnects after a server timeout and re-subscribes', async () => {
+		vi.useFakeTimers();
+		try {
+			const { manager, stream } = newManager({
+				logger: silentLogger,
+				serverTimeoutInterval: 1000,
+				reconnect: [500],
+			});
+
+			const connected = manager.connect();
+			stream.open();
+			stream.receive({ record: 'msg_g2c_result', op_id: 0, status: 0 });
+			await connected;
+
+			manager.subscribeMessage('room-1', 'chat');
+			const subscribesBefore = stream.count('msg_c2g_subscribe');
+			expect(manager.status).toBe('connected');
+
+			// No server frames arrive -> server timeout fires -> disconnect + backoff.
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(manager.status).toBe('disconnected');
+
+			// Backoff elapses -> reconnect attempt; drive the fresh handshake.
+			await vi.advanceTimersByTimeAsync(500);
+			stream.open();
+			stream.receive({ record: 'msg_g2c_result', op_id: 1, status: 0 });
+			await Promise.resolve();
+
+			expect(manager.status).toBe('connected');
+			// The queue was re-subscribed on the new session.
+			expect(stream.count('msg_c2g_subscribe')).toBeGreaterThan(subscribesBefore);
+
+			manager.close();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 });

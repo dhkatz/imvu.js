@@ -1,29 +1,65 @@
+import { EventEmitter } from 'node:events';
+
 import type { ReceivedMessage, StateChangedMessage } from '../Events.js';
 import type { IMQManager } from '../IMQManager.js';
-import { IMQMessageMount } from './IMQMessageMount.js';
-import { IMQStateMount } from './IMQStateMount.js';
+import { IMQMessageMount, type IMQMessage } from './IMQMessageMount.js';
+import { IMQStateMount, type IMQStateEvent } from './IMQStateMount.js';
 
 export interface SubscriberUpdate {
 	userId: string;
 	action: 'joined' | 'left';
 }
 
+/** A mount appearing on the queue (from a `create_mount` frame). */
+export interface IMQMountEvent {
+	queueName: string;
+	mountName: string;
+	mountType: 'message' | 'state';
+	/** Initial state, for state mounts. */
+	state?: Record<string, string>;
+}
+
+/** Queue-wide subscriber change (not tied to a single mount). */
+export interface IMQQueueSubscriberEvent {
+	queueName: string;
+	userId: string;
+	action: 'joined' | 'left';
+	subscribers: string[];
+}
+
+/** Queue-level events — subscribe here to discover mounts as they're created. */
+interface IMQQueueEvents {
+	mount: [event: IMQMountEvent];
+	message: [message: IMQMessage];
+	state: [event: IMQStateEvent];
+	subscriber: [event: IMQQueueSubscriberEvent];
+}
+
 const AUTH_ERROR = 'Cannot send data: Not authenticated!';
 
 /**
  * A subscribed queue. Owns its message/state mounts and the current subscriber
- * set, and fans incoming gateway messages out to the relevant mount.
+ * set, fans incoming gateway messages out to the relevant mount, and re-emits
+ * everything at the queue level (so a consumer can discover mounts without
+ * naming them up front).
  */
-export class IMQQueue {
+export class IMQQueue extends EventEmitter<IMQQueueEvents> {
 	public readonly messageMounts = new Map<string, IMQMessageMount>();
 	public readonly stateMounts = new Map<string, IMQStateMount>();
 
-	private readonly subscribers = new Set<string>();
+	private readonly currentSubscribers = new Set<string>();
 
 	public constructor(
 		private readonly manager: IMQManager,
 		public readonly name: string
-	) {}
+	) {
+		super();
+	}
+
+	/** Current subscriber user ids. */
+	public get subscribers(): string[] {
+		return [...this.currentSubscribers];
+	}
 
 	public getMessageMount(name: string): IMQMessageMount {
 		let mount = this.messageMounts.get(name);
@@ -45,20 +81,24 @@ export class IMQQueue {
 
 	public initMessageMount(name: string): void {
 		this.getMessageMount(name);
+		this.emit('mount', { queueName: this.name, mountName: name, mountType: 'message' });
 	}
 
 	public initStateMount(name: string, state: Record<string, string>): void {
-		this.getStateMount(name).reset(state);
+		const event = this.getStateMount(name).reset(state);
+		this.emit('mount', { queueName: this.name, mountName: name, mountType: 'state', state: event.state });
 	}
 
 	public dispatchSubscriberUpdate(update: SubscriberUpdate): void {
 		if (update.action === 'joined') {
-			this.subscribers.add(update.userId);
+			this.currentSubscribers.add(update.userId);
 		} else {
-			this.subscribers.delete(update.userId);
+			this.currentSubscribers.delete(update.userId);
 		}
 
-		const subscribers = [...this.subscribers];
+		const subscribers = [...this.currentSubscribers];
+		this.emit('subscriber', { queueName: this.name, userId: update.userId, action: update.action, subscribers });
+
 		for (const mount of this.messageMounts.values()) {
 			mount.handleSubscriberUpdate(update, subscribers);
 		}
@@ -68,11 +108,11 @@ export class IMQQueue {
 	}
 
 	public dispatchMessage(mountName: string, data: ReceivedMessage): void {
-		this.getMessageMount(mountName).handleMessage(data);
+		this.emit('message', this.getMessageMount(mountName).handleMessage(data));
 	}
 
 	public dispatchState(mountName: string, data: StateChangedMessage): void {
-		this.getStateMount(mountName).handleStateChange(data);
+		this.emit('state', this.getStateMount(mountName).handleStateChange(data));
 	}
 
 	public sendMessage(mountName: string, message: unknown, callback?: (errorMessage?: string) => void): void {
@@ -104,7 +144,7 @@ export class IMQQueue {
 		}
 	}
 
-	/** Tear down all mounts (used on manager close). */
+	/** Tear down all mounts + listeners (used on manager close). */
 	public dispose(): void {
 		for (const mount of this.messageMounts.values()) {
 			mount.removeAllListeners();
@@ -114,6 +154,7 @@ export class IMQQueue {
 		}
 		this.messageMounts.clear();
 		this.stateMounts.clear();
-		this.subscribers.clear();
+		this.currentSubscribers.clear();
+		this.removeAllListeners();
 	}
 }

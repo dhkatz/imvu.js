@@ -2,7 +2,7 @@
  * @imvu/rest + @imvu/imq — authenticate with the REST API, then open a live IMQ
  * connection using the details from /login/me.
  *
- *   node --env-file=.env examples/imq-listen.ts [queueName] [mountName]
+ *   node --env-file=.env examples/imq-listen.ts [queueName]
  *
  * Pass a queue name to subscribe and log its events; with no arguments it just
  * connects and idles. See examples/README.md.
@@ -34,19 +34,25 @@ const manager = new IMQManager({
   metadata: { app: 'imvu_next', platform_type: 'big' },
 });
 
-// 3. Connect — resolves once authenticated with the gateway.
-await manager.connect();
-console.log(`IMQ ${manager.state.status} at ${login.relations.imq}`);
+// Lifecycle is observable — no polling needed.
+manager.on('status', (status) => console.log(`IMQ status: ${status}`));
+manager.on('error', (error) => console.error('IMQ error:', error.message));
 
-// 4. Optionally subscribe to a queue and log everything it emits.
-const [queueName, mountName = 'message'] = process.argv.slice(2);
+// 3. Connect — resolves once authenticated (reject after 15s rather than hang forever).
+await manager.connect({ timeout: 15_000 });
+
+// 4. Optionally subscribe to a queue and log everything it emits. Queue-level
+//    subscription discovers mounts as they appear — no need to know their names.
+const queueName = process.argv[2];
 if (queueName) {
-  const mount = manager.subscribeMessage(queueName, mountName);
-  mount.on('message', (message) => console.log('message:', message));
-  mount.on('subscriber', (event) => console.log('subscriber:', event));
-  console.log(`Subscribed to ${queueName}/${mountName}. Waiting for events…`);
+  const queue = manager.subscribe(queueName);
+  queue.on('mount', (mount) => console.log('mount:', mount));
+  queue.on('message', (message) => console.log('message:', message));
+  queue.on('state', (state) => console.log('state:', state));
+  queue.on('subscriber', (event) => console.log('subscriber:', event));
+  console.log(`Subscribed to ${queueName}. Waiting for events…`);
 } else {
-  console.log('Tip: pass a queue name to subscribe, e.g. `… imq-listen.ts <queue> [mount]`.');
+  console.log('Tip: pass a queue name to subscribe, e.g. `… imq-listen.ts <queue>`.');
 }
 
 console.log('Press Ctrl+C to exit.');

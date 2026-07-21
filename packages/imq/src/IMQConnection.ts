@@ -13,8 +13,13 @@ export enum IMQConnectionState {
 	WAITING,
 }
 
+/** Minimal logging sink; `console` satisfies it. Inject to redirect or silence library diagnostics. */
+export interface IMQLogger {
+	warn(message: string, ...args: unknown[]): void;
+}
+
 export interface IMQConnectionOptions {
-	/** IMQ WebSocket URL, e.g. `wss://imq.imvu.com:444/streaming/imvu_pre`. */
+	/** IMQ WebSocket URL, e.g. `wss://wss-imq.imvu.com/streaming/imvu_pre`. */
 	url: string;
 	/** The user's legacy cid. */
 	userId: string;
@@ -40,12 +45,18 @@ export interface IMQConnectionOptions {
 	 * frame. Return partial options to merge in (e.g. a refreshed `sessionId`).
 	 */
 	onReconnect?: (msSinceLastMessage: number) => Promise<Partial<IMQConnectionOptions> | void>;
+	/** Diagnostics sink for unhandled warnings. Defaults to `console`. */
+	logger?: IMQLogger;
 }
 
-/** `state` carries the new state and, for `WAITING`, the epoch ms at which the next attempt fires. */
+/**
+ * `state` carries the new state and, for `WAITING`, the epoch ms at which the next attempt fires.
+ * `error` fires on stream errors, decode failures, and authentication failures.
+ */
 interface IMQConnectionEvents {
 	state: [state: IMQConnectionState, reconnectAt?: number];
 	message: [message: DecodedMessage];
+	error: [error: Error];
 }
 
 const DEFAULT_PING_INTERVAL = 15_000;
@@ -81,6 +92,7 @@ export class IMQConnection extends EventEmitter<IMQConnectionEvents> {
 	private readonly pingInterval: number;
 	private readonly serverTimeoutInterval: number;
 	private readonly reconnectSchedule: readonly number[];
+	private readonly logger: IMQLogger;
 
 	public constructor(private options: IMQConnectionOptions) {
 		super();
@@ -90,6 +102,7 @@ export class IMQConnection extends EventEmitter<IMQConnectionEvents> {
 		this.pingInterval = options.pingInterval ?? DEFAULT_PING_INTERVAL;
 		this.serverTimeoutInterval = options.serverTimeoutInterval ?? DEFAULT_SERVER_TIMEOUT;
 		this.reconnectSchedule = options.reconnect ?? DEFAULT_RECONNECT;
+		this.logger = options.logger ?? console;
 	}
 
 	public get status(): IMQConnectionState {
@@ -133,6 +146,15 @@ export class IMQConnection extends EventEmitter<IMQConnectionEvents> {
 		this.emit('state', state, reconnectAt);
 	}
 
+	/** Surface an error to listeners; fall back to the logger so nothing is lost (and EventEmitter never throws). */
+	private reportError(error: Error): void {
+		if (this.listenerCount('error') > 0) {
+			this.emit('error', error);
+		} else {
+			this.logger.warn(error.message);
+		}
+	}
+
 	private handleOpen = (): void => {
 		this.setState(IMQConnectionState.AUTHENTICATING);
 		// Sent directly (no ping schedule) until we're authenticated.
@@ -154,7 +176,7 @@ export class IMQConnection extends EventEmitter<IMQConnectionEvents> {
 		try {
 			message = decode(raw);
 		} catch (error) {
-			console.warn('IMQ: failed to decode frame', error);
+			this.reportError(error instanceof Error ? error : new Error(String(error)));
 			return;
 		}
 
@@ -171,13 +193,13 @@ export class IMQConnection extends EventEmitter<IMQConnectionEvents> {
 
 	private handleAuthMessage(message: DecodedMessage): void {
 		if (message.type !== 'msg_g2c_result') {
-			console.warn(`IMQ: unexpected message during authentication: ${message.type}`);
+			this.reportError(new Error(`IMQ: unexpected message during authentication: ${message.type}`));
 			this.onDisconnected();
 			return;
 		}
 
 		if (message.data.status !== 0) {
-			console.warn(`IMQ: authentication failed: ${message.data.errorMessage ?? 'unknown error'}`);
+			this.reportError(new Error(`IMQ: authentication failed: ${message.data.errorMessage ?? 'unknown error'}`));
 			this.onDisconnected();
 			return;
 		}
@@ -188,7 +210,7 @@ export class IMQConnection extends EventEmitter<IMQConnectionEvents> {
 	}
 
 	private handleError = (error: Error): void => {
-		console.warn('IMQ: stream error', error);
+		this.reportError(error);
 	};
 
 	private handleClose = (): void => {
@@ -257,7 +279,7 @@ export class IMQConnection extends EventEmitter<IMQConnectionEvents> {
 	}
 
 	private onServerTimeout(): void {
-		console.warn(`IMQ: no server frame for ${this.serverTimeoutInterval / 1000}s, disconnecting`);
+		this.logger.warn(`IMQ: no server frame for ${this.serverTimeoutInterval / 1000}s, disconnecting`);
 		this.onDisconnected();
 	}
 
