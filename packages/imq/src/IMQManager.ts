@@ -1,7 +1,8 @@
 import { EventEmitter } from 'node:events';
 
 import { IMQConnection, IMQConnectionState, type IMQConnectionOptions, type IMQLogger } from './IMQConnection.js';
-import type { CreateMountMessage, DecodedMessage, ResultMessage } from './Events.js';
+import type { CreateMountMessage, DecodedMessage, ResultMessage } from './messages.js';
+import { AUTH_ERROR, createCounter } from './util.js';
 import { IMQQueue } from './message/IMQQueue.js';
 import type { IMQMessageMount } from './message/IMQMessageMount.js';
 import type { IMQStateMount } from './message/IMQStateMount.js';
@@ -26,8 +27,6 @@ const STATUS: Record<IMQConnectionState, IMQStatus> = {
 	[IMQConnectionState.AUTHENTICATED]: 'connected',
 	[IMQConnectionState.WAITING]: 'disconnected',
 };
-
-const AUTH_ERROR = 'Cannot send data: Not authenticated!';
 
 /**
  * Top-level IMQ client: owns the connection, tracks subscribed queues, and
@@ -62,7 +61,7 @@ export class IMQManager extends EventEmitter<IMQManagerEvents> {
 
 		this.logger = options.logger ?? console;
 		// One shared op_id counter across the connect frame and manager sends.
-		this.newOpId = options.newOpId ?? counter();
+		this.newOpId = options.newOpId ?? createCounter();
 		this.connection = new IMQConnection({ ...options, newOpId: this.newOpId, logger: this.logger });
 
 		this.connection.on('state', (state, reconnectAt) => this.onConnectionState(state, reconnectAt));
@@ -290,8 +289,3 @@ export class IMQManager extends EventEmitter<IMQManagerEvents> {
 		return queue;
 	}
 }
-
-const counter = (): (() => number) => {
-	let next = 0;
-	return () => next++;
-};

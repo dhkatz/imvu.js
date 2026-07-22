@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
 
-import type { ReceivedMessage, StateChangedMessage } from '../Events.js';
+import type { ReceivedMessage, StateChangedMessage } from '../messages.js';
+import { AUTH_ERROR } from '../util.js';
 import type { IMQManager } from '../IMQManager.js';
 import { IMQMessageMount, type IMQMessage } from './IMQMessageMount.js';
 import { IMQStateMount, type IMQStateEvent } from './IMQStateMount.js';
@@ -34,8 +35,6 @@ interface IMQQueueEvents {
 	state: [event: IMQStateEvent];
 	subscriber: [event: IMQQueueSubscriberEvent];
 }
-
-const AUTH_ERROR = 'Cannot send data: Not authenticated!';
 
 /**
  * A subscribed queue. Owns its message/state mounts and the current subscriber

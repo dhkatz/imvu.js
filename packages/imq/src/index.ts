@@ -15,7 +15,7 @@ export type { IMQMessage, IMQSubscriberEvent } from './message/IMQMessageMount.j
 export { IMQStateMount } from './message/IMQStateMount.js';
 export type { IMQStateEvent } from './message/IMQStateMount.js';
 
-export { encode, decode, ImqMessageUnknown } from './Events.js';
+export { encode, decode, ImqMessageUnknown } from './codec.js';
 export type {
 	ClientMessage,
 	GatewayMessage,
@@ -31,4 +31,4 @@ export type {
 	CreateMountMessage,
 	ReceivedMessage,
 	StateChangedMessage,
-} from './Events.js';
+} from './messages.js';

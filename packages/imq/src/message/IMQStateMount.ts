@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 
-import type { StateChangedMessage } from '../Events.js';
+import type { StateChangedMessage } from '../messages.js';
 import type { IMQQueue, SubscriberUpdate } from './IMQQueue.js';
 import type { IMQSubscriberEvent } from './IMQMessageMount.js';
 

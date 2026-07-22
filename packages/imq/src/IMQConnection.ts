@@ -3,7 +3,9 @@ import WebSocket from 'ws';
 
 import { IMQStream } from './IMQStream.js';
 import { IMQWebSocketStream } from './websocket/IMQWebSocketStream.js';
-import { decode, encode, type ClientMessage, type DecodedMessage, type EncodeInputMap } from './Events.js';
+import { decode, encode } from './codec.js';
+import type { ClientMessage, DecodedMessage, EncodeInputMap } from './messages.js';
+import { createCounter } from './util.js';
 
 export enum IMQConnectionState {
 	CLOSED,
@@ -65,11 +67,6 @@ const DEFAULT_RECONNECT: readonly number[] = [5_000, 15_000, 45_000, 90_000, 180
 
 type Timer = ReturnType<typeof setTimeout>;
 
-const counter = (): (() => number) => {
-	let next = 0;
-	return () => next++;
-};
-
 /**
  * The IMQ connection state machine: opens a transport, performs the
  * connect/authenticate handshake, keeps the link alive with pings and a server
@@ -98,7 +95,7 @@ export class IMQConnection extends EventEmitter<IMQConnectionEvents> {
 		super();
 
 		this.createStream = options.createStream ?? ((url) => new IMQWebSocketStream(new WebSocket(url)));
-		this.newOpId = options.newOpId ?? counter();
+		this.newOpId = options.newOpId ?? createCounter();
 		this.pingInterval = options.pingInterval ?? DEFAULT_PING_INTERVAL;
 		this.serverTimeoutInterval = options.serverTimeoutInterval ?? DEFAULT_SERVER_TIMEOUT;
 		this.reconnectSchedule = options.reconnect ?? DEFAULT_RECONNECT;

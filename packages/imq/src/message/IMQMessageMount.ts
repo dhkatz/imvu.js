@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 
-import type { ReceivedMessage } from '../Events.js';
+import type { ReceivedMessage } from '../messages.js';
 import type { IMQQueue, SubscriberUpdate } from './IMQQueue.js';
 
 export interface IMQMessage {
