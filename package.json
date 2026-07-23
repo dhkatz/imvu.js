@@ -18,6 +18,7 @@
     "docs:serve": "docker run --rm -it -p 8000:8000 -v %cd%:/docs imvu/docs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "tool": "node --import tsx --env-file-if-exists=.env packages/tools/src/index.ts",
     "changeset": "changeset",
     "version": "changeset version",
     "release": "npm run build && changeset publish"
@@ -41,7 +42,7 @@
     "oxlint": "^1.74.0",
     "oxlint-tsgolint": "^0.25.0",
     "rimraf": "^6.0.0",
-    "ts-node": "^10.9.1",
+    "tsx": "^4.23.1",
     "type-fest": "^5.0.0",
     "typescript": "^7.0.0",
     "vitest": "^4.0.0"
