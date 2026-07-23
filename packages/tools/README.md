@@ -46,6 +46,28 @@ cat names.txt | npm run tool -- names     # newline-separated from stdin
 Pattern tokens: `*` any alphanumeric, `@` any letter, `#` any digit, `[..]` an
 explicit set with ranges (`[a-f0-9]`). Prints `name - AVAILABLE` / `TAKEN`.
 
+#### Saving output & resuming long runs
+
+Results are written to **stdout**; progress and the summary go to **stderr** — so
+you can redirect just the results (use `npm run -s` to suppress npm's own banner):
+
+```bash
+npm run -s tool -- names "@@@" --yes > results.txt   # results only; progress still on screen
+```
+
+For long runs, prefer `--out <file>`: it appends every result to the file, and on
+re-run it **skips names already recorded** there — so an interrupted run resumes
+where it left off. (Names that errored are re-checked; delete the file to start
+fresh.)
+
+```bash
+npm run tool -- names "@@@" --out results.txt --yes   # run; Ctrl+C anytime
+npm run tool -- names "@@@" --out results.txt --yes   # re-run — skips what's done
+```
+
+`--out` records every status (so resume is complete) even with `--available-only`,
+which still filters what's printed to stdout.
+
 Flags: `--variations`, `--rate <n>` (req/s, default 2), `--limit <n>`,
-`--available-only`, `--yes` (proceed above 200 candidates), `--file <path>`.
-Run `npm run tool -- names --help` for the full list.
+`--available-only`, `--yes` (proceed above 200 candidates), `--file <path>`,
+`--out <path>`. Run `npm run tool -- names --help` for the full list.

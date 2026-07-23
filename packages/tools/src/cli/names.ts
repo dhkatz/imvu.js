@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync } from 'node:fs';
 import { Command } from 'commander';
 
 import { Client } from '@imvu/client';
@@ -15,6 +15,7 @@ const HARD_MAX = 100_000;
 
 interface NamesOptions {
 	file?: string;
+	out?: string;
 	variations?: boolean;
 	rate: number;
 	limit?: number;
@@ -44,9 +45,12 @@ export function names(program: Command): void {
 				'  imvu-tools names "***"               # every 3-char name (needs --yes)',
 				'  imvu-tools names bill --variations   # bill + look-alikes (biII, b1ll, …)',
 				'  cat names.txt | imvu-tools names     # newline-separated from stdin',
+				'  imvu-tools names "@@@" --out r.txt   # save results; re-run resumes (skips done)',
+				'  imvu-tools names bob > results.txt   # redirect results (progress stays on stderr)',
 			].join('\n')
 		)
 		.option('-f, --file <path>', 'read newline-separated names/patterns from a file')
+		.option('-o, --out <path>', 'append results to a file; on re-run, already-checked names are skipped (resume)')
 		.option('-v, --variations', 'also check homoglyph look-alikes (e.g. a capital I for l)')
 		.option('-r, --rate <n>', 'requests per second', (value) => Number(value), 2)
 		.option('-l, --limit <n>', 'cap the number of names checked', (value) => Number(value))
@@ -70,6 +74,23 @@ export function names(program: Command): void {
 				candidates = dedupe(buildCandidates(raw, Boolean(options.variations)));
 			} catch (error) {
 				fail(error instanceof Error ? error.message : String(error));
+			}
+
+			// Resume: skip names already recorded with a definitive result in the --out file.
+			if (options.out) {
+				const done = readChecked(options.out);
+				if (done.size > 0) {
+					const before = candidates.length;
+					candidates = candidates.filter((name) => !done.has(name.toLowerCase()));
+					const skipped = before - candidates.length;
+					if (skipped > 0) {
+						console.error(`Resuming from ${options.out}: ${skipped} already checked, skipping.`);
+					}
+					if (candidates.length === 0) {
+						console.error('Nothing left to check — all names are already in the file.');
+						return;
+					}
+				}
 			}
 
 			if (options.limit !== undefined && Number.isFinite(options.limit)) {
@@ -99,13 +120,18 @@ export function names(program: Command): void {
 			await checkAll(client, candidates, {
 				rate: options.rate,
 				onResult: (result) => {
+					const line = formatResult(result);
+					// The file is the complete record (every status) so resume can skip them; stdout is the view.
+					if (options.out) {
+						appendFileSync(options.out, `${line}\n`);
+					}
 					if (result.status === 'available') {
 						available += 1;
 					}
 					if (options.availableOnly && result.status !== 'available') {
 						return;
 					}
-					console.log(formatResult(result));
+					console.log(line);
 				},
 			});
 
@@ -168,6 +194,21 @@ function formatResult(result: NameResult): string {
 		return `${result.name} - ERROR (${result.error})`;
 	}
 	return `${result.name} - ${result.status.toUpperCase()}`;
+}
+
+/** Names already recorded with a definitive result in a prior --out file (errors are excluded, so they re-check). */
+function readChecked(path: string): Set<string> {
+	const done = new Set<string>();
+	if (!existsSync(path)) {
+		return done;
+	}
+	for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+		const match = /^(\S+) - (AVAILABLE|TAKEN)\b/.exec(line);
+		if (match) {
+			done.add(match[1]!.toLowerCase());
+		}
+	}
+	return done;
 }
 
 function readLines(text: string): string[] {
