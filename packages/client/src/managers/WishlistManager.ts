@@ -16,9 +16,11 @@ export class WishlistManager extends BaseManager {
 	public async count(): Promise<number> {
 		this.authenticated();
 
-		const { data } = await this.client.resource(`${this.base}?limit=0`);
+		// A collection endpoint (items + total_count), not a single resource — read the raw envelope.
+		const response = await this.client.request(`${this.base}?limit=0`);
+		const data = response.denormalized[response.id].data as { total_count?: number };
 
-		return data['total_count'];
+		return data.total_count ?? 0;
 	}
 
 	public async add(product: Product): Promise<boolean>;
