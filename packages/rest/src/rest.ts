@@ -57,28 +57,54 @@ export class REST {
 	/**
 	 * Authenticate. Reuses an existing `_imvu_avnm` session cookie when present
 	 * (skipping the login POST) and establishes the "sauce" auth token that must
-	 * accompany every non-GET request.
+	 * accompany every non-GET request. If the reused session turns out to be
+	 * stale (a matching `_imvu_avnm` cookie but an expired session), it falls
+	 * back to a full login POST and retries once.
 	 */
 	public async login(username: string, password: string, options: Record<string, any> = {}): Promise<void> {
-		const cookies = await this.cookies.getCookies('https://imvu.com/');
-		const session = cookies.find((c) => c.key === '_imvu_avnm');
-
-		if (session?.value.toLowerCase() !== username.toLowerCase()) {
-			await this.request('/login', {
-				method: 'POST',
-				data: {
-					gdpr_cookie_acceptance: true,
-					username,
-					password,
-					remember_device: true,
-					'2fa_code': options.twoFactorCode,
-				},
-			});
-		}
-
 		this.username = username;
 		this.password = password;
 
+		const reusedSession = await this.hasSessionFor(username);
+		if (!reusedSession) {
+			await this.authenticate(options);
+		}
+
+		try {
+			await this.establishSession();
+		} catch (error) {
+			if (!reusedSession) {
+				throw error; // a fresh login already failed — nothing stale to recover from
+			}
+			// The cached session was stale; do a real login and try once more.
+			await this.authenticate(options);
+			await this.establishSession();
+		}
+	}
+
+	/** True when a cached `_imvu_avnm` cookie matches `username` (the login POST can be skipped — if the session is live). */
+	private async hasSessionFor(username: string): Promise<boolean> {
+		const cookies = await this.cookies.getCookies('https://imvu.com/');
+		const session = cookies.find((c) => c.key === '_imvu_avnm');
+		return session?.value.toLowerCase() === username.toLowerCase();
+	}
+
+	/** Perform the login POST that establishes a fresh session cookie. */
+	private async authenticate(options: Record<string, any>): Promise<void> {
+		await this.request('/login', {
+			method: 'POST',
+			data: {
+				gdpr_cookie_acceptance: true,
+				username: this.username,
+				password: this.password,
+				remember_device: true,
+				'2fa_code': options.twoFactorCode,
+			},
+		});
+	}
+
+	/** Read `/login/me` for the sauce/cid and wire up the auth headers. Throws if the session isn't valid. */
+	private async establishSession(): Promise<void> {
 		const data = await this.request('/login/me');
 		const resource = data.denormalized[data.id];
 

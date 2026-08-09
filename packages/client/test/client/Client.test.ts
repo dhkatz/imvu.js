@@ -34,9 +34,9 @@ describe('Client.test.ts', () => {
 		await client.logout();
 	});
 
-	test('Account unset when retrieving Account without authentication', async () => {
+	test('Accessing Account without authentication throws', () => {
 		const client = new Client();
 
-		expect(client.account).toBeUndefined();
+		expect(() => client.account).toThrow(/account information/i);
 	});
 });
