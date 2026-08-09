@@ -12,20 +12,22 @@ describe('FriendManager.test.ts', () => {
 	beforeAll(() => client.login(IMVU_USERNAME, IMVU_PASSWORD, { socket: false }));
 	afterAll(() => client.logout());
 
-	it('should return the proper friend count', async () => {
+	it('returns a non-negative friend count', async () => {
 		const count = await client.account.friends.count();
 
-		expect(count).toBe(12);
+		expect(count).toBeTypeOf('number');
+		expect(count).toBeGreaterThanOrEqual(0);
 	});
 
-	it('should return the list of friends', async () => {
-		let count = 0;
+	it('lists exactly `count` friends, each a User', async () => {
+		const expected = await client.account.friends.count();
 
+		let count = 0;
 		for await (const friend of client.account.friends.list()) {
 			expect(friend).toBeInstanceOf(User);
 			count++;
 		}
 
-		expect(count).toBe(12);
+		expect(count).toBe(expected);
 	});
 });

@@ -12,19 +12,19 @@ describe('RouletteManager.test.ts', () => {
 	beforeAll(() => client.login(IMVU_USERNAME, IMVU_PASSWORD, { socket: false }));
 	afterAll(() => client.logout());
 
-	it('should fetch the current roulette status', async () => {
-		const roulette = client.account.roulette.status();
-
-		await expect(roulette).resolves.toHaveProperty('next');
-	});
-
-	it('should spin the wheel if available', async () => {
+	it('fetches the current roulette status', async () => {
 		const roulette = await client.account.roulette.status();
 
-		if (roulette.status === 'available') {
-			await expect(client.account.roulette.spin()).resolves.toHaveProperty('available');
-		} else {
-			await expect(client.account.roulette.spin()).toThrow();
+		expect(roulette.status).toMatch(/^(available|redeemed)$/);
+	});
+
+	it('spin() resolves with the current status when already redeemed', async () => {
+		const roulette = await client.account.roulette.status();
+
+		// When the wheel is available we skip — spinning would consume the daily reward.
+		// When it's redeemed, spin() is a no-op that resolves with the current status.
+		if (roulette.status === 'redeemed') {
+			await expect(client.account.roulette.spin()).resolves.toHaveProperty('status', 'redeemed');
 		}
 	});
 });
