@@ -4,3 +4,4 @@ export * from './controllers/index.js';
 export * from './client/index.js';
 export * from './managers/index.js';
 export * from './result.js';
+export type { Constructor } from './types.js';

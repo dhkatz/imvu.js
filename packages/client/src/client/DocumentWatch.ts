@@ -8,7 +8,7 @@ export interface DocumentInvalidation<T extends RemoteDocument> {
 	receivedAt: Date;
 }
 
-interface DocumentWatchEvents<T extends RemoteDocument> {
+export interface DocumentWatchEvents<T extends RemoteDocument> {
 	invalidate: [event: DocumentInvalidation<T>];
 }
 

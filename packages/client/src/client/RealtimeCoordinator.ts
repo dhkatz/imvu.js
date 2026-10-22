@@ -4,7 +4,7 @@ import type { Client } from './Client.js';
 import { DocumentWatch } from './DocumentWatch.js';
 import type { RemoteDocument } from '../resources/RemoteDocument.js';
 
-interface RealtimeMountLike {
+export interface RealtimeMountLike {
 	on(event: 'message', listener: (message: unknown) => void): unknown;
 	off(event: 'message', listener: (message: unknown) => void): unknown;
 	unsubscribe(): void;

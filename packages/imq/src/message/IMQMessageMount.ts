@@ -19,7 +19,7 @@ export interface IMQSubscriberEvent {
 	subscribers: string[];
 }
 
-interface IMQMessageMountEvents {
+export interface IMQMessageMountEvents {
 	message: [message: IMQMessage];
 	subscriber: [event: IMQSubscriberEvent];
 }

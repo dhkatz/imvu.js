@@ -54,7 +54,7 @@ export interface IMQConnectionOptions {
  * `state` carries the new state and, for `WAITING`, the epoch ms at which the next attempt fires.
  * `error` fires on stream errors, decode failures, and authentication failures.
  */
-interface IMQConnectionEvents {
+export interface IMQConnectionEvents {
 	state: [state: IMQConnectionState, reconnectAt?: number];
 	message: [message: DecodedMessage];
 	error: [error: Error];

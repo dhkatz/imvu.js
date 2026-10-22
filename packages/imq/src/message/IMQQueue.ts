@@ -29,7 +29,7 @@ export interface IMQQueueSubscriberEvent {
 }
 
 /** Queue-level events — subscribe here to discover mounts as they're created. */
-interface IMQQueueEvents {
+export interface IMQQueueEvents {
 	mount: [event: IMQMountEvent];
 	message: [message: IMQMessage];
 	state: [event: IMQStateEvent];

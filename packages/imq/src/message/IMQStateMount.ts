@@ -12,7 +12,7 @@ export interface IMQStateEvent {
 	state: Record<string, string>;
 }
 
-interface IMQStateMountEvents {
+export interface IMQStateMountEvents {
 	state: [event: IMQStateEvent];
 	subscriber: [event: IMQSubscriberEvent];
 }
