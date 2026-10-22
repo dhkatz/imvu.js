@@ -42,8 +42,9 @@ export class RouletteManager extends BaseManager {
 		const status = await this.status();
 
 		if (status.status === 'available') {
-			await this.client.http.post(`/roulette/roulette-${this.client.account.id}`, {
-				status: 'redeemed',
+			await this.client.request(`/roulette/roulette-${this.client.account.id}`, {
+				method: 'POST',
+				data: { status: 'redeemed' },
 			});
 
 			return this.status();

@@ -1,6 +1,6 @@
 import { ProfileUser, User } from '../resources/index.js';
 import { BaseManager } from './BaseManager.js';
-import { APIResponse } from '../types.js';
+import { IMVUAPIError, type RequestOptions } from '@imvu/rest';
 import type { Collection } from '../collections/Collection.js';
 
 export class FollowerManager extends BaseManager {
@@ -17,14 +17,10 @@ export class FollowerManager extends BaseManager {
 	public async follow(user: User | ProfileUser | string | number): Promise<boolean> {
 		const id = await this.client.utils.id(user, true);
 
-		const { data } = await this.client.http.post<APIResponse>(
-			`/profile/profile-user-${this.client.account.id}/subscriptions`,
-			{
-				id: `/profile/profile-user-${id}`,
-			}
-		);
-
-		return data.status !== 'failure';
+		return this.succeeds(`/profile/profile-user-${this.client.account.id}/subscriptions`, {
+			method: 'POST',
+			data: { id: `/profile/profile-user-${id}` },
+		});
 	}
 
 	public async unfollow(profile: ProfileUser): Promise<boolean>;
@@ -34,10 +30,19 @@ export class FollowerManager extends BaseManager {
 	public async unfollow(user: User | ProfileUser | string | number): Promise<boolean> {
 		const id = await this.client.utils.id(user, true);
 
-		const { data } = await this.client.http.delete<APIResponse>(
-			`/profile/profile-user-${this.client.account.id}/subscriptions/profile-user-${id}`
-		);
+		return this.succeeds(`/profile/profile-user-${this.client.account.id}/subscriptions/profile-user-${id}`, {
+			method: 'DELETE',
+		});
+	}
 
-		return data.status !== 'failure';
+	/** True when the API accepts the request, false when it explicitly rejects it. */
+	private async succeeds(url: string, options: RequestOptions): Promise<boolean> {
+		try {
+			await this.client.request(url, options);
+			return true;
+		} catch (error) {
+			if (error instanceof IMVUAPIError) return false;
+			throw error;
+		}
 	}
 }

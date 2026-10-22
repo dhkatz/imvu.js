@@ -2,6 +2,28 @@
 
 _Written 2026-07-04._
 
+## Web-standard transports (2026-10-21)
+
+Goal: fewer dependencies, and no Node-only APIs in the library packages where a web
+standard exists (browser support is a long-term aim).
+
+- **`@imvu/rest` runs on `fetch`.** Replaced `axios` + `axios-cookiejar-support` +
+  `tough-cookie-file-store` with the standard `fetch` plus `tough-cookie` (isomorphic).
+  REST manages cookies itself outside browsers (`Set-Cookie` → jar → `Cookie`, manual
+  redirects so cookies set mid-redirect are kept) and lets the browser own them inside
+  one. Persistence is a pluggable `CookieStorage` (default: `fileCookieStorage`, which
+  imports `node:fs` lazily); legacy `tough-cookie-file-store` files are read and
+  migrated, so cached sessions survive. `rest.fetch()` returns a raw `Response` for
+  non-JSON downloads; `RESTOptions.fetch` injects a custom `fetch` (tests, proxies).
+  Verified with the live read-only suite.
+- **`@imvu/imq` uses the global `WebSocket`** (browser or Node ≥22) and Buffer-free
+  base64; `ws` dropped. IMQ authenticates in-band, so no handshake headers are needed.
+- Also dropped: `type-fest` (leaked into published `.d.ts` undeclared), `rimraf`,
+  `dotenv`, and unused `cli-progress`/`lzma-purejs` in tools.
+- **Still Node-only:** `node:events` `EventEmitter` in imq/client (deferred), and
+  `api.imvu.com` CORS only admits `https://www.imvu.com`, so browser apps on other
+  origins need a proxy (`baseURL`), an extension, or a desktop shell (deferred).
+
 ## Resource architecture update (2026-09-29)
 
 - Resource identity is now the canonical REST URL. Each `Client` owns a weak identity
@@ -43,7 +65,7 @@ The serialization approach evolved well past the original Valibot plan. Reality 
   wire types, rely on tests for drift. `Resource.build` = `new` + `_patch`. Removed
   `typescript-json-serializer`, `reflect-metadata`, and Valibot; zero decorators
   monorepo-wide.
-- **New `@imvu/rest` package** — the low-level layer (cookie jar + axios + auth + raw
+- **New `@imvu/rest` package** — the low-level layer (cookie jar + HTTP (now `fetch`) + auth + raw
   `resource()`/`resources()` + API wire types). `@imvu/client` composes it. Lets the
   upcoming 3D app fetch raw typed JSON without class overhead.
 - **Vitest** (globals, no SWC), TypeScript 6, Prettier 3, Node 22.

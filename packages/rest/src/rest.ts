@@ -1,7 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { CookieJar, Store } from 'tough-cookie';
-import FileCookieStore from 'tough-cookie-file-store';
-import { wrapper } from 'axios-cookiejar-support';
+import type { CookieJar } from 'tough-cookie';
 
 import {
 	APICollection,
@@ -14,54 +11,89 @@ import {
 	ResourceId,
 } from './types.js';
 import { IMVUAPIError } from './errors.js';
+import { fileCookieStorage, restoreCookieJar, type CookieStorage } from './cookies.js';
 
-// axios-cookiejar-support augments axios with `jar`, but that augmentation doesn't
-// merge reliably under moduleResolution: NodeNext — declare it explicitly.
-declare module 'axios' {
-	interface CreateAxiosDefaults {
-		jar?: CookieJar;
-	}
-	interface AxiosRequestConfig {
-		jar?: CookieJar;
-	}
+export type QueryValue = string | number | boolean | null | undefined;
+
+/** Options for a single request. */
+export interface RequestOptions {
+	/** HTTP method. Defaults to `GET`. */
+	method?: string;
+	/** Query parameters, set on the URL (replacing any of the same name); `null`/`undefined` are skipped. */
+	params?: Record<string, QueryValue>;
+	/** JSON request body. */
+	data?: unknown;
+	headers?: Record<string, string>;
+	signal?: AbortSignal;
+	/** Base URL for a relative `url`, overriding {@link RESTOptions.baseURL}. */
+	baseURL?: string;
 }
 
 export interface RESTOptions {
 	/** API base URL. Defaults to `https://api.imvu.com`. */
 	baseURL?: string;
-	/** Path to the cookie jar file. Defaults to `./cookies.json`. */
+	/** Cookie file used by the default Node storage. Defaults to `./cookies.json`. */
 	cookiePath?: string;
+	/**
+	 * Where the session's cookies persist. Defaults to a JSON file at `cookiePath`
+	 * outside browsers; `null` keeps them in memory only. Ignored in browsers, which
+	 * manage cookies themselves.
+	 */
+	cookieStorage?: CookieStorage | null;
+	/** The `fetch` implementation to use. Defaults to the global `fetch`. */
+	fetch?: typeof fetch;
 }
+
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const MAX_REDIRECTS = 5;
+
+/**
+ * Browsers own the cookie jar: `Set-Cookie` is unreadable and `Cookie` cannot be
+ * set by script. Everywhere else (Node, Deno, Bun) the client manages cookies.
+ */
+const browserManagesCookies = (): boolean =>
+	typeof (globalThis as { document?: unknown }).document !== 'undefined' ||
+	typeof (globalThis as { WorkerGlobalScope?: unknown }).WorkerGlobalScope !== 'undefined';
 
 /**
  * Low-level IMVU REST client: cookie-based auth, HTTP transport, and raw
  * (un-modeled) resource fetching. `@imvu/client` builds the resource/manager
  * layer on top; consumers that just want fast, raw typed JSON (e.g. a renderer
  * that doesn't want class instances) can use this directly.
+ *
+ * Built on the standard `fetch`, so it carries no HTTP-library dependency.
  */
 export class REST {
 	public sauce = '';
 	public cid: ResourceId = '';
 	public authenticated = false;
 
-	public readonly http: AxiosInstance;
-	public readonly cookies: CookieJar;
-	protected readonly store: Store;
+	public readonly baseURL: string;
 
 	protected username = '';
 	protected password = '';
 
+	private readonly fetchImpl: typeof fetch;
+	private readonly manageCookies: boolean;
+	private readonly cookieStorage: CookieStorage | null;
+	private jar?: Promise<CookieJar>;
+	private saving: Promise<void> = Promise.resolve();
+
 	public constructor(options: RESTOptions = {}) {
-		this.store = new FileCookieStore(options.cookiePath ?? './cookies.json');
-		this.cookies = new CookieJar(this.store, { rejectPublicSuffixes: false });
-		this.http = wrapper(
-			axios.create({
-				baseURL: options.baseURL ?? 'https://api.imvu.com',
-				jar: this.cookies,
-				withCredentials: true,
-				validateStatus: () => true,
-			})
-		);
+		this.baseURL = options.baseURL ?? 'https://api.imvu.com';
+		this.fetchImpl = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
+		this.manageCookies = !browserManagesCookies();
+		this.cookieStorage = !this.manageCookies
+			? null
+			: options.cookieStorage !== undefined
+				? options.cookieStorage
+				: fileCookieStorage(options.cookiePath ?? './cookies.json');
+	}
+
+	/** The session's cookie jar, loaded from storage on first use. */
+	public cookies(): Promise<CookieJar> {
+		this.jar ??= this.cookieStorage ? this.cookieStorage.load().then(restoreCookieJar) : restoreCookieJar(null);
+		return this.jar;
 	}
 
 	/**
@@ -94,7 +126,7 @@ export class REST {
 
 	/** True when a cached `_imvu_avnm` cookie matches `username` (the login POST can be skipped — if the session is live). */
 	private async hasSessionFor(username: string): Promise<boolean> {
-		const cookies = await this.cookies.getCookies('https://imvu.com/');
+		const cookies = await (await this.cookies()).getCookies('https://imvu.com/');
 		const session = cookies.find((c) => c.key === '_imvu_avnm');
 		return session?.value.toLowerCase() === username.toLowerCase();
 	}
@@ -113,19 +145,13 @@ export class REST {
 		});
 	}
 
-	/** Read `/login/me` for the sauce/cid and wire up the auth headers. Throws if the session isn't valid. */
+	/** Read `/login/me` for the sauce/cid used to authorize writes. Throws if the session isn't valid. */
 	private async establishSession(): Promise<void> {
 		const data = await this.request('/login/me');
 		const resource = data.denormalized[data.id];
 
 		this.sauce = resource.data.sauce;
 		this.cid = resourceId(resource?.relations?.quick_chat_profile ?? '');
-
-		for (const method of ['post', 'put', 'patch', 'delete'] as const) {
-			this.http.defaults.headers[method]['x-imvu-sauce'] = this.sauce;
-			this.http.defaults.headers[method]['x-imvu-application'] = 'next_desktop/1';
-		}
-
 		this.authenticated = true;
 	}
 
@@ -135,17 +161,99 @@ export class REST {
 		this.cid = '';
 	}
 
+	/**
+	 * Send a request through the session and return the raw `Response`, whatever its
+	 * status. Resolves `url` against the base URL, sends and records cookies, adds the
+	 * auth headers to writes, and follows redirects (capturing cookies set along the way).
+	 */
+	public async fetch(url: string, options: RequestOptions = {}): Promise<Response> {
+		let method = (options.method ?? 'GET').toUpperCase();
+		const headers = new Headers(options.headers);
+		if (!headers.has('accept')) headers.set('accept', 'application/json, text/plain, */*');
+
+		let body: string | undefined;
+		if (options.data !== undefined) {
+			body = JSON.stringify(options.data);
+			if (!headers.has('content-type')) headers.set('content-type', 'application/json');
+		}
+
+		if (method !== 'GET' && method !== 'HEAD' && this.sauce) {
+			headers.set('x-imvu-sauce', this.sauce);
+			headers.set('x-imvu-application', 'next_desktop/1');
+		}
+
+		let target = resolveURL(options.baseURL ?? this.baseURL, url, options.params);
+
+		for (let redirects = 0; ; redirects++) {
+			if (this.manageCookies) {
+				const cookie = await (await this.cookies()).getCookieString(target);
+				if (cookie) headers.set('cookie', cookie);
+				else headers.delete('cookie');
+			}
+
+			const response = await this.fetchImpl(target, {
+				method,
+				headers,
+				body,
+				signal: options.signal,
+				credentials: 'include',
+				redirect: this.manageCookies ? 'manual' : 'follow',
+			});
+
+			if (!this.manageCookies) return response;
+			await this.storeCookies(target, response);
+
+			const location = response.headers.get('location');
+			if (!REDIRECT_STATUSES.has(response.status) || !location) return response;
+			if (redirects >= MAX_REDIRECTS) throw new Error(`Too many redirects requesting '${url}'`);
+
+			await response.body?.cancel();
+			target = new URL(location, target).href;
+			if (response.status === 303 || (method === 'POST' && (response.status === 301 || response.status === 302))) {
+				method = 'GET';
+				body = undefined;
+				headers.delete('content-type');
+			}
+		}
+	}
+
+	/** Send a request and return the API's success envelope; API failures throw {@link IMVUAPIError}. */
 	public async request<T extends object = Record<string, any>>(
 		url: string,
-		config: AxiosRequestConfig = {}
+		options: RequestOptions = {}
 	): Promise<APISuccessResponse<T>> {
-		const { data } = await this.http.request<APIResponse<T>>({ url, ...config });
+		const response = await this.fetch(url, options);
+		const text = await response.text();
+
+		let data: APIResponse<T>;
+		try {
+			data = JSON.parse(text);
+		} catch (error) {
+			throw new Error(`Expected a JSON response from '${url}' but got HTTP ${response.status}`, { cause: error });
+		}
 
 		if (data.status === 'failure') {
 			throw new IMVUAPIError(data.error, data.message, data);
 		}
 
 		return data;
+	}
+
+	private async storeCookies(url: string, response: Response): Promise<void> {
+		const setCookies = response.headers.getSetCookie();
+		if (setCookies.length === 0) return;
+
+		const jar = await this.cookies();
+		for (const cookie of setCookies) {
+			await jar.setCookie(cookie, url, { ignoreError: true });
+		}
+
+		const storage = this.cookieStorage;
+		if (storage) {
+			// Serialize saves so an older snapshot never overwrites a newer one. A failed
+			// save only costs the cached session next run, so it never fails the request.
+			this.saving = this.saving.then(async () => storage.save(JSON.stringify(await jar.serialize()))).catch(() => {});
+		}
 	}
 
 	/**
@@ -155,9 +263,9 @@ export class REST {
 	 */
 	public async resource<T extends object = Record<string, any>>(
 		url: string,
-		config?: AxiosRequestConfig
+		options?: RequestOptions
 	): Promise<APIResource<T>> {
-		const response = await this.request<T>(url, config);
+		const response = await this.request<T>(url, options);
 		const data = response.denormalized[response.id].data as Record<string, any>;
 
 		let resourceUrl: string;
@@ -177,9 +285,9 @@ export class REST {
 	/** Fetch one bounded page from a node-group or edge-group document. */
 	public async collection<T extends object = Record<string, any>>(
 		url: string,
-		config?: AxiosRequestConfig
+		options?: RequestOptions
 	): Promise<APICollection<T>> {
-		const response = await this.request(url, config);
+		const response = await this.request(url, options);
 		const root = response.denormalized[response.id] as APICollectionNode<T>;
 
 		if (!Array.isArray(root.data.items)) {
@@ -212,9 +320,9 @@ export class REST {
 	 */
 	public async resources<T extends object = Record<string, any>>(
 		url: string,
-		config?: AxiosRequestConfig
+		options?: RequestOptions
 	): Promise<APIResource<T>[]> {
-		return (await this.collection<T>(url, config)).items as APIResource<T>[];
+		return (await this.collection<T>(url, options)).items as APIResource<T>[];
 	}
 
 	private normalizeResource<T extends object>(response: APISuccessResponse, url: string): APIResource<T> {
@@ -237,6 +345,20 @@ function updateTarget(value: Partial<APIUpdateTarget> | null): APIUpdateTarget |
 	return value && typeof value.queue === 'string' && typeof value.mount === 'string'
 		? (value as APIUpdateTarget)
 		: null;
+}
+
+/** Join a relative URL onto `baseURL` (keeping any base path, like axios) and apply `params`. */
+function resolveURL(baseURL: string, url: string, params?: Record<string, QueryValue>): string {
+	const absolute = /^[a-z][a-z\d+\-.]*:\/\//i.test(url)
+		? url
+		: `${baseURL.replace(/\/+$/, '')}/${url.replace(/^\/+/, '')}`;
+	if (!params) return absolute;
+
+	const target = new URL(absolute);
+	for (const [key, value] of Object.entries(params)) {
+		if (value !== undefined && value !== null) target.searchParams.set(key, String(value));
+	}
+	return target.href;
 }
 
 /** Extract the API's opaque identifier without converting or numerically parsing it. */

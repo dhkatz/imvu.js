@@ -1,4 +1,3 @@
-import type { ResponseType } from 'axios';
 import imageType from 'image-type';
 import JSZip from 'jszip';
 
@@ -65,7 +64,7 @@ export class ProductExtractor extends BaseExtension {
 			throw new Error('Failed to download product after 10 attempts');
 		}
 
-		const files = await this.download<ProductManifest['files']>(`/${pid}/${i}/_contents.json`, 'json');
+		const files = await this.downloadJSON<ProductManifest['files']>(`/${pid}/${i}/_contents.json`);
 
 		return {
 			id: parseInt(`${pid}`),
@@ -74,12 +73,20 @@ export class ProductExtractor extends BaseExtension {
 		};
 	}
 
-	private async download<T = Buffer>(url: string, responseType: ResponseType = 'arraybuffer'): Promise<T> {
-		const response = await this.client.http.get(url, {
-			baseURL: 'https://userimages-akm.imvu.com/productdata',
-			responseType,
-		});
+	private async download(path: string): Promise<Buffer> {
+		const response = await this.fetchProductData(path);
+		return Buffer.from(await response.arrayBuffer());
+	}
 
-		return response.data;
+	private async downloadJSON<T>(path: string): Promise<T> {
+		return (await this.fetchProductData(path)).json() as Promise<T>;
+	}
+
+	private async fetchProductData(path: string): Promise<Response> {
+		const response = await this.client.rest.fetch(path, { baseURL: 'https://userimages-akm.imvu.com/productdata' });
+		if (!response.ok) {
+			throw new Error(`Failed to download product data '${path}' (HTTP ${response.status})`);
+		}
+		return response;
 	}
 }

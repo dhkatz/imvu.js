@@ -1,6 +1,5 @@
-import type { AxiosRequestConfig } from 'axios';
 import type { Constructor } from '../types.js';
-import type { APIResource, APIUpdateTarget } from '@imvu/rest';
+import type { APIResource, APIUpdateTarget, RequestOptions } from '@imvu/rest';
 
 import type { Client } from '../client/Client.js';
 import type { DocumentWatch } from '../client/DocumentWatch.js';
@@ -99,8 +98,8 @@ export class Collection<T = APIResource> extends RemoteDocument implements Async
 		};
 	}
 
-	private fetch(config?: AxiosRequestConfig) {
-		return this.client.rest.collection(this.url, config);
+	private fetch(options?: RequestOptions) {
+		return this.client.rest.collection(this.url, options);
 	}
 
 	private applyMetadata(totalCount: number, updateTarget: APIUpdateTarget | null): void {

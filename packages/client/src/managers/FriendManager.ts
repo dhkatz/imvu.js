@@ -24,8 +24,9 @@ export class FriendManager extends BaseManager {
 		const id = await this.client.utils.id(user, true);
 
 		try {
-			await this.client.http.post(`/user/user-${this.client.account.id}/outbound_friend_requests`, {
-				id: `https://api.imvu.com/user/user-${id}`,
+			await this.client.request(`/user/user-${this.client.account.id}/outbound_friend_requests`, {
+				method: 'POST',
+				data: { id: `https://api.imvu.com/user/user-${id}` },
 			});
 		} catch {
 			return false;
@@ -41,7 +42,7 @@ export class FriendManager extends BaseManager {
 		const id = await this.client.utils.id(user, true);
 
 		try {
-			await this.client.http.delete(`/user/user-${this.client.account.id}/friends/user-${id}`);
+			await this.client.request(`/user/user-${this.client.account.id}/friends/user-${id}`, { method: 'DELETE' });
 		} catch {
 			return false;
 		}

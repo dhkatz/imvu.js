@@ -1,8 +1,7 @@
 import type { Constructor } from '../types.js';
-import { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { EventEmitter } from 'events';
 
-import { REST, APIResource, APISuccessResponse } from '@imvu/rest';
+import { REST, APIResource, APISuccessResponse, type RequestOptions } from '@imvu/rest';
 
 import { BaseController } from '../controllers/index.js';
 import { GetMatched, Product, Resource, Room, User, type CurrentUser } from '../resources/index.js';
@@ -39,11 +38,6 @@ export class Client extends EventEmitter {
 		this.utils = new Utilities(this);
 		this.documents = new DocumentStore(this, options.maximumStrongDocuments);
 		this.realtime = new RealtimeCoordinator(this, options.realtimeManagerFactory);
-	}
-
-	/** The underlying axios instance (used by managers for raw POST/DELETE calls). */
-	public get http(): AxiosInstance {
-		return this.rest.http;
 	}
 
 	public get authenticated(): boolean {
@@ -110,9 +104,9 @@ export class Client extends EventEmitter {
 
 	public request<T extends object = Record<string, any>>(
 		url: string,
-		config?: AxiosRequestConfig
+		options?: RequestOptions
 	): Promise<APISuccessResponse<T>> {
-		return this.rest.request<T>(url, config);
+		return this.rest.request<T>(url, options);
 	}
 
 	/**
@@ -120,40 +114,36 @@ export class Client extends EventEmitter {
 	 */
 	public async resource<T extends object = Record<string, any>>(
 		url: string,
-		config?: AxiosRequestConfig
+		options?: RequestOptions
 	): Promise<APIResource<T>>;
-	public async resource<T extends Resource>(url: string, cls: Constructor<T>, config?: AxiosRequestConfig): Promise<T>;
+	public async resource<T extends Resource>(url: string, cls: Constructor<T>, options?: RequestOptions): Promise<T>;
 	public async resource(
 		url: string,
-		clsOrConfig?: Constructor<Resource> | AxiosRequestConfig,
-		config?: AxiosRequestConfig
+		clsOrOptions?: Constructor<Resource> | RequestOptions,
+		options?: RequestOptions
 	): Promise<Resource | APIResource> {
-		const cls = typeof clsOrConfig === 'function' ? clsOrConfig : undefined;
-		const cfg = typeof clsOrConfig === 'object' ? clsOrConfig : config;
+		const cls = typeof clsOrOptions === 'function' ? clsOrOptions : undefined;
+		const opts = typeof clsOrOptions === 'object' ? clsOrOptions : options;
 
-		const node = await this.rest.resource(url, cfg);
+		const node = await this.rest.resource(url, opts);
 
 		return cls ? this.utils.deserialize(cls, node) : node;
 	}
 
 	public async resources<T extends object = Record<string, any>>(
 		url: string,
-		config?: AxiosRequestConfig
+		options?: RequestOptions
 	): Promise<APIResource<T>[]>;
-	public async resources<T extends Resource>(
-		url: string,
-		cls: Constructor<T>,
-		config?: AxiosRequestConfig
-	): Promise<T[]>;
+	public async resources<T extends Resource>(url: string, cls: Constructor<T>, options?: RequestOptions): Promise<T[]>;
 	public async resources(
 		url: string,
-		clsOrConfig?: Constructor<Resource> | AxiosRequestConfig,
-		config?: AxiosRequestConfig
+		clsOrOptions?: Constructor<Resource> | RequestOptions,
+		options?: RequestOptions
 	): Promise<Resource[] | APIResource[]> {
-		const cls = typeof clsOrConfig === 'function' ? clsOrConfig : undefined;
-		const cfg = typeof clsOrConfig === 'object' ? clsOrConfig : config;
+		const cls = typeof clsOrOptions === 'function' ? clsOrOptions : undefined;
+		const opts = typeof clsOrOptions === 'object' ? clsOrOptions : options;
 
-		const nodes = await this.rest.resources(url, cfg);
+		const nodes = await this.rest.resources(url, opts);
 
 		return cls ? nodes.map((node) => this.utils.deserialize(cls, node)) : nodes;
 	}
