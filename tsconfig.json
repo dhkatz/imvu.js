@@ -1,10 +1,23 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/rest" },
-    { "path": "./packages/chkn" },
-    { "path": "./packages/client" },
-    { "path": "./packages/imq" },
-    { "path": "./packages/tools" }
+    {
+      "path": "./packages/rest"
+    },
+    {
+      "path": "./packages/chkn"
+    },
+    {
+      "path": "./packages/client"
+    },
+    {
+      "path": "./packages/imq"
+    },
+    {
+      "path": "./packages/xmlrpc"
+    },
+    {
+      "path": "./packages/tools"
+    }
   ]
 }
