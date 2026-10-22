@@ -1,6 +1,6 @@
-import { URLPaginator } from '../util/Paginator.js';
 import { Client } from '../client/index.js';
-import { Avatar, Product, User } from '../resources/index.js';
+import { Avatar, Product, User, type CurrentUser } from '../resources/index.js';
+import type { Collection } from '../collections/Collection.js';
 
 import {
 	BaseManager,
@@ -22,8 +22,7 @@ export class AccountManager extends BaseManager {
 
 	public constructor(
 		client: Client,
-		public readonly user: User,
-		public readonly avatar: Avatar
+		public readonly user: CurrentUser
 	) {
 		super(client);
 
@@ -57,18 +56,29 @@ export class AccountManager extends BaseManager {
 		return this.user.username;
 	}
 
-	/**
-	 * An asynchronous generator which yields each `User` on the client's blocklist.
-	 */
-	public async *blocklist(): AsyncIterableIterator<User> {
+	/** Fetch the authenticated user's current avatar only when it is needed. */
+	public async avatar(): Promise<Avatar> {
 		this.authenticated();
+		const url = this.user.relations.avatar;
+		if (!url) throw new Error("The authenticated user does not expose an 'avatar' relation");
 
-		yield* new URLPaginator(this.client, User, `/user/user-${this.user.id}/blocked`);
+		return this.client.resource(url, Avatar);
 	}
 
-	public async *inventory(): AsyncIterableIterator<Product> {
+	/** The authenticated user's blocklist collection. */
+	public blocklist(): Collection<User> {
 		this.authenticated();
+		const url = this.user.relations.blocked;
+		if (!url) throw new Error("The authenticated user does not expose a 'blocked' relation");
 
-		yield* new URLPaginator(this.client, Product, `/user/user-${this.user.id}/inventory`);
+		return this.client.collection(url, User);
+	}
+
+	public inventory(): Collection<Product> {
+		this.authenticated();
+		const url = this.user.relations.inventory;
+		if (!url) throw new Error("The authenticated user does not expose an 'inventory' relation");
+
+		return this.client.collection(url, Product);
 	}
 }

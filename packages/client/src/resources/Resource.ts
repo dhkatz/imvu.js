@@ -1,7 +1,8 @@
 import { Client } from '../client/index.js';
 import { APIResource } from '../types.js';
 import { Constructor } from 'type-fest';
-import { URLPaginator } from '../util/Paginator.js';
+import { Collection } from '../collections/Collection.js';
+import { RemoteDocument } from './RemoteDocument.js';
 
 export interface ResourceOptions {}
 
@@ -12,17 +13,17 @@ export type ResourceConstructor<T extends Resource<any> = Resource<any>> = {
 	build(client: Client, node: APIResource): T;
 };
 
-export abstract class Resource<TRelations = APIResource['relations'], TUpdates = APIResource['updates']> {
+export abstract class Resource<
+	TRelations = APIResource['relations'],
+	TUpdates = NonNullable<APIResource['updates']>,
+> extends RemoteDocument {
 	public _id = '';
 
 	public constructor(
-		protected readonly client: Client,
+		client: Client,
 		protected options: ResourceOptions = {}
 	) {
-		Object.defineProperty(this, 'client', {
-			enumerable: false,
-			writable: false,
-		});
+		super(client);
 
 		Object.defineProperty(this, 'options', {
 			enumerable: false,
@@ -49,13 +50,26 @@ export abstract class Resource<TRelations = APIResource['relations'], TUpdates =
 	 * (see MODERNIZATION.md). Fields keep their defaults until `_patch` overwrites
 	 * them, so an instance is never in an unset state.
 	 */
-	public static build<T extends Resource<any>>(this: ResourceConstructor<T>, client: Client, node: APIResource): T {
+	public static build<T extends Resource<any>>(
+		this: new (client: Client, options?: ResourceOptions) => T,
+		client: Client,
+		node: APIResource
+	): T {
 		const instance = new this(client);
-
-		instance._patch((node.data ?? {}) as Record<string, any>);
-		Object.assign(instance, { relations: node.relations ?? {}, updates: node.updates ?? {} });
+		instance._hydrate(node);
 
 		return instance;
+	}
+
+	/** @internal Refresh this canonical instance from an authoritative REST document. */
+	public _hydrate(node: APIResource): void {
+		this._patch((node.data ?? {}) as Record<string, any>);
+		// The normalized envelope is authoritative; legacy `_id` payload members
+		// must not replace an opaque/compound ID derived by the REST layer.
+		this._id = node.id;
+		this.relations = (node.relations ?? {}) as Partial<TRelations>;
+		this.updates = (node.updates ?? {}) as Partial<TUpdates>;
+		this._applyRemoteMetadata(node.url, node.updates);
 	}
 
 	/**
@@ -66,7 +80,7 @@ export abstract class Resource<TRelations = APIResource['relations'], TUpdates =
 	 * @internal
 	 */
 	public _patch(data: Record<string, any>): void {
-		if (typeof data._id === 'string') this._id = data._id;
+		if ('_id' in data && data._id !== null && data._id !== undefined) this._id = String(data._id);
 	}
 
 	protected authenticated(): void {
@@ -86,12 +100,13 @@ export abstract class Resource<TRelations = APIResource['relations'], TUpdates =
 		return null;
 	}
 
-	protected async *paginatedRelationship<T extends Resource, K extends keyof TRelations>(
+	protected collectionRelationship<T extends Resource, K extends keyof TRelations>(
 		relation: K,
 		cls: Constructor<T>
-	): AsyncIterableIterator<T> {
-		if (this.relations && relation in this.relations) {
-			yield* new URLPaginator(this.client, cls, `${this.relations[relation]}`);
-		}
+	): Collection<T> {
+		const url = this.relations[relation];
+		if (!url) throw new Error(`Resource '${this.url}' does not expose the '${String(relation)}' collection`);
+
+		return this.client.collection(String(url), cls);
 	}
 }

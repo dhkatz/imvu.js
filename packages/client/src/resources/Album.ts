@@ -1,6 +1,7 @@
 import { Resource } from './Resource.js';
 import { User } from './User.js';
 import { Photo } from './Photo.js';
+import type { Collection } from '../collections/Collection.js';
 
 export class Album extends Resource<AlbumRelations> {
 	public title = '';
@@ -18,8 +19,8 @@ export class Album extends Resource<AlbumRelations> {
 		return this.relationship('owner', User);
 	}
 
-	public async *photos(): AsyncIterableIterator<Photo> {
-		yield* this.paginatedRelationship('photos', Photo);
+	public photos(): Collection<Photo> {
+		return this.collectionRelationship('photos', Photo);
 	}
 }
 

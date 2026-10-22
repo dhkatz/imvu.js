@@ -1,3 +1,4 @@
+export * from './RemoteDocument.js';
 export * from './Resource.js';
 
 export * from './Product.js';

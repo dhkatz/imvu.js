@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import type { APIResource, APIUpdateTarget } from '@imvu/rest';
 
-import { Avatar, Client, Product, User } from '../src';
+import { Avatar, Client, Product, User } from '../src/index.js';
 
 const loadFixture = (name: string) =>
 	JSON.parse(readFileSync(join(__dirname, 'fixtures', `${name}.json`), 'utf8')) as {
@@ -9,13 +10,13 @@ const loadFixture = (name: string) =>
 		id: string;
 		data: Record<string, unknown>;
 		relations: Record<string, string>;
-		updates: Record<string, unknown>;
+		updates: Partial<APIUpdateTarget> | null;
 	};
 
-// Mirror the REST layer's _id back-fill from the resource URL.
-const node = (fixture: ReturnType<typeof loadFixture>) => ({
+const node = (fixture: ReturnType<typeof loadFixture>): APIResource => ({
 	...fixture,
-	data: { ...fixture.data, _id: fixture.id },
+	updates:
+		fixture.updates && fixture.updates.queue && fixture.updates.mount ? (fixture.updates as APIUpdateTarget) : null,
 });
 
 describe('Resource.build (offline, fixture-based)', () => {
@@ -27,7 +28,7 @@ describe('Resource.build (offline, fixture-based)', () => {
 		expect(product).toBeInstanceOf(Product);
 		expect(product.id).toBe('51522827');
 		expect(product.name).toBe("✖ 90'S Glasses. C");
-		expect(product.creatorId).toBe(157473407);
+		expect(product.creatorId).toBe('157473407');
 		expect(product.price).toBe(609);
 		expect(product.discountPrice).toBe(579);
 		expect(product.isPurchasable).toBe(true);
@@ -55,11 +56,17 @@ describe('Resource.build (offline, fixture-based)', () => {
 		expect(avatar).toBeInstanceOf(Avatar);
 		expect(avatar.gender).toBe('male');
 		expect(avatar._products.length).toBe(15);
-		expect(avatar._products[0].product_id).toBe(53900678);
+		expect(avatar._products[0].product_id).toBe('53900678');
 	});
 
 	it('never leaves a field unset — an empty payload yields all defaults', () => {
-		const product = Product.build(client, { data: {}, relations: null, updates: null });
+		const product = Product.build(client, {
+			url: '/product/product-0',
+			id: '0',
+			data: {},
+			relations: {},
+			updates: null,
+		});
 
 		expect(product.name).toBe('');
 		expect(product.price).toBe(-1);
@@ -77,6 +84,6 @@ describe('_patch (partial, in-place — the IMQ update path)', () => {
 
 		expect(product.price).toBe(999); // updated
 		expect(product.name).toBe("✖ 90'S Glasses. C"); // untouched
-		expect(product.creatorId).toBe(157473407); // untouched
+		expect(product.creatorId).toBe('157473407'); // untouched
 	});
 });

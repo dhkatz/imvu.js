@@ -1,4 +1,6 @@
-import { Resource, Product, User } from '../resources/index.js';
+import { Product } from './Product.js';
+import { Resource } from './Resource.js';
+import { User } from './User.js';
 
 export class ProductSaleEvent extends Resource<ProductSaleEventRelations> {
 	public timestamp = ''; // ISO datetime on the wire (purchased_datetime)
@@ -13,11 +15,11 @@ export class ProductSaleEvent extends Resource<ProductSaleEventRelations> {
 		super._patch(data);
 		if ('purchased_datetime' in data) this.timestamp = data.purchased_datetime;
 		if ('income_available_datetime' in data) this.incomeAvailableDatetime = data.income_available_datetime;
-		if ('buyer_id' in data) this.buyerId = data.buyer_id;
-		if ('recipient_id' in data) this.recipientId = data.recipient_id;
-		if ('product_id' in data) this.productId = data.product_id;
+		if ('buyer_id' in data) this.buyerId = String(data.buyer_id);
+		if ('recipient_id' in data) this.recipientId = String(data.recipient_id);
+		if ('product_id' in data) this.productId = String(data.product_id);
 		if ('product_name' in data) this.productName = data.product_name;
-		if ('transaction_id' in data) this.transactionId = data.transaction_id;
+		if ('transaction_id' in data) this.transactionId = String(data.transaction_id);
 	}
 
 	public async buyer(): Promise<User | null> {

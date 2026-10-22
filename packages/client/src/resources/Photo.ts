@@ -18,10 +18,6 @@ export class Photo extends Resource<PhotoRelations> {
 		if ('pid' in data) this.pid = data.pid;
 	}
 
-	public get id() {
-		return `${this.pid}`;
-	}
-
 	public async owner(): Promise<User | null> {
 		return this.relationship('owner', User);
 	}

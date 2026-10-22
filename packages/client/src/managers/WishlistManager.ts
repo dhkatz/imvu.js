@@ -1,26 +1,20 @@
 import { BaseManager } from './BaseManager.js';
 import { Product } from '../resources/index.js';
-import { URLPaginator } from '../util/Paginator.js';
+import type { Collection } from '../collections/Collection.js';
 
 export class WishlistManager extends BaseManager {
 	public get base(): string {
 		return `/user/user-${this.client.account.id}/wishlist`;
 	}
 
-	public async *list(): AsyncIterableIterator<Product> {
+	public list(): Collection<Product> {
 		this.authenticated();
-
-		yield* new URLPaginator(this.client, Product, this.base);
+		return this.client.account.user.wishlist();
 	}
 
 	public async count(): Promise<number> {
 		this.authenticated();
-
-		// A collection endpoint (items + total_count), not a single resource — read the raw envelope.
-		const response = await this.client.request(`${this.base}?limit=0`);
-		const data = response.denormalized[response.id].data as { total_count?: number };
-
-		return data.total_count ?? 0;
+		return this.list().count();
 	}
 
 	public async add(product: Product): Promise<boolean>;
@@ -29,13 +23,14 @@ export class WishlistManager extends BaseManager {
 		const id = await this.client.utils.id(product);
 
 		try {
-			await this.client.http.post(`${this.base}?limit=0`, {
-				id: `https://api.imvu.com/product/product-${id}`,
+			await this.client.request(`${this.base}?limit=0`, {
+				method: 'POST',
+				data: { id: `https://api.imvu.com/product/product-${id}` },
 			});
+			this.invalidateAccountWishlist();
 
 			return true;
-		} catch (e) {
-			console.log(e);
+		} catch {
 			return false;
 		}
 	}
@@ -46,11 +41,16 @@ export class WishlistManager extends BaseManager {
 		const id = await this.client.utils.id(product);
 
 		try {
-			await this.client.http.delete(`${this.base}/product-${id}`);
+			await this.client.request(`${this.base}/product-${id}`, { method: 'DELETE' });
+			this.invalidateAccountWishlist();
 
 			return true;
-		} catch (e) {
+		} catch {
 			return false;
 		}
+	}
+
+	private invalidateAccountWishlist(): void {
+		this.list()._invalidate();
 	}
 }

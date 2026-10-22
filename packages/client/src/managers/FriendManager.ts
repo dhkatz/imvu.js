@@ -1,6 +1,6 @@
 import { BaseManager } from './BaseManager.js';
-import { URLPaginator } from '../util/Paginator.js';
 import { User } from '../resources/index.js';
+import type { Collection } from '../collections/Collection.js';
 
 /**
  * Manage a client's friends list.
@@ -9,16 +9,12 @@ export class FriendManager extends BaseManager {
 	/**
 	 * An asynchronous generator which yields each `User` on the client's friends list.
 	 */
-	public async *list(): AsyncIterableIterator<User> {
-		yield* new URLPaginator(this.client, User, `/user/user-${this.client.account.id}/friends`);
+	public list(): Collection<User> {
+		return this.client.collection(`/user/user-${this.client.account.id}/friends`, User);
 	}
 
 	public async count(): Promise<number> {
-		// A collection endpoint (items + total_count), not a single resource — read the raw envelope.
-		const response = await this.client.request(`/user/user-${this.client.account.id}/friends?limit=0`);
-		const data = response.denormalized[response.id].data as { total_count?: number };
-
-		return data.total_count ?? 0;
+		return this.list().count();
 	}
 
 	public async add(user: User): Promise<boolean>;

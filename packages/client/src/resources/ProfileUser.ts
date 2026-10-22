@@ -1,4 +1,5 @@
 import { Resource } from './Resource.js';
+import type { Collection } from '../collections/Collection.js';
 
 export class ProfileUser extends Resource<ProfileUserRelations> {
 	public image = '';
@@ -26,20 +27,20 @@ export class ProfileUser extends Resource<ProfileUserRelations> {
 		if ('approx_follower_count' in data) this.followerCount = data.approx_follower_count;
 	}
 
-	public async *following(): AsyncIterableIterator<ProfileUser> {
-		yield* this.paginatedRelationship('subscriptions', ProfileUser);
+	public following(): Collection<ProfileUser> {
+		return this.collectionRelationship('subscriptions', ProfileUser);
 	}
 
-	public async *subscriptions() {
-		yield* this.following();
+	public subscriptions(): Collection<ProfileUser> {
+		return this.following();
 	}
 
-	public async *followers(): AsyncIterableIterator<ProfileUser> {
-		yield* this.paginatedRelationship('subscribers', ProfileUser);
+	public followers(): Collection<ProfileUser> {
+		return this.collectionRelationship('subscribers', ProfileUser);
 	}
 
-	public async *subscribers() {
-		yield* this.followers();
+	public subscribers(): Collection<ProfileUser> {
+		return this.followers();
 	}
 
 	public async follow(): Promise<boolean> {

@@ -8,22 +8,19 @@ export class Utilities {
 
 	public async id<T extends Resource<any>>(resource: T | string | number, user = false): Promise<string> {
 		if (typeof resource === 'string') {
-			const match = resource.match(/\d+(-\d+)?$/);
-
-			if (match) {
-				return match[0];
+			if (resource.includes('/')) {
+				const segment = resource.split(/[/?#]/).filter(Boolean).at(-1) ?? '';
+				const separator = segment.indexOf('-');
+				return separator >= 0 ? segment.slice(separator + 1) : segment;
 			}
+
+			if (/^\d+(?:-\d+)*$/.test(resource)) return resource;
 
 			if (user) {
 				// Assume it's a username
 				try {
-					const { data } = await this.client.resource('/user', { params: { username: user } });
-
-					const id = data.id?.match(/\d+(-\d+)?$/);
-
-					if (id) {
-						return id[0];
-					}
+					const found = await this.client.resource('/user', { params: { username: resource } });
+					if (found.id) return found.id;
 				} catch (error) {
 					throw new Error(`No users found with the username "${resource}"!`, { cause: error });
 				}
@@ -31,7 +28,9 @@ export class Utilities {
 				throw new Error(`No users found with the username "${resource}"!`);
 			}
 
-			throw new Error(`Could not parse "${resource}" as an ID!`);
+			// IDs are deliberately opaque strings. Callers that mean a username use
+			// the user-resolution path above.
+			return resource;
 		} else if (typeof resource === 'number') {
 			return `${resource}`;
 		} else {
@@ -39,10 +38,7 @@ export class Utilities {
 		}
 	}
 
-	public deserialize<T extends Resource<any>>(cls: Constructor<T>, data: APIResource<T>): T {
-		// Every resource class inherits the `build` factory from Resource; delegate to
-		// it. The cast bridges the plain `Constructor<T>` call sites use to the richer
-		// `ResourceConstructor<T>` `build` needs.
-		return (cls as unknown as ResourceConstructor<T>).build(this.client, data);
+	public deserialize<T extends Resource<any>>(cls: Constructor<T>, data: APIResource): T {
+		return this.client.documents.upsertResource(cls as unknown as ResourceConstructor<T>, data);
 	}
 }

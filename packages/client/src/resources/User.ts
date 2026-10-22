@@ -2,8 +2,10 @@ import { GetMatched, Product, ProfileUser, Room } from './index.js';
 
 import { Resource } from './Resource.js';
 import { Creator } from './Creator.js';
+import type { Collection } from '../collections/Collection.js';
+import type { GiftResult } from '../managers/GiftsManager.js';
 
-export class User extends Resource<UserRelations> {
+export class User<TRelations extends UserRelations = UserRelations> extends Resource<TRelations> {
 	public created = ''; // ISO 8601 string on the wire
 	public registered = 0; // unix seconds on the wire
 	public gender?: string;
@@ -41,8 +43,8 @@ export class User extends Resource<UserRelations> {
 		if ('is_staff' in data) this.isStaff = data.is_staff;
 	}
 
-	public async *wishlist(): AsyncIterableIterator<Product> {
-		yield* this.paginatedRelationship('wishlist', Product);
+	public wishlist(): Collection<Product> {
+		return this.collectionRelationship('wishlist', Product);
 	}
 
 	public async profile(): Promise<ProfileUser | null> {
@@ -65,7 +67,7 @@ export class User extends Resource<UserRelations> {
 		return this.relationship('current_room', Room);
 	}
 
-	public async gift(product: number | string | Product, message = ''): Promise<boolean> {
+	public gift(product: number | string | Product, message = ''): Promise<GiftResult> {
 		return this.client.account.gifts.gift(this, product, message);
 	}
 
@@ -96,3 +98,16 @@ export interface UserRelations {
 	get_matched_profile: string;
 	current_room: string;
 }
+
+/** Relations advertised only when this user represents the authenticated account. */
+export interface CurrentUserRelations extends UserRelations {
+	avatar: string;
+	blocked: string;
+	inventory: string;
+}
+
+/**
+ * The authenticated account's canonical User with its additional relation shape.
+ * This is deliberately a type specialization, not a separate runtime subclass.
+ */
+export type CurrentUser = User<CurrentUserRelations>;

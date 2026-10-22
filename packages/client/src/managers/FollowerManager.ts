@@ -1,14 +1,13 @@
 import { ProfileUser, User } from '../resources/index.js';
 import { BaseManager } from './BaseManager.js';
 import { APIResponse } from '../types.js';
-
-import { URLPaginator } from '../util/Paginator.js';
+import type { Collection } from '../collections/Collection.js';
 
 export class FollowerManager extends BaseManager {
 	public async *followers(): AsyncIterableIterator<User> {}
 
-	public async *following(): AsyncIterableIterator<ProfileUser> {
-		yield* new URLPaginator(this.client, ProfileUser, `/profile/profile-user-${this.client.account.id}/subscriptions`);
+	public following(): Collection<ProfileUser> {
+		return this.client.collection(`/profile/profile-user-${this.client.account.id}/subscriptions`, ProfileUser);
 	}
 
 	public async follow(profile: ProfileUser): Promise<boolean>;

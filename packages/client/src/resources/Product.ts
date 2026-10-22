@@ -1,9 +1,10 @@
 import { Resource } from './Resource.js';
 import { User } from './User.js';
+import type { Collection } from '../collections/Collection.js';
 
 export class Product extends Resource<ProductRelations> {
 	public name = '';
-	public creatorId = -1;
+	public creatorId = '';
 	public creatorName = '';
 	public rating = ''; // TODO Add interface/enum/class
 	public price = -1;
@@ -22,7 +23,7 @@ export class Product extends Resource<ProductRelations> {
 	public _patch(data: Record<string, any>): void {
 		super._patch(data);
 		if ('product_name' in data) this.name = data.product_name;
-		if ('creator_cid' in data) this.creatorId = data.creator_cid;
+		if ('creator_cid' in data) this.creatorId = String(data.creator_cid);
 		if ('creator_name' in data) this.creatorName = data.creator_name;
 		if ('rating' in data) this.rating = data.rating;
 		if ('product_price' in data) this.price = data.product_price;
@@ -51,8 +52,8 @@ export class Product extends Resource<ProductRelations> {
 	 * Async iterator for all the product's ancestors.
 	 * This is more efficient than calling `product.parent()` until it returns `null`.
 	 */
-	public async *ancestors(): AsyncIterableIterator<Product> {
-		yield* this.paginatedRelationship('ancestor_products', Product);
+	public ancestors(): Collection<Product> {
+		return this.collectionRelationship('ancestor_products', Product);
 	}
 }
 

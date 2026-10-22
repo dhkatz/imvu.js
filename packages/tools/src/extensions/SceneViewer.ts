@@ -7,8 +7,8 @@ export interface SceneViewerOptions {
 }
 
 export interface SceneData {
-	avatars: Map<number, PartialProduct[]>;
-	furniture: number[];
+	avatars: Map<string, PartialProduct[]>;
+	furniture: string[];
 }
 
 export class SceneViewer extends BaseExtension {
@@ -31,16 +31,13 @@ export class SceneViewer extends BaseExtension {
 		const avatars = new Map(
 			data.map((value: string) => {
 				const split = value.split('=');
-				const id = parseInt(split[0].replace('avatar', ''));
-				const products: PartialProduct[] = split[1]
-					.split(separator)
-					.map((value) => parseInt(value, 10))
-					.map((value) => ({
-						id: `https://api.imvu.com/product/product-${value}`,
-						product_id: value,
-						owned: true,
-						rating: '',
-					}));
+				const id = split[0].replace('avatar', '');
+				const products: PartialProduct[] = split[1].split(separator).map((value) => ({
+					id: `https://api.imvu.com/product/product-${value}`,
+					product_id: value,
+					owned: true,
+					rating: '',
+				}));
 
 				return [id, products];
 			})
@@ -50,8 +47,7 @@ export class SceneViewer extends BaseExtension {
 			.replace('room=', '')
 			.replace(/x\d+/g, '')
 			.split(separator)
-			.map((value) => parseInt(value))
-			.filter((p) => !isNaN(p));
+			.filter((value) => /^\d+$/.test(value));
 
 		const scene = new Scene(this.client, { avatars, furniture });
 
@@ -78,7 +74,7 @@ export class Scene {
 	 */
 	public async load(): Promise<void> {
 		const avatars = await Promise.all(
-			[...this.data.avatars].map(async ([id, products]: [number, PartialProduct[]]) => {
+			[...this.data.avatars].map(async ([id, products]: [string, PartialProduct[]]) => {
 				const user = await this.client.users.fetch(id);
 
 				if (!user) {

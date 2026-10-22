@@ -1,23 +1,21 @@
 import { BaseManager } from './BaseManager.js';
 import { Room } from '../resources/index.js';
-import { URLPaginator } from '../util/Paginator.js';
+import type { Collection } from '../collections/Collection.js';
 
 export class RoomManager extends BaseManager {
-	public async *recent(): AsyncIterableIterator<Room> {
-		yield* new URLPaginator(this.client, Room, `/user/user-${this.client.account.id}/recent_rooms`);
+	public recent(): Collection<Room> {
+		return this.client.collection(`/user/user-${this.client.account.id}/recent_rooms`, Room);
 	}
 
-	public async *favorites(): AsyncIterableIterator<Room> {
-		yield* new URLPaginator(this.client, Room, `/user/user-${this.client.account.id}/favorite_rooms`);
+	public favorites(): Collection<Room> {
+		return this.client.collection(`/user/user-${this.client.account.id}/favorite_rooms`, Room);
 	}
 
-	public async *managed(): AsyncIterableIterator<Room> {
-		yield* new URLPaginator(this.client, Room, `/user/user-${this.client.account.id}/managed_rooms`);
+	public managed(): Collection<Room> {
+		return this.client.collection(`/user/user-${this.client.account.id}/managed_rooms`, Room);
 	}
 
-	public async *owned(
-		type: 'closed' | 'listed' | 'inventory' | 'shared' | 'marriage' = 'listed'
-	): AsyncIterableIterator<Room> {
-		yield* new URLPaginator(this.client, Room, `/user/user-${this.client.account.id}/my_rooms?type=${type}`);
+	public owned(type: 'closed' | 'listed' | 'inventory' | 'shared' | 'marriage' = 'listed'): Collection<Room> {
+		return this.client.collection(`/user/user-${this.client.account.id}/my_rooms?type=${type}`, Room);
 	}
 }

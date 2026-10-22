@@ -1,4 +1,5 @@
 import { Product, Resource } from '../resources/index.js';
+import type { Collection } from '../collections/Collection.js';
 
 export class Outfit extends Resource<OutfitRelations> {
 	public outfitName = '';
@@ -7,7 +8,7 @@ export class Outfit extends Resource<OutfitRelations> {
 	public outfitImage = '';
 	public rating = 'GA';
 	public privacy = '0';
-	public pids: number[] = [];
+	public pids: string[] = [];
 
 	public _patch(data: Record<string, any>): void {
 		super._patch(data);
@@ -17,11 +18,11 @@ export class Outfit extends Resource<OutfitRelations> {
 		if ('outfit_image' in data) this.outfitImage = data.outfit_image;
 		if ('rating' in data) this.rating = data.rating;
 		if ('privacy' in data) this.privacy = data.privacy;
-		if ('pids' in data) this.pids = data.pids;
+		if ('pids' in data) this.pids = data.pids.map(String);
 	}
 
-	public async *products(): AsyncIterableIterator<Product> {
-		yield* this.paginatedRelationship('products', Product);
+	public products(): Collection<Product> {
+		return this.collectionRelationship('products', Product);
 	}
 }
 

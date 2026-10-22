@@ -1,12 +1,11 @@
-import { Client, Product } from '../../src';
+import { Client, Product } from '../../src/index.js';
 
-const { IMVU_USERNAME, IMVU_PASSWORD } = process.env;
+const IMVU_USERNAME = process.env.IMVU_USERNAME ?? '';
+const IMVU_PASSWORD = process.env.IMVU_PASSWORD ?? '';
+const describeLive =
+	process.env.IMVU_RUN_LIVE_TESTS === 'true' && IMVU_USERNAME && IMVU_PASSWORD ? describe : describe.skip;
 
-if (!IMVU_USERNAME || !IMVU_PASSWORD) {
-	throw new Error('IMVU_USERNAME and IMVU_PASSWORD must be set');
-}
-
-describe('AccountManager', () => {
+describeLive('AccountManager (live)', () => {
 	const client = new Client();
 
 	beforeAll(() => client.login(IMVU_USERNAME, IMVU_PASSWORD));

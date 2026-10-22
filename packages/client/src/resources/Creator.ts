@@ -1,5 +1,7 @@
 import { Resource } from './Resource.js';
 import { Product } from './Product.js';
+import { ProductSaleEvent } from './ProductSaleEvent.js';
+import type { Collection } from '../collections/Collection.js';
 
 export class Creator extends Resource<CreatorRelations> {
 	public tier = 0;
@@ -17,14 +19,13 @@ export class Creator extends Resource<CreatorRelations> {
 		if ('is_veteran' in data) this.isVeteran = data.is_veteran;
 	}
 
-	public async *products(): AsyncIterableIterator<Product> {
-		yield* this.paginatedRelationship('products', Product);
+	public products(): Collection<Product> {
+		return this.collectionRelationship('products', Product);
 	}
 
-	public async *sales(): AsyncIterableIterator<Product> {
+	public sales(): Collection<ProductSaleEvent> {
 		this.authenticated();
-
-		yield* this.paginatedRelationship('product_sale_events', Product);
+		return this.collectionRelationship('product_sale_events', ProductSaleEvent);
 	}
 }
 

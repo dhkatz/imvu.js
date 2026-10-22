@@ -1,7 +1,7 @@
 import { Product } from './Product.js';
 import { Resource } from './Resource.js';
 
-export type PartialProduct = { id: string; product_id: number; owned: boolean; rating: string };
+export type PartialProduct = { id: string; product_id: string; owned: boolean; rating: string };
 
 export class Avatar extends Resource {
 	public lookUrl = '';
@@ -14,7 +14,13 @@ export class Avatar extends Resource {
 		if ('look_url' in data) this.lookUrl = data.look_url;
 		if ('asset_url' in data) this.assetUrl = data.asset_url;
 		if ('gender' in data) this.gender = data.gender;
-		if ('products' in data) this._products = data.products;
+		if ('products' in data) {
+			this._products = data.products.map((product: Record<string, any>) => ({
+				...product,
+				id: String(product.id),
+				product_id: String(product.product_id),
+			}));
+		}
 	}
 
 	public async *products(): AsyncIterableIterator<Product> {
