@@ -3,7 +3,12 @@
 	"compilerOptions": {
 		"rootDir": "./src",
 		"outDir": "./dist",
-		"types": ["node"]
+		"types": []
 	},
-	"include": ["./src/**/*.ts"]
+	"include": ["./src/**/*.ts"],
+	"references": [
+		{
+			"path": "../cal3d"
+		}
+	]
 }

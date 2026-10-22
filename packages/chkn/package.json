@@ -2,7 +2,7 @@
 	"name": "@imvu/chkn",
 	"private": true,
 	"version": "0.1.0",
-	"description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
+	"description": "Read IMVU product packages: CFL/CHKN archives, index.xml templates with inheritance, and their Cal3D models.",
 	"author": "dhkatz",
 	"license": "MIT",
 	"type": "module",
@@ -27,6 +27,7 @@
 		"clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
 		"test": "vitest run"
 	},
-	"dependencies": {},
-	"devDependencies": {}
+	"dependencies": {
+		"@imvu/cal3d": "^0.1.0"
+	}
 }

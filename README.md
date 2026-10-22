@@ -23,7 +23,8 @@ The `@imvu` mono-repository contains the following packages:
 
 - `@imvu/client`: The client library for interacting with the IMVU API. (log in, gifting, messaging, etc.)
 - `@imvu/imq`: Library for interacting with the IMVU IMQ websocket server (chat, notifications, etc).
-- `@imvu/chkn`: Download, extract, and create product CHKN files.
+- `@imvu/chkn`: Load products (CFL/CHKN archives, `index.xml` templates with inheritance), assemble their models, and export or flatten CHKN files.
+- `@imvu/cal3d`: Read and write the Cal3D model files products are made of (skeletons, meshes, materials, animations).
 - `@imvu/studio`: Library for interacting with IMVU Studio services (product publishing, editing, etc).
 - `@imvu/tools`: A collection of tools for interacting with IMVU's API (product downloading, etc).
 

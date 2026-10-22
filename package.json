@@ -17,7 +17,7 @@
     "docs:build": "docker build -t imvu/docs ./docs/",
     "docs:serve": "docker run --rm -it -p 8000:8000 -v %cd%:/docs imvu/docs",
     "test": "vitest run",
-    "test:typecheck": "tsc -p packages/rest/tsconfig.spec.json --noEmit && tsc -p packages/client/tsconfig.spec.json --noEmit && tsc -p packages/imq/tsconfig.spec.json --noEmit && tsc -p packages/xmlrpc/tsconfig.spec.json --noEmit && tsc -p packages/tools/tsconfig.spec.json --noEmit",
+    "test:typecheck": "tsc -p packages/rest/tsconfig.spec.json --noEmit && tsc -p packages/client/tsconfig.spec.json --noEmit && tsc -p packages/imq/tsconfig.spec.json --noEmit && tsc -p packages/xmlrpc/tsconfig.spec.json --noEmit && tsc -p packages/tools/tsconfig.spec.json --noEmit && tsc -p packages/cal3d/tsconfig.spec.json --noEmit && tsc -p packages/chkn/tsconfig.spec.json --noEmit",
     "test:watch": "vitest",
     "tool": "node --import tsx --env-file-if-exists=.env packages/tools/src/index.ts",
     "changeset": "changeset",
