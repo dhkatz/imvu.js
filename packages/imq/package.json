@@ -27,7 +27,6 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@imvu/client": "^0.1.0",
 		"ws": "^8.21.0"
 	},
 	"devDependencies": {

@@ -7,6 +7,7 @@ export default defineConfig({
     alias: {
       // Resolve the workspace package to source so tests don't need a build.
       '@imvu/rest': fileURLToPath(new URL('./packages/rest/src/index.ts', import.meta.url)),
+      '@imvu/imq': fileURLToPath(new URL('./packages/imq/src/index.ts', import.meta.url)),
     },
   },
   test: {

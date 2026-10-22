@@ -27,6 +27,7 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
+		"@imvu/imq": "^0.1.0",
 		"@imvu/rest": "^0.1.0",
 		"axios": "^1.18.0"
 	}

@@ -1,5 +1,5 @@
-import { countPattern, expandPattern, isPattern } from '../src/names/expand';
-import { variations } from '../src/names/variations';
+import { countPattern, expandPattern, isPattern } from '../src/names/expand.js';
+import { variations } from '../src/names/variations.js';
 
 describe('expandPattern', () => {
 	it('returns a single literal name, lowercased', () => {

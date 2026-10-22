@@ -29,13 +29,17 @@ The `@imvu` mono-repository contains the following packages:
 
 ### Testing
 
-This library has testing in place to ensure the integrity and reliability of the APIs being used.
+The default test suite is offline and never contacts IMVU:
 
-If you would like to run the tests, I recommend using a VPN and separate account to avoid potential
-rate limiting and IP issues.
+```sh
+npm test
+npm run test:typecheck
+```
 
-Please set the `IMVU_USERNAME` and `IMVU_PASSWORD` environment variables to your IMVU account credentials.
-Do not use your main account, as the tests may modify your account.
+Live read-only integration tests require `IMVU_RUN_LIVE_TESTS=true` plus the
+`IMVU_USERNAME` and `IMVU_PASSWORD` environment variables. State-changing tests are
+separately gated behind `IMVU_RUN_MUTATION_TESTS=true`; use a dedicated test account
+if you deliberately enable them.
 
 ## License
 
