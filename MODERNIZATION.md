@@ -70,7 +70,7 @@ The serialization approach evolved well past the original Valibot plan. Reality 
   upcoming 3D app fetch raw typed JSON without class overhead.
 - **Vitest** (globals, no SWC), TypeScript 6, Prettier 3, Node 22.
 - **Build: plain `tsc -b`, ESM-only** (NOT tsup — see below). `moduleResolution:
-NodeNext` + explicit `.js` extensions on relative imports (the real fix for the
+  NodeNext` + explicit `.js` extensions on relative imports (the real fix for the
   broken ESM); `composite` project references give dependency-aware builds
   (`tsc -b` on one package builds its deps first). No `ignoreDeprecations` — TS7-safe.
 - **Packages (5):** `rest`, `client`, `imq`, `chkn`, `tools`.
@@ -325,7 +325,7 @@ mechanism there once, then migrate resource files one at a time.
   deep-imports. Final shape:
 
 - `serialization/parse.ts` — the only shared engine: `parseResource(schema, rename,
-payload) → { data, issues }` (resilient `safeParse` + per-field salvage), plus
+  payload) → { data, issues }` (resilient `safeParse` + per-field salvage), plus
   `toSnakeCase`, `resourceEntries` (`_id`), and a typed `Rename<S>`.
 - Each resource file owns its schema: `export const ProductSchema = v.object({...})`
   (camelCase, source of truth) + `static schema` / `static rename` on the class.
@@ -544,7 +544,7 @@ Biggest breaking migration; isolated from runtime so it was done after the code 
    - `@typescript-eslint/no-explicit-any: off` (dynamic wire format),
    - `no-undef: off` (TS handles resolution; redundant + wrong for types),
    - `@typescript-eslint/no-unused-vars` tuned to `{ args: 'none',
-varsIgnorePattern: '^_', caughtErrors: 'none' }` — `args: 'none'` because
+     varsIgnorePattern: '^_', caughtErrors: 'none' }` — `args: 'none'` because
      many imq callback/interface signatures carry unused params by contract.
    - `eslint-config-prettier/flat` last, so Prettier owns formatting.
 4. **Prettier + ESLint:** stopped running Prettier _through_ ESLint. Dropped

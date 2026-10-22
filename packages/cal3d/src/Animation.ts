@@ -163,32 +163,28 @@ export class Animation {
 		const body: XmlNode = {
 			name: 'ANIMATION',
 			attributes: { DURATION: floats(this.duration), NUMTRACKS: this.tracks.length },
-			children: this.tracks.map(
-				(track): XmlNode => ({
-					name: 'TRACK',
-					attributes: {
-						BONEID: track.boneId,
-						TRANSLATIONREQUIRED: track.translationRequired ? 1 : 0,
-						TRANSLATIONISDYNAMIC: track.translationIsDynamic ? 1 : 0,
-						HIGHRANGEREQUIRED: track.highRangeRequired ? 1 : 0,
-						NUMKEYFRAMES: track.keyframes.length,
-					},
-					children: track.keyframes.map((keyframe, i): XmlNode => {
-						const writeTranslation =
-							track.translationRequired && keyframe.translation && (track.translationIsDynamic || i === 0);
-						return {
-							name: 'KEYFRAME',
-							attributes: { TIME: floats(keyframe.time) },
-							children: [
-								...(writeTranslation
-									? [{ name: 'TRANSLATION', text: floats(...keyframe.translation!.toArray()) }]
-									: []),
-								{ name: 'ROTATION', text: floats(...keyframe.rotation.toArray()) },
-							],
-						};
-					}),
-				})
-			),
+			children: this.tracks.map((track): XmlNode => ({
+				name: 'TRACK',
+				attributes: {
+					BONEID: track.boneId,
+					TRANSLATIONREQUIRED: track.translationRequired ? 1 : 0,
+					TRANSLATIONISDYNAMIC: track.translationIsDynamic ? 1 : 0,
+					HIGHRANGEREQUIRED: track.highRangeRequired ? 1 : 0,
+					NUMKEYFRAMES: track.keyframes.length,
+				},
+				children: track.keyframes.map((keyframe, i): XmlNode => {
+					const writeTranslation =
+						track.translationRequired && keyframe.translation && (track.translationIsDynamic || i === 0);
+					return {
+						name: 'KEYFRAME',
+						attributes: { TIME: floats(keyframe.time) },
+						children: [
+							...(writeTranslation ? [{ name: 'TRANSLATION', text: floats(...keyframe.translation!.toArray()) }] : []),
+							{ name: 'ROTATION', text: floats(...keyframe.rotation.toArray()) },
+						],
+					};
+				}),
+			})),
 		};
 		return writeXml(xmlDocument('animation', body));
 	}

@@ -447,47 +447,41 @@ function xmlSubmesh(submesh: Submesh): XmlNode {
 			text: floats(uvs[s]?.u ?? 0, uvs[s]?.v ?? 0),
 		}));
 
-	const vertices = submesh.vertices.map(
-		(vertex, id): XmlNode => ({
-			name: 'VERTEX',
-			attributes: { ID: id, NUMINFLUENCES: vertex.influences.length },
-			children: [
-				{ name: 'POS', text: floats(...vertex.position.toArray()) },
-				{ name: 'NORM', text: floats(...vertex.normal.toArray()) },
-				{ name: 'COLOR', text: floats(vertex.color.r, vertex.color.g, vertex.color.b) },
-				...uvNodes(vertex.texCoords),
-				...vertex.influences.map(
-					(influence): XmlNode => ({
-						name: 'INFLUENCE',
-						attributes: { ID: influence.boneId },
-						text: floats(influence.weight),
-					})
-				),
-			],
-		})
-	);
+	const vertices = submesh.vertices.map((vertex, id): XmlNode => ({
+		name: 'VERTEX',
+		attributes: { ID: id, NUMINFLUENCES: vertex.influences.length },
+		children: [
+			{ name: 'POS', text: floats(...vertex.position.toArray()) },
+			{ name: 'NORM', text: floats(...vertex.normal.toArray()) },
+			{ name: 'COLOR', text: floats(vertex.color.r, vertex.color.g, vertex.color.b) },
+			...uvNodes(vertex.texCoords),
+			...vertex.influences.map((influence): XmlNode => ({
+				name: 'INFLUENCE',
+				attributes: { ID: influence.boneId },
+				text: floats(influence.weight),
+			})),
+		],
+	}));
 
-	const morphs = submesh.morphTargets.map(
-		(morph, id): XmlNode => ({
-			name: 'MORPH',
-			attributes: { MORPHID: id, NAME: morph.name, NUMBLENDVERTS: morph.blendVertices.length },
-			children: sortedBlendVertices(morph).map((blend): XmlNode => {
-				const base = submesh.vertices[blend.vertexId];
-				return {
-					name: 'BLENDVERTEX',
-					attributes: {
-						VERTEXID: blend.vertexId,
-						POSDIFF: floats(base ? blend.position.subtract(base.position).length : 0),
-					},
-					children: [
-						{ name: 'POSITION', text: floats(...blend.position.toArray()) },
-						{ name: 'NORMAL', text: floats(...blend.normal.toArray()) },
-						...uvNodes(blend.texCoords),
-					],
-				};
-			}),
-		})
-	);
+	const morphs = submesh.morphTargets.map((morph, id): XmlNode => ({
+		name: 'MORPH',
+		attributes: { MORPHID: id, NAME: morph.name, NUMBLENDVERTS: morph.blendVertices.length },
+		children: sortedBlendVertices(morph).map((blend): XmlNode => {
+			const base = submesh.vertices[blend.vertexId];
+			return {
+				name: 'BLENDVERTEX',
+				attributes: {
+					VERTEXID: blend.vertexId,
+					POSDIFF: floats(base ? blend.position.subtract(base.position).length : 0),
+				},
+				children: [
+					{ name: 'POSITION', text: floats(...blend.position.toArray()) },
+					{ name: 'NORMAL', text: floats(...blend.normal.toArray()) },
+					...uvNodes(blend.texCoords),
+				],
+			};
+		}),
+	}));
 
 	const faces = submesh.faces.map((face): XmlNode => ({ name: 'FACE', attributes: { VERTEXID: face.join(' ') } }));
 

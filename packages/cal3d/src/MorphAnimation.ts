@@ -85,19 +85,15 @@ export class MorphAnimation {
 		const body: XmlNode = {
 			name: 'ANIMATION',
 			attributes: { DURATION: floats(this.duration), NUMTRACKS: this.tracks.length },
-			children: this.tracks.map(
-				(track): XmlNode => ({
-					name: 'TRACK',
-					attributes: { MORPHNAME: track.morphName, NUMKEYFRAMES: track.keyframes.length },
-					children: track.keyframes.map(
-						(keyframe): XmlNode => ({
-							name: 'KEYFRAME',
-							attributes: { TIME: floats(keyframe.time) },
-							children: [{ name: 'WEIGHT', text: floats(keyframe.weight) }],
-						})
-					),
-				})
-			),
+			children: this.tracks.map((track): XmlNode => ({
+				name: 'TRACK',
+				attributes: { MORPHNAME: track.morphName, NUMKEYFRAMES: track.keyframes.length },
+				children: track.keyframes.map((keyframe): XmlNode => ({
+					name: 'KEYFRAME',
+					attributes: { TIME: floats(keyframe.time) },
+					children: [{ name: 'WEIGHT', text: floats(keyframe.weight) }],
+				})),
+			})),
 		};
 		return writeXml(xmlDocument('morphAnimation', body));
 	}

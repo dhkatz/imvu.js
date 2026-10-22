@@ -30,20 +30,18 @@
     "tsconfig.base.json",
     "vitest.config.mts"
   ],
-  "workspaces": {
-    "packages": [
-      "packages/*"
-    ]
-  },
+  "workspaces": [
+    "packages/*"
+  ],
   "devDependencies": {
-    "@changesets/cli": "^2.31.1",
+    "@changesets/cli": "^3.0.3",
     "@types/node": "^24.0.0",
-    "@vitest/coverage-v8": "^4.1.11",
-    "oxfmt": "^0.59.0",
+    "@vitest/coverage-v8": "^4.1.12",
+    "oxfmt": "^0.74.0",
     "oxlint": "^1.74.0",
     "oxlint-tsgolint": "^0.25.0",
     "tsx": "^4.23.1",
     "typescript": "^7.0.0",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.12"
   }
 }

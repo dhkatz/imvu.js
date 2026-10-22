@@ -175,19 +175,17 @@ export class Product {
 			const data = asset ? this.getFile(asset) : undefined;
 			return data ? parser(data) : null;
 		};
-		const parts = [...this.definition.meshes.values()].map(
-			(meshSpec): ModelPart => ({
-				id: meshSpec.index,
-				meshSpec,
-				mesh: parse(meshSpec.asset, (data) => Mesh.parse(data)),
-				materials: new Map(
-					[...this.definition.materialsFor(meshSpec.index)].map(([index, spec]) => [
-						index,
-						{ spec, material: parse(spec.asset, (data) => Material.parse(data)) },
-					])
-				),
-			})
-		);
+		const parts = [...this.definition.meshes.values()].map((meshSpec): ModelPart => ({
+			id: meshSpec.index,
+			meshSpec,
+			mesh: parse(meshSpec.asset, (data) => Mesh.parse(data)),
+			materials: new Map(
+				[...this.definition.materialsFor(meshSpec.index)].map(([index, spec]) => [
+					index,
+					{ spec, material: parse(spec.asset, (data) => Material.parse(data)) },
+				])
+			),
+		}));
 		return { skeleton: this.loadSkeleton(), parts };
 	}
 
