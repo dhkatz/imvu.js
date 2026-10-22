@@ -35,6 +35,60 @@ CDN, and `cflChecksum` matches the MD5 of the downloaded CFL.
   row followed by value rows; see `flattenTable` / `unflattenTable`.
 - Faults surface as `XmlRpcFault` with a `code` (see `FaultCode`). `30` means the
   session was replaced by another login; `110` means the server wants a
-  proof-of-work solved, which this package does not implement yet.
+  proof-of-work solved before it accepts more calls (see below).
 
 `gateway.call(method, params, { host })` invokes any other gateway method directly.
+
+## Proof of work (fault 110)
+
+When the server rate-limits a session it returns fault 110 (ProofOfWorkRequired).
+The challenge is an **RSW time-lock puzzle** — the client must perform T
+sequential modular squarings that cannot be parallelised. The nonce is a
+comma-separated string: `rsw,T,N,A,Cipher`.
+
+The standalone solver works without a gateway:
+
+```ts
+import { solveRsw } from '@imvu/xmlrpc';
+
+const solution = solveRsw('rsw,10,3233,2021,2345'); // decimal string
+```
+
+`solveRsw` blocks until it finishes. For large T, `solveRswAsync(nonce, { signal })`
+yields to the event loop every `yieldEvery` squarings (default 10 000) and can be
+cancelled.
+
+> **Unverified:** the cipher is assumed to be `Solution + A^(2^T) mod N`, either
+> unreduced or reduced mod N; both are handled. This has not yet been checked
+> against a nonce captured from the live server.
+
+To retry automatically, pass a `proofOfWork` handler. The gateway calls it on
+fault 110, then retries the original call (up to `maxPowRetries`, default 3).
+
+> **Unverified sketch:** the endpoint, request body and response shape below are
+> guesses, not taken from a real exchange, and the requests need the REST
+> session's authentication, which this bare `fetch` does not send.
+
+```ts
+import { XmlRpcGateway, solveRswAsync } from '@imvu/xmlrpc';
+
+const gateway = new XmlRpcGateway({
+  proofOfWork: async (session, fetch) => {
+    // 1. Request a challenge from the REST API
+    const res = await fetch(`https://api.imvu.com/user/user-${session.userId}/pow`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ algorithm: 'rsw', difficulty: 0.001 }),
+    });
+    const { id, denormalized } = await res.json();
+    const nonce: string = denormalized[id].data.nonce;
+
+    // 2. Solve and submit
+    await fetch(id, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ solution: await solveRswAsync(nonce) }),
+    });
+  },
+});
+```

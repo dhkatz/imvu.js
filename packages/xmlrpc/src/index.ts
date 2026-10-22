@@ -3,6 +3,7 @@ export type {
 	XmlRpcHost,
 	XmlRpcSession,
 	XmlRpcGatewayOptions,
+	ProofOfWorkHandler,
 	CallOptions,
 	LoginCredential,
 	LoginOptions,
@@ -19,3 +20,6 @@ export { XmlRpcFault, XmlRpcHttpError, FaultCode } from './errors.js';
 export { flattenTable, unflattenTable } from './tables.js';
 export type { Table } from './tables.js';
 export { md5 } from './md5.js';
+
+export { solveRsw, solveRswAsync, parseRswNonce } from './rsw.js';
+export type { RswNonce, SolveRswOptions } from './rsw.js';

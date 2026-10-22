@@ -1,5 +1,5 @@
 import { decodeMethodResponse, encodeMethodCall, type XmlRpcValue } from './codec.js';
-import { XmlRpcHttpError } from './errors.js';
+import { FaultCode, XmlRpcFault, XmlRpcHttpError } from './errors.js';
 import { md5 } from './md5.js';
 import { flattenTable, unflattenTable } from './tables.js';
 
@@ -30,6 +30,16 @@ export interface XmlRpcSession {
 	clientSessionId: string;
 }
 
+/**
+ * Called when the server returns fault 110 (ProofOfWorkRequired). The handler
+ * should obtain and solve a challenge (typically by POSTing to the REST API's
+ * `/pow/` collection) so the gateway can retry the original call.
+ *
+ * @param session - The current session (user ID, security key, CSID).
+ * @param fetch   - The `fetch` implementation the gateway was constructed with.
+ */
+export type ProofOfWorkHandler = (session: XmlRpcSession, fetch: typeof globalThis.fetch) => Promise<void>;
+
 export interface XmlRpcGatewayOptions {
 	/** The `fetch` implementation to use. Defaults to the global `fetch`. */
 	fetch?: typeof fetch;
@@ -37,6 +47,13 @@ export interface XmlRpcGatewayOptions {
 	endpoints?: Partial<Record<XmlRpcHost, string>>;
 	/** Resume a previously issued session instead of logging in. */
 	session?: XmlRpcSession;
+	/**
+	 * When set, fault 110 triggers this handler and the call is retried. If
+	 * unset, fault 110 throws like any other fault.
+	 */
+	proofOfWork?: ProofOfWorkHandler;
+	/** Maximum PoW retry attempts per call. Defaults to `3`. */
+	maxPowRetries?: number;
 }
 
 export interface CallOptions {
@@ -120,11 +137,15 @@ export class XmlRpcGateway {
 
 	private readonly fetchImpl: typeof fetch;
 	private readonly endpoints: Record<XmlRpcHost, string>;
+	private readonly proofOfWork?: ProofOfWorkHandler;
+	private readonly maxPowRetries: number;
 
 	public constructor(options: XmlRpcGatewayOptions = {}) {
 		this.fetchImpl = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
 		this.endpoints = { ...XMLRPC_ENDPOINTS, ...options.endpoints };
 		this.session = options.session;
+		this.proofOfWork = options.proofOfWork;
+		this.maxPowRetries = options.maxPowRetries ?? 3;
 	}
 
 	/** Invoke `method` and return its decoded result. Faults throw {@link XmlRpcFault}. */
@@ -133,6 +154,26 @@ export class XmlRpcGateway {
 		params: readonly XmlRpcValue[] = [],
 		options: CallOptions = {}
 	): Promise<XmlRpcValue> {
+		for (let attempt = 0; ; attempt++) {
+			try {
+				return await this.send(method, params, options);
+			} catch (error) {
+				if (
+					error instanceof XmlRpcFault &&
+					error.code === FaultCode.ProofOfWorkRequired &&
+					this.proofOfWork &&
+					this.session &&
+					attempt < this.maxPowRetries
+				) {
+					await this.proofOfWork(this.session, this.fetchImpl);
+					continue;
+				}
+				throw error;
+			}
+		}
+	}
+
+	private async send(method: string, params: readonly XmlRpcValue[], options: CallOptions): Promise<XmlRpcValue> {
 		const url = this.endpoints[options.host ?? 'client'];
 		const body = encodeMethodCall(method, params);
 		const headers = new Headers({ 'content-type': 'text/xml' });

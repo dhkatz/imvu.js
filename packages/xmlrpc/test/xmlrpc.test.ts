@@ -9,6 +9,9 @@ import {
 	encodeMethodCall,
 	flattenTable,
 	md5,
+	parseRswNonce,
+	solveRsw,
+	solveRswAsync,
 	unflattenTable,
 	type XmlRpcValue,
 } from '../src/index.js';
@@ -270,5 +273,123 @@ describe('XmlRpcGateway', () => {
 
 		await expect(gateway.call('test.ping')).rejects.toBeInstanceOf(XmlRpcHttpError);
 		await expect(gateway.call('test.ping')).rejects.toEqual(expect.objectContaining({ code: 110 }));
+	});
+
+	it('retries after fault 110 when a proofOfWork handler is set', async () => {
+		const { fetch } = scriptedFetch(fault(FaultCode.ProofOfWorkRequired, 'solve me'), response('<string>ok</string>'));
+		const handler = vi.fn(async () => {});
+		const gateway = new XmlRpcGateway({ fetch, session, proofOfWork: handler });
+
+		await expect(gateway.call('test.ping')).resolves.toBe('ok');
+		expect(handler).toHaveBeenCalledOnce();
+		expect(handler).toHaveBeenCalledWith(session, fetch);
+	});
+
+	it('gives up after maxPowRetries consecutive fault 110s', async () => {
+		const { fetch } = scriptedFetch(
+			fault(FaultCode.ProofOfWorkRequired, 'pow'),
+			fault(FaultCode.ProofOfWorkRequired, 'pow'),
+			fault(FaultCode.ProofOfWorkRequired, 'pow'),
+			fault(FaultCode.ProofOfWorkRequired, 'pow')
+		);
+		const handler = vi.fn(async () => {});
+		const gateway = new XmlRpcGateway({ fetch, session, proofOfWork: handler, maxPowRetries: 2 });
+
+		await expect(gateway.call('test.ping')).rejects.toEqual(expect.objectContaining({ code: 110 }));
+		expect(handler).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not retry fault 110 without a session', async () => {
+		const { fetch } = scriptedFetch(fault(FaultCode.ProofOfWorkRequired, 'pow'));
+		const handler = vi.fn(async () => {});
+		const gateway = new XmlRpcGateway({ fetch, proofOfWork: handler });
+
+		await expect(gateway.call('test.ping')).rejects.toEqual(expect.objectContaining({ code: 110 }));
+		expect(handler).not.toHaveBeenCalled();
+	});
+});
+
+describe('RSW solver', () => {
+	const modPow = (base: bigint, exp: bigint, mod: bigint): bigint => {
+		let result = 1n;
+		let value = base % mod;
+		for (let e = exp; e > 0n; e >>= 1n) {
+			if (e & 1n) result = (result * value) % mod;
+			value = (value * value) % mod;
+		}
+		return result;
+	};
+
+	/** Build a puzzle the way the server can: via the totient shortcut rather than T squarings. */
+	const puzzle = (p: bigint, q: bigint, t: number, a: bigint, solution: bigint, reduce = false) => {
+		const n = p * q;
+		const b = modPow(a, modPow(2n, BigInt(t), (p - 1n) * (q - 1n)), n);
+		const cipher = reduce ? (solution + b) % n : solution + b;
+		return `rsw,${t},${n},${a},${cipher}`;
+	};
+
+	it('parses a well-formed nonce', () => {
+		expect(parseRswNonce('rsw,10,323,47,1000')).toEqual({ t: 10, n: 323n, a: 47n, cipher: 1000n });
+	});
+
+	it.each([
+		['hashcash,1,2,3,4'],
+		['rsw,1,2,3'],
+		['rsw,-1,2,3,4'],
+		['rsw,,,,'],
+		['rsw,1e3,33,2,4'],
+		['rsw,0x10,33,2,4'],
+		['rsw,1, 33,2,4'],
+		['rsw,1,0,2,4'],
+		['rsw,1,1,2,4'],
+		['rsw,99999999999999999999,33,2,4'],
+	])('rejects the malformed nonce %j', (nonce) => {
+		expect(() => parseRswNonce(nonce)).toThrow(SyntaxError);
+	});
+
+	it('solves a hand-computed puzzle (T=0)', () => {
+		// zero squarings: b = A mod N
+		expect(solveRsw('rsw,0,100,42,500')).toBe('458');
+	});
+
+	it('solves a hand-computed puzzle (T=1)', () => {
+		// b = 7^2 mod 33 = 16
+		expect(solveRsw('rsw,1,33,7,100')).toBe('84');
+	});
+
+	it('matches a puzzle built with the totient shortcut', () => {
+		expect(solveRsw(puzzle(61n, 53n, 10, 2021n, 1234n))).toBe('1234');
+	});
+
+	it('recovers the solution when the server reduces the cipher mod N', () => {
+		// b = 619 here, so 3000 + 619 wraps past N = 3233
+		expect(solveRsw(puzzle(61n, 53n, 10, 2021n, 3000n, true))).toBe('3000');
+	});
+
+	it('keeps an unreduced solution larger than N intact', () => {
+		expect(solveRsw(puzzle(61n, 53n, 10, 2021n, 10_000n))).toBe('10000');
+	});
+
+	it('handles numbers beyond Number.MAX_SAFE_INTEGER', () => {
+		expect(solveRsw(puzzle(104729n, 104723n, 20, 9999999999n, 42n))).toBe('42');
+	});
+
+	it('solves asynchronously with the same result', async () => {
+		const nonce = puzzle(104729n, 104723n, 1000, 9999999999n, 42n);
+		await expect(solveRswAsync(nonce, { yieldEvery: 300 })).resolves.toBe(solveRsw(nonce));
+	});
+
+	it('stops an async solve when the signal aborts', async () => {
+		const controller = new AbortController();
+		const solving = solveRswAsync(puzzle(61n, 53n, 1_000_000, 2021n, 1n), {
+			signal: controller.signal,
+			yieldEvery: 10,
+		});
+		controller.abort(new Error('cancelled'));
+		await expect(solving).rejects.toThrow('cancelled');
+	});
+
+	it('rejects an already-aborted signal before squaring', async () => {
+		await expect(solveRswAsync('rsw,1,33,7,100', { signal: AbortSignal.abort() })).rejects.toThrow();
 	});
 });
