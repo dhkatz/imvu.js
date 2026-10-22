@@ -10,7 +10,7 @@ jobs:
       - name: 'Checkout'
         uses: actions/checkout@v3
       - name: 'Python'
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
       - name: 'Cache'
@@ -34,7 +34,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: 'Python'
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v6
         with:
           python-version: '3.x'
       - name: 'Cache'
