@@ -1,28 +1,57 @@
+export type ResourceId = string;
+
 export interface APIErrorResponse {
 	status: 'failure';
 	error: string;
 	message: string;
 }
 
-export interface APIMount {
+/** The IMQ target advertised by a REST document's `updates` member. */
+export interface APIUpdateTarget {
 	queue: `inv:${string}` | `private:${string}` | `/${string}`;
 	mount: 'node' | `edge:${string}`;
 }
+
+/** @deprecated Use {@link APIUpdateTarget}. */
+export type APIMount = APIUpdateTarget;
 
 export interface APIRelations {
 	[relation: string]: string;
 }
 
-export interface APIResource<T extends object = Record<string, any>> {
-	data: T & { id?: string };
+/** Raw node/edge document as it appears inside the denormalized wire envelope. */
+export interface APIResourceNode<T extends object = Record<string, any>> {
+	data: T & { id?: string | number; _id?: string | number };
 	relations: APIRelations | null;
-	updates: Record<string, APIMount> | null;
+	updates: Partial<APIUpdateTarget> | null;
 }
 
-export interface APICollection<T extends object = Record<string, any>> {
+/** Raw node-group/edge-group document as it appears inside the wire envelope. */
+export interface APICollectionNode<T extends object = Record<string, any>> {
 	data: { items: string[]; total_count: number } & T;
 	relations: APIRelations | null;
-	updates: Record<string, APIMount> | null;
+	updates: Partial<APIUpdateTarget> | null;
+}
+
+/** A normalized, individually addressable REST resource. */
+export interface APIResource<T extends object = Record<string, any>> {
+	/** Canonical denormalized key/URL. This, rather than `id`, is the cache identity. */
+	url: string;
+	id: ResourceId;
+	data: T;
+	relations: APIRelations;
+	updates: APIUpdateTarget | null;
+}
+
+/** A normalized, bounded page from a REST collection. */
+export interface APICollection<T extends object = Record<string, any>> {
+	url: string;
+	data: T;
+	itemUrls: string[];
+	items: APIResource[];
+	totalCount: number;
+	relations: APIRelations;
+	updates: APIUpdateTarget | null;
 }
 
 export type APIResourceStatusError = {
@@ -44,7 +73,7 @@ export interface APIResourceStatus {
 export interface APISuccessResponse<T extends object = Record<string, any>> {
 	status: 'success';
 	id: string;
-	denormalized: Record<string, APIResource<T> | APICollection>;
+	denormalized: Record<string, APIResourceNode<T> | APICollectionNode>;
 	http: Record<string, APIResourceStatus>;
 }
 

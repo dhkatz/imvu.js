@@ -3,7 +3,17 @@ import { CookieJar, Store } from 'tough-cookie';
 import FileCookieStore from 'tough-cookie-file-store';
 import { wrapper } from 'axios-cookiejar-support';
 
-import { APIResource, APIResponse, APISuccessResponse } from './types.js';
+import {
+	APICollection,
+	APICollectionNode,
+	APIResource,
+	APIResourceNode,
+	APIResponse,
+	APISuccessResponse,
+	APIUpdateTarget,
+	ResourceId,
+} from './types.js';
+import { IMVUAPIError } from './errors.js';
 
 // axios-cookiejar-support augments axios with `jar`, but that augmentation doesn't
 // merge reliably under moduleResolution: NodeNext — declare it explicitly.
@@ -31,7 +41,7 @@ export interface RESTOptions {
  */
 export class REST {
 	public sauce = '';
-	public cid = 0;
+	public cid: ResourceId = '';
 	public authenticated = false;
 
 	public readonly http: AxiosInstance;
@@ -109,7 +119,7 @@ export class REST {
 		const resource = data.denormalized[data.id];
 
 		this.sauce = resource.data.sauce;
-		this.cid = parseInt(resource?.relations?.quick_chat_profile ?? '0', 10);
+		this.cid = resourceId(resource?.relations?.quick_chat_profile ?? '');
 
 		for (const method of ['post', 'put', 'patch', 'delete'] as const) {
 			this.http.defaults.headers[method]['x-imvu-sauce'] = this.sauce;
@@ -120,7 +130,9 @@ export class REST {
 	}
 
 	public async logout(): Promise<void> {
-		return;
+		this.authenticated = false;
+		this.sauce = '';
+		this.cid = '';
 	}
 
 	public async request<T extends object = Record<string, any>>(
@@ -130,16 +142,16 @@ export class REST {
 		const { data } = await this.http.request<APIResponse<T>>({ url, ...config });
 
 		if (data.status === 'failure') {
-			throw new Error(`(${data.status}) ${data.message} (${data.error})`);
+			throw new IMVUAPIError(data.error, data.message, data);
 		}
 
 		return data;
 	}
 
 	/**
-	 * Fetch a single resource and return its raw (un-modeled) API node. Handles the
-	 * search shape (`/user?username=…`) and back-fills an `_id` from the URL for
-	 * resources that don't include their own.
+	 * Fetch a single resource and return its normalized envelope with raw data.
+	 * Handles the search shape (`/user?username=…`) and derives an opaque string ID
+	 * without mutating the payload.
 	 */
 	public async resource<T extends object = Record<string, any>>(
 		url: string,
@@ -148,23 +160,51 @@ export class REST {
 		const response = await this.request<T>(url, config);
 		const data = response.denormalized[response.id].data as Record<string, any>;
 
-		let resource: APIResource<T>;
+		let resourceUrl: string;
 		if ('items' in data) {
 			if (data.total_count !== 1) {
 				throw new Error(`The resource at '${url}' does not contain a single resource`);
 			}
-			resource = response.denormalized[data.items[0]] as APIResource<T>;
+			const edge = response.denormalized[data.items[0]] as APIResourceNode;
+			resourceUrl = edge.relations?.ref ?? data.items[0];
 		} else {
-			resource = response.denormalized[response.id] as APIResource<T>;
+			resourceUrl = response.id;
 		}
 
-		const fields = resource.data as Record<string, any>;
-		if (!fields._id) {
-			const id = response.id.match(/\d+(?:-\d+)?$/);
-			fields._id = id ? id[0] : '';
+		return this.normalizeResource<T>(response, resourceUrl);
+	}
+
+	/** Fetch one bounded page from a node-group or edge-group document. */
+	public async collection<T extends object = Record<string, any>>(
+		url: string,
+		config?: AxiosRequestConfig
+	): Promise<APICollection<T>> {
+		const response = await this.request(url, config);
+		const root = response.denormalized[response.id] as APICollectionNode<T>;
+
+		if (!Array.isArray(root.data.items)) {
+			throw new Error(`The resource at '${url}' does not contain a list of resources`);
 		}
 
-		return resource;
+		const { items: itemUrls, total_count: totalCount, ...data } = root.data;
+		const items = itemUrls
+			.map((itemUrl) => {
+				const edge = response.denormalized[itemUrl] as APIResourceNode | undefined;
+				const resourceUrl = edge?.relations?.ref ?? itemUrl;
+
+				return response.denormalized[resourceUrl] ? this.normalizeResource(response, resourceUrl) : null;
+			})
+			.filter((resource): resource is APIResource => resource !== null);
+
+		return {
+			url: response.id,
+			data: data as T,
+			itemUrls,
+			items,
+			totalCount,
+			relations: root.relations ?? {},
+			updates: updateTarget(root.updates),
+		};
 	}
 
 	/**
@@ -174,28 +214,43 @@ export class REST {
 		url: string,
 		config?: AxiosRequestConfig
 	): Promise<APIResource<T>[]> {
-		const response = await this.request(url, config);
-		const data = response.denormalized[response.id].data as Record<string, any>;
+		return (await this.collection<T>(url, config)).items as APIResource<T>[];
+	}
 
-		if (!Array.isArray(data.items)) {
-			throw new Error(`The resource at '${url}' does not contain a list of resources`);
+	private normalizeResource<T extends object>(response: APISuccessResponse, url: string): APIResource<T> {
+		const node = response.denormalized[url] as APIResourceNode<T> | undefined;
+		if (!node) {
+			throw new Error(`The response does not contain the resource '${url}'`);
 		}
 
-		return (data.items as string[])
-			.map((itemUrl) => {
-				const ref = response.denormalized[itemUrl].relations?.ref;
-				const resource = response.denormalized[ref ?? itemUrl] as APIResource<T> | undefined;
-
-				if (!resource) return null;
-
-				const fields = resource.data as Record<string, any>;
-				if (!fields._id) {
-					const id = (ref ?? itemUrl).match(/\d+(?:-\d+)?$/);
-					fields._id = id ? id[0] : '';
-				}
-
-				return resource;
-			})
-			.filter((resource): resource is APIResource<T> => resource !== null);
+		return {
+			url,
+			id: resourceId(url, node.data),
+			data: node.data,
+			relations: node.relations ?? {},
+			updates: updateTarget(node.updates),
+		};
 	}
+}
+
+function updateTarget(value: Partial<APIUpdateTarget> | null): APIUpdateTarget | null {
+	return value && typeof value.queue === 'string' && typeof value.mount === 'string'
+		? (value as APIUpdateTarget)
+		: null;
+}
+
+/** Extract the API's opaque identifier without converting or numerically parsing it. */
+function resourceId(url: string, data: Record<string, any> = {}): ResourceId {
+	const supplied = data._id ?? data.id;
+	if (supplied !== undefined && supplied !== null && supplied !== '') {
+		return String(supplied);
+	}
+
+	const segment = url.split(/[/?#]/).filter(Boolean).at(-1) ?? '';
+	const separator = segment.indexOf('-');
+	const currentId = separator >= 0 ? segment.slice(separator + 1) : segment;
+
+	// The URL remains the canonical identity. Preserve unfamiliar identifiers
+	// rather than dropping them if a future endpoint stops using numeric IDs.
+	return currentId;
 }
