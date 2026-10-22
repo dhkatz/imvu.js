@@ -6,5 +6,5 @@
 		"types": ["node"]
 	},
 	"include": ["./src/**/*.ts"],
-	"references": [{ "path": "../rest" }, { "path": "../imq" }]
+	"references": [{ "path": "../rest" }, { "path": "../imq" }, { "path": "../xmlrpc" }]
 }

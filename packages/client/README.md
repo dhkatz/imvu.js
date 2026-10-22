@@ -41,3 +41,23 @@ returns the same resource object while it remains in use. Re-fetching hydrates t
 object in place. Realtime subscriptions are always explicit; ordinary fetches do not
 open IMQ connections. Calling `watch()` on a collection whose response advertises
 `updates: null` throws `CollectionNotWatchableError`.
+
+## Legacy XML-RPC gateway
+
+`client.xmlrpc` exposes IMVU's XML-RPC gateway (see `@imvu/xmlrpc`) — for example to
+resolve a product's current CFL, which the REST API does not provide:
+
+```ts
+await client.login('username', 'password');
+
+const [auth] = await client.xmlrpc.authorizeProducts([51522827]);
+auth.cflUrl; // latest revision's CFL
+auth.cflChecksum; // MD5 of the CFL bytes
+```
+
+The gateway logs in lazily on first use, so REST-only usage never performs a second
+login. Its session is saved to `./xmlrpc-session.json` (configurable through
+`new Client(rest, { xmlrpc: { sessionStorage } })`; `null` disables it) and reused
+across runs for the same user. If the server reports the session invalid, the client
+logs in once more and retries. Calls run one at a time, at least `minimumInterval` ms
+apart (default 250). Pass `xmlrpc: { gateway }` to supply a pre-configured gateway.

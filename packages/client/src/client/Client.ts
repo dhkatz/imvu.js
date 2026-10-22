@@ -10,6 +10,7 @@ import { Collection } from '../collections/Collection.js';
 import { Utilities } from './Utilities.js';
 import { DocumentStore } from './DocumentStore.js';
 import { RealtimeCoordinator, type RealtimeManagerFactory } from './RealtimeCoordinator.js';
+import { XmlRpcCoordinator, type XmlRpcCoordinatorOptions } from './XmlRpcCoordinator.js';
 import type { RemoteDocument } from '../resources/RemoteDocument.js';
 import type { DocumentWatch } from './DocumentWatch.js';
 
@@ -17,7 +18,8 @@ export interface ClientOptions {
 	/** Maximum number of documents retained strongly in the hot LRU. */
 	maximumStrongDocuments?: number;
 	/** Test/custom transport hook; defaults to the real IMQ manager. */
-	realtimeManagerFactory?: RealtimeManagerFactory;
+	realtimeManagerFactory?: RealtimeManagerFactory /** XML-RPC gateway settings (gateway instance, session storage, pacing). */;
+	xmlrpc?: XmlRpcCoordinatorOptions;
 }
 
 /**
@@ -30,6 +32,8 @@ export class Client extends EventEmitter {
 	public readonly utils: Utilities;
 	public readonly documents: DocumentStore;
 	public readonly realtime: RealtimeCoordinator;
+	/** IMVU's legacy XML-RPC gateway, logged in lazily on first use. */
+	public readonly xmlrpc: XmlRpcCoordinator;
 
 	public constructor(rest: REST = new REST(), options: ClientOptions = {}) {
 		super();
@@ -38,6 +42,7 @@ export class Client extends EventEmitter {
 		this.utils = new Utilities(this);
 		this.documents = new DocumentStore(this, options.maximumStrongDocuments);
 		this.realtime = new RealtimeCoordinator(this, options.realtimeManagerFactory);
+		this.xmlrpc = new XmlRpcCoordinator(options.xmlrpc);
 	}
 
 	public get authenticated(): boolean {
@@ -74,10 +79,12 @@ export class Client extends EventEmitter {
 		}
 
 		this.#account = new AccountManager(this, user);
+		this.xmlrpc._setCredentials(username, password);
 	}
 
 	public async logout(): Promise<void> {
 		this.realtime.close();
+		this.xmlrpc._clear();
 		await this.rest.logout();
 		this.documents.clear();
 		this.#account = undefined;

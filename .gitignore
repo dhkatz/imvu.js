@@ -671,6 +671,7 @@ Temporary Items
 .apdisk
 
 cookies.json
+xmlrpc-session.json
 
 # Reference dumps (e.g. IMVU's minified imq.js) — local only, not ours to commit
 .dump/

@@ -28,6 +28,7 @@
 	},
 	"dependencies": {
 		"@imvu/imq": "^0.1.0",
-		"@imvu/rest": "^0.1.0"
+		"@imvu/rest": "^0.1.0",
+		"@imvu/xmlrpc": "^0.1.0"
 	}
 }
