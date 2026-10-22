@@ -772,5 +772,5 @@ Each is independently shippable and reversible.
 - **Electron/Tauri CSP:** Valibot/Zod are eval-free and CSP-safe. Avoid
   `new Function`-based validators (TypeBox TypeCompiler, AJV) in a hardened
   renderer unless precompiled at build time.
-- **`chkn` binary parsing** (Cal3D/LZMA) is unrelated to this migration and should
+- **`cal3d`/`chkn` binary parsing** (Cal3D/LZMA) is unrelated to this migration and should
   not go through any JSON schema validator.

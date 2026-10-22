@@ -5,6 +5,9 @@
       "path": "./packages/rest"
     },
     {
+      "path": "./packages/cal3d"
+    },
+    {
       "path": "./packages/chkn"
     },
     {
