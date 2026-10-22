@@ -2,7 +2,7 @@
  * IMQ wire message types.
  *
  * The library's internal (camelCase) shapes for the frames exchanged with the
- * IMQ gateway. The {@link ./codec} module maps these to/from the wire format
+ * IMQ gateway. The `codec` module (`./codec.ts`) maps these to/from the wire format
  * (snake_case JSON, base64 payloads); these types are what the rest of the
  * library speaks.
  */

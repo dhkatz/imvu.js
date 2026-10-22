@@ -14,15 +14,16 @@
     "lint:fix": "tsc -b && oxlint --fix --type-aware",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
-    "docs:build": "docker build -t imvu/docs ./docs/",
-    "docs:serve": "docker run --rm -it -p 8000:8000 -v %cd%:/docs imvu/docs",
+    "docs:build": "npm --prefix docs run build",
     "test": "vitest run",
     "test:typecheck": "tsc -p packages/rest/tsconfig.spec.json --noEmit && tsc -p packages/client/tsconfig.spec.json --noEmit && tsc -p packages/imq/tsconfig.spec.json --noEmit && tsc -p packages/xmlrpc/tsconfig.spec.json --noEmit && tsc -p packages/tools/tsconfig.spec.json --noEmit && tsc -p packages/cal3d/tsconfig.spec.json --noEmit && tsc -p packages/chkn/tsconfig.spec.json --noEmit",
     "test:watch": "vitest",
     "tool": "node --import tsx --env-file-if-exists=.env packages/tools/src/index.ts",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "npm run build && changeset publish"
+    "release": "npm run build && changeset publish",
+    "docs:dev": "npm --prefix docs run dev",
+    "docs:preview": "npm --prefix docs run preview"
   },
   "files": [
     "packages",

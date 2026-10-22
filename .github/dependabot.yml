@@ -14,7 +14,8 @@ updates:
     directory: '/'
     schedule:
       interval: 'daily'
-  - package-ecosystem: 'pip'
+  - package-ecosystem: 'npm'
+    versioning-strategy: 'increase'
     directory: '/docs'
     schedule:
       interval: 'daily'

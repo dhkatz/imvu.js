@@ -5,7 +5,7 @@ CLI utilities for the IMVU API (`imvu-tools`).
 ## Running
 
 The commands need IMVU credentials — put them in `.env` at the repo root (see
-[examples/README.md](../../examples/README.md)):
+[examples/README.md](https://github.com/dhkatz/imvu.js/blob/master/examples/README.md)):
 
 ```
 IMVU_USERNAME=your-username

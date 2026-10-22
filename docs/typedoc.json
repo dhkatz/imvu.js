@@ -1,0 +1,26 @@
+{
+	"$schema": "https://typedoc-plugin-markdown.org/schema.json",
+	"entryPointStrategy": "packages",
+	"entryPoints": [
+		"../packages/client",
+		"../packages/rest",
+		"../packages/imq",
+		"../packages/xmlrpc",
+		"../packages/cal3d",
+		"../packages/chkn"
+	],
+	"packageOptions": {
+		"entryPoints": ["src/index.ts"],
+		"readme": "none"
+	},
+	"plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
+	"out": "api",
+	"docsRoot": ".",
+	"readme": "none",
+	"excludeInternal": true,
+	"excludePrivate": true,
+	"hidePageHeader": true,
+	"useCodeBlocks": true,
+	"parametersFormat": "table",
+	"sidebar": { "pretty": true }
+}

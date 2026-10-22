@@ -1,0 +1,19 @@
+{
+	"name": "@imvu/docs",
+	"private": true,
+	"type": "module",
+	"description": "Documentation site (VitePress + TypeDoc). Kept outside the npm workspaces: TypeDoc needs the TypeScript 6 JavaScript API, which TypeScript 7 no longer ships.",
+	"scripts": {
+		"api": "typedoc",
+		"dev": "npm run api && vitepress dev",
+		"build": "npm run api && vitepress build",
+		"preview": "vitepress preview"
+	},
+	"devDependencies": {
+		"typedoc": "^0.28.20",
+		"typedoc-plugin-markdown": "^4.14.1",
+		"typedoc-vitepress-theme": "^1.1.4",
+		"typescript": "~6.0.0",
+		"vitepress": "2.0.0-alpha.20"
+	}
+}

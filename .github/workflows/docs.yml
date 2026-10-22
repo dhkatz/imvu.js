@@ -1,6 +1,13 @@
 name: 'Documentation'
 
-on: [push, pull_request]
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build:
@@ -9,40 +16,47 @@ jobs:
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v7
-      - name: 'Python'
-        uses: actions/setup-python@v7
         with:
-          python-version: '3.x'
-      - name: 'Cache'
-        uses: actions/cache@v6
+          fetch-depth: 0 # full history for "last updated" timestamps
+      - name: 'Node'
+        uses: actions/setup-node@v7
         with:
-          key: ${{ github.ref }}
-          path: .cache
-      - name: 'Install'
-        run: pip install -r docs/requirements.txt
-      - name: 'Build'
-        run: mkdocs build --verbose --clean --strict
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            docs/package-lock.json
+      # TypeDoc reads each package's sources, and sibling packages through their built types.
+      - name: 'Install packages'
+        run: npm ci
+      - name: 'Build packages'
+        run: npm run build
+      - name: 'Install docs'
+        run: npm ci --prefix docs
+      - name: 'Build docs'
+        run: npm run docs:build
+      - name: 'Upload site'
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: docs/.vitepress/dist
 
   deploy:
-    if: github.event_name == 'push' && contains(fromJson('["refs/heads/master", "refs/heads/main"]'), github.ref)
-    needs: build
     name: 'Deploy'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/master'
+    needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # Let a running deployment finish; queue the next one behind it.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     steps:
-      - name: 'Checkout'
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - name: 'Python'
-        uses: actions/setup-python@v7
-        with:
-          python-version: '3.x'
-      - name: 'Cache'
-        uses: actions/cache@v6
-        with:
-          key: ${{ github.ref }}
-          path: .cache
-      - name: 'Install'
-        run: pip install -r docs/requirements.txt
-      - name: 'Deploy'
-        run: mkdocs gh-deploy --force --verbose --clean --strict
+      - name: 'Deploy to GitHub Pages'
+        id: deployment
+        uses: actions/deploy-pages@v5

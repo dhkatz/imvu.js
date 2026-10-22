@@ -2,7 +2,7 @@
 
 Read IMVU products: their **CFL** archives, their **`index.xml`** templates (with
 inheritance from parent products resolved the way the classic client does), and the
-**Cal3D** models they assemble (via [`@imvu/cal3d`](../cal3d)). Also converts to and
+**Cal3D** models they assemble (via [`@imvu/cal3d`](https://github.com/dhkatz/imvu.js/tree/master/packages/cal3d)). Also converts to and
 from **CHKN**, the ZIP format IMVU's create mode opens.
 
 No dependencies beyond `@imvu/cal3d` and no Node-only APIs (its own LZMA decoder,
