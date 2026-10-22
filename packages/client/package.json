@@ -23,7 +23,7 @@
 	},
 	"scripts": {
 		"build": "tsc -b",
-		"clean": "rimraf ./dist",
+		"clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
 		"test": "vitest run"
 	},
 	"dependencies": {

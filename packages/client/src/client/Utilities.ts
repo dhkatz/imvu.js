@@ -1,5 +1,5 @@
 import { Client } from './Client.js';
-import { Constructor } from 'type-fest';
+import type { Constructor } from '../types.js';
 import { APIResource } from '../types.js';
 import { Resource, ResourceConstructor } from '../resources/index.js';
 

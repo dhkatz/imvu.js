@@ -15,8 +15,16 @@ import type { ClientMessage, DecodedMessage, EncodeInputMap, GatewayMessage, Que
 /** Thrown when a frame references a record type we don't know how to (de)code. */
 export class ImqMessageUnknown extends Error {}
 
-const b64encode = (value: string): string => Buffer.from(value, 'utf8').toString('base64');
-const b64decode = (value: string): string => Buffer.from(value, 'base64').toString('utf8');
+// UTF-8-safe base64 via web-standard APIs (no `Buffer`), so the codec runs in browsers too.
+const utf8Encoder = new TextEncoder();
+const utf8Decoder = new TextDecoder();
+
+const b64encode = (value: string): string => {
+	let binary = '';
+	for (const byte of utf8Encoder.encode(value)) binary += String.fromCharCode(byte);
+	return btoa(binary);
+};
+const b64decode = (value: string): string => utf8Decoder.decode(Uint8Array.from(atob(value), (c) => c.charCodeAt(0)));
 
 /** Messages are strings on the wire; structured payloads are JSON round-tripped for convenience. */
 const encodeMessage = (message: unknown): string =>
@@ -123,9 +131,9 @@ const decoders: { [M in DecodedMessage as M['type']]: (raw: any) => M['data'] } 
 	msg_g2c_pong: () => ({}),
 };
 
-/** Decode a raw incoming frame (JSON string or Buffer) into a typed message. */
-export function decode(raw: string | Buffer): DecodedMessage {
-	const frame = JSON.parse(typeof raw === 'string' ? raw : raw.toString('utf8'));
+/** Decode a raw incoming frame (JSON string or UTF-8 bytes, e.g. a Node `Buffer`) into a typed message. */
+export function decode(raw: string | Uint8Array): DecodedMessage {
+	const frame = JSON.parse(typeof raw === 'string' ? raw : utf8Decoder.decode(raw));
 	const record = frame?.record as GatewayMessage;
 	const decoder = decoders[record];
 

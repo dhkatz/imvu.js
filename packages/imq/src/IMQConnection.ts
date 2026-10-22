@@ -1,5 +1,4 @@
 import { EventEmitter } from 'node:events';
-import WebSocket from 'ws';
 
 import { IMQStream } from './IMQStream.js';
 import { IMQWebSocketStream } from './websocket/IMQWebSocketStream.js';
@@ -30,7 +29,7 @@ export interface IMQConnectionOptions {
 	/** Arbitrary connect metadata (e.g. `{ app: 'imvu_next', platform_type: 'big' }`). */
 	metadata?: Record<string, string>;
 	/**
-	 * Transport factory. Defaults to a `ws`-backed WebSocket stream. Override to
+	 * Transport factory. Defaults to a stream over the global `WebSocket`. Override to
 	 * supply a different transport — or a test double.
 	 */
 	createStream?: (url: string) => IMQStream;

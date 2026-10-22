@@ -1,11 +1,17 @@
-import WebSocket, { type RawData } from 'ws';
-
 import { IMQStream, IMQStreamState } from '../IMQStream.js';
 
-/** {@link IMQStream} backed by a `ws` WebSocket. */
+const utf8 = new TextDecoder();
+
+/**
+ * {@link IMQStream} backed by a standard (WHATWG) `WebSocket` — the browser's, or
+ * Node's built-in global (Node >= 22). IMQ authenticates inside the protocol, not
+ * via handshake headers, so no Node-specific socket options are needed.
+ */
 export class IMQWebSocketStream extends IMQStream {
 	public constructor(private socket: WebSocket) {
 		super();
+		// Binary frames arrive as ArrayBuffers (decoded synchronously) instead of Blobs.
+		this.socket.binaryType = 'arraybuffer';
 		this.addListeners();
 	}
 
@@ -21,17 +27,17 @@ export class IMQWebSocketStream extends IMQStream {
 	}
 
 	private addListeners(): void {
-		this.socket.on('open', this.onOpen);
-		this.socket.on('message', this.onMessage);
-		this.socket.on('error', this.onError);
-		this.socket.on('close', this.onClose);
+		this.socket.addEventListener('open', this.onOpen);
+		this.socket.addEventListener('message', this.onMessage);
+		this.socket.addEventListener('error', this.onError);
+		this.socket.addEventListener('close', this.onClose);
 	}
 
 	private removeListeners(): void {
-		this.socket.off('open', this.onOpen);
-		this.socket.off('message', this.onMessage);
-		this.socket.off('error', this.onError);
-		this.socket.off('close', this.onClose);
+		this.socket.removeEventListener('open', this.onOpen);
+		this.socket.removeEventListener('message', this.onMessage);
+		this.socket.removeEventListener('error', this.onError);
+		this.socket.removeEventListener('close', this.onClose);
 	}
 
 	private onOpen = (): void => {
@@ -39,21 +45,15 @@ export class IMQWebSocketStream extends IMQStream {
 		this.emit('open');
 	};
 
-	private onMessage = (data: RawData): void => {
-		// `ws` may hand us a Buffer, an ArrayBuffer, or a Buffer[] — normalize to a UTF-8 string.
-		let buffer: Buffer;
-		if (Array.isArray(data)) {
-			buffer = Buffer.concat(data);
-		} else if (Buffer.isBuffer(data)) {
-			buffer = data;
-		} else {
-			buffer = Buffer.from(data);
-		}
-		this.emit('message', buffer.toString('utf8'));
+	private onMessage = (event: MessageEvent): void => {
+		const data: unknown = event.data;
+		this.emit('message', typeof data === 'string' ? data : utf8.decode(data as ArrayBuffer));
 	};
 
-	private onError = (error: Error): void => {
-		this.emit('error', error);
+	private onError = (event: Event): void => {
+		// WebSocket error events carry no detail by design; surface a real Error.
+		const message = 'message' in event && typeof event.message === 'string' ? event.message : 'WebSocket error';
+		this.emit('error', new Error(message));
 	};
 
 	private onClose = (): void => {

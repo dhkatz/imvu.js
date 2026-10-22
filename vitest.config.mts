@@ -2,6 +2,14 @@ import { fileURLToPath } from 'node:url';
 
 import { defineConfig } from 'vitest/config';
 
+// Load IMVU_USERNAME/IMVU_PASSWORD etc. from .env when present (Node's built-in
+// loader; existing env vars win). Test workers inherit this process's env.
+try {
+  process.loadEnvFile();
+} catch {
+  // No .env file — live tests stay skipped unless env vars are set some other way.
+}
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -15,8 +23,6 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['packages/*/test/**/*.test.ts'],
-    // Load IMVU_USERNAME/IMVU_PASSWORD from .env (was jest.config.ts's dotenv.config()).
-    setupFiles: ['dotenv/config'],
     // The live-API tests share one cached IMVU session (cookies.json) and must not
     // trigger repeated logins. Run files serially — the Vitest equivalent of Jest's
     // --runInBand — so the first login warms the cache and the rest reuse it.

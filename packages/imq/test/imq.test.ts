@@ -1,4 +1,12 @@
-import { IMQManager, IMQStream, ImqMessageUnknown, decode, encode, type IMQManagerOptions } from '../src/index.js';
+import {
+	IMQManager,
+	IMQStream,
+	IMQWebSocketStream,
+	ImqMessageUnknown,
+	decode,
+	encode,
+	type IMQManagerOptions,
+} from '../src/index.js';
 
 const b64 = (value: string) => Buffer.from(value, 'utf8').toString('base64');
 
@@ -130,6 +138,30 @@ describe('IMQ codec', () => {
 			type: 'msg_g2c_create_mount',
 			data: { type: 'state', queueName: 'q', mountName: 's', state: { k: 'v' } },
 		});
+	});
+
+	it('base64-encodes non-ASCII payloads as UTF-8 (Buffer-compatible)', () => {
+		const text = 'héllo ✨ 世界 🎉';
+		const frame = JSON.parse(
+			encode('msg_c2g_send_message', { queueName: 'q', mountName: 'm', message: text, opId: 5 })
+		);
+
+		expect(frame.message).toBe(b64(text));
+	});
+
+	it('decodes non-ASCII payloads and UTF-8 byte frames', () => {
+		const text = 'héllo ✨ 世界 🎉';
+		const raw = JSON.stringify({
+			record: 'msg_g2c_send_message',
+			queue: 'q',
+			mount: 'm',
+			user_id: b64('u'),
+			message: b64(text),
+			op_id: 6,
+		});
+
+		expect(decode(new TextEncoder().encode(raw))).toEqual(decode(raw));
+		expect(decode(raw)).toMatchObject({ data: { message: text } });
 	});
 
 	it('throws on an unknown mount type', () => {
@@ -317,5 +349,76 @@ describe('IMQManager lifecycle', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+});
+
+/** A minimal standard-`WebSocket` double: an EventTarget that records sends/closes. */
+class FakeWebSocket extends EventTarget {
+	public binaryType = 'blob';
+	public readonly sent: string[] = [];
+	public closeCalls = 0;
+
+	public send(data: string): void {
+		this.sent.push(data);
+	}
+
+	public close(): void {
+		this.closeCalls++;
+	}
+
+	public dispatch(type: string, init: Record<string, unknown> = {}): void {
+		this.dispatchEvent(Object.assign(new Event(type), init));
+	}
+}
+
+describe('IMQWebSocketStream (standard WebSocket)', () => {
+	const setup = () => {
+		const socket = new FakeWebSocket();
+		const stream = new IMQWebSocketStream(socket as unknown as WebSocket);
+		const events: unknown[][] = [];
+		for (const name of ['open', 'message', 'error', 'close'] as const) {
+			stream.on(name, (...args: unknown[]) => events.push([name, ...args]));
+		}
+		return { socket, stream, events };
+	};
+
+	it('requests ArrayBuffer binary frames and forwards sends', () => {
+		const { socket, stream } = setup();
+		expect(socket.binaryType).toBe('arraybuffer');
+
+		stream.send('frame');
+		expect(socket.sent).toEqual(['frame']);
+	});
+
+	it('emits text and UTF-8-decoded binary messages as strings', () => {
+		const { socket, events } = setup();
+		socket.dispatch('open');
+		socket.dispatch('message', { data: 'text' });
+		socket.dispatch('message', { data: new TextEncoder().encode('bytes ✨').buffer });
+
+		expect(events).toEqual([['open'], ['message', 'text'], ['message', 'bytes ✨']]);
+	});
+
+	it('surfaces error events as Error instances', () => {
+		const { socket, events } = setup();
+		socket.dispatch('error');
+
+		expect(events[0][0]).toBe('error');
+		expect(events[0][1]).toBeInstanceOf(Error);
+	});
+
+	it('closes once, then detaches from the socket', () => {
+		const { socket, stream, events } = setup();
+		socket.dispatch('open');
+		stream.close();
+		stream.close(); // already closing — must not close the socket twice
+		expect(socket.closeCalls).toBe(1);
+
+		socket.dispatch('close');
+		socket.dispatch('message', { data: 'late' });
+		stream.close(); // already closed
+
+		expect(socket.closeCalls).toBe(1);
+		expect(events).toEqual([['open'], ['close']]);
 	});
 });

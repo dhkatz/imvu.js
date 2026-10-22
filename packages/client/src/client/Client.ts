@@ -1,4 +1,4 @@
-import { Constructor } from 'type-fest';
+import type { Constructor } from '../types.js';
 import { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { EventEmitter } from 'events';
 

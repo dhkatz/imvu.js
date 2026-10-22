@@ -1,5 +1,5 @@
 import type { AxiosRequestConfig } from 'axios';
-import type { Constructor } from 'type-fest';
+import type { Constructor } from '../types.js';
 import type { APIResource, APIUpdateTarget } from '@imvu/rest';
 
 import type { Client } from '../client/Client.js';

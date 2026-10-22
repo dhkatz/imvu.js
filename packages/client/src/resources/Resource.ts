@@ -1,6 +1,6 @@
 import { Client } from '../client/index.js';
 import { APIResource } from '../types.js';
-import { Constructor } from 'type-fest';
+import type { Constructor } from '../types.js';
 import { Collection } from '../collections/Collection.js';
 import { RemoteDocument } from './RemoteDocument.js';
 

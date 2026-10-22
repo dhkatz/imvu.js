@@ -1,4 +1,4 @@
-import { Constructor } from 'type-fest';
+import type { Constructor } from '../types.js';
 
 import { Resource } from '../resources/index.js';
 import { Client } from '../client/index.js';
