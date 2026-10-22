@@ -21,7 +21,7 @@ const packages: DefaultTheme.NavItemWithLink[] = [
 export default defineConfig({
 	title: 'imvu.js',
 	description: 'TypeScript libraries for the IMVU API, its realtime IMQ service, and IMVU product files.',
-	// Served as a project site: https://dhkatz.github.io/imvu.js/ (custom domain dhkatz.dev).
+	// Served as a GitHub Pages project site: https://dhkatz.github.io/imvu.js/
 	base: '/imvu.js/',
 	cleanUrls: true,
 	lastUpdated: true,
