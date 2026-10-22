@@ -20,6 +20,11 @@ auth.cflChecksum; // MD5 of the CFL bytes
 auth.parentProductId;
 ```
 
+The result also contains each requested product's ancestors (a derived product's CFL
+imports its parent's), so asking for one product usually returns several rows — down
+to a base product whose `parentProductId` is `0`. Verified live: revisions match the
+CDN, and `cflChecksum` matches the MD5 of the downloaded CFL.
+
 ## Protocol notes
 
 - Endpoints (HTTPS): `client-dynamic.imvu.com/api/xmlrpc/client.php` for most calls,

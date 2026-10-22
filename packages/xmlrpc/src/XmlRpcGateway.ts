@@ -84,6 +84,10 @@ export interface ProductAuthorization {
 	usableDerivation: number;
 	usableTrial: number;
 	trialTimeout: number;
+	usablePeerReview?: XmlRpcValue;
+	autoAuth?: XmlRpcValue;
+	sub_pids?: XmlRpcValue;
+	info?: XmlRpcValue;
 	[field: string]: XmlRpcValue | undefined;
 }
 
@@ -176,7 +180,10 @@ export class XmlRpcGateway {
 
 	/**
 	 * Resolve products to their current CFL (URL, checksum, parent) and usage rights.
-	 * Products the server refuses are omitted from the result.
+	 *
+	 * The server also returns every **ancestor** of each requested product (following
+	 * `parentProductId` down to a base product whose parent is `0`), since a derived
+	 * product's CFL imports its parent's. Products the server refuses are omitted.
 	 */
 	public async authorizeProducts(
 		products: readonly (number | ProductAuthRequest)[],
