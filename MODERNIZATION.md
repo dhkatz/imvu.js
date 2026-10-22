@@ -2,6 +2,37 @@
 
 _Written 2026-07-04._
 
+## Resource architecture update (2026-09-29)
+
+- Resource identity is now the canonical REST URL. Each `Client` owns a weak identity
+  map plus a bounded strong LRU, so repeated fetches hydrate and return the same live
+  object without retaining every resource forever. Public resource IDs are opaque
+  strings, including compound room IDs.
+- `RemoteDocument` is the common base for resources and collections. The original
+  `Paginator`/`URLPaginator` concept evolved into one concrete `Collection<T>` used
+  by resource relationships and account managers. It is sparse, async-iterable, and
+  does not cache membership pages—every `page()` call is a fresh REST read, and
+  large wishlists are never copied into one unbounded `current` array.
+- Realtime observation is explicit. `document.watch()` lazily connects IMQ,
+  reference-counts shared mounts, and marks the collection stale on invalidation.
+  It does not subscribe just because a REST resource was fetched, and it does not
+  silently fetch entire collections after an update. Collections discover support
+  from their response metadata; `updates: null` produces
+  `CollectionNotWatchableError`, while future server-side support works without a
+  new collection type.
+- The dependency direction is `@imvu/client` → `@imvu/rest` + `@imvu/imq`; the
+  transport packages do not depend on the modeled client.
+- Controllers locate resources, resources expose their collections, and managers
+  remain scoped to operations performed by the logged-in account. In particular,
+  arbitrary wishlists come from `user.wishlist()`, while add/remove operations live
+  on `client.account.wishlist`.
+- Gift mutations return a discriminated `Result`: success includes the transaction
+  ID and canonical resource references; definite API rejection is distinct from an
+  indeterminate transport outcome so callers can retry safely with the same ID.
+- Live tests are opt-in with `IMVU_RUN_LIVE_TESTS=true`; state-changing wishlist
+  tests additionally require `IMVU_RUN_MUTATION_TESTS=true`. The default suite is
+  offline, and `npm run test:typecheck` validates test sources themselves.
+
 ## Current status (2026-07-07) — READ FIRST; supersedes older phase text below
 
 The serialization approach evolved well past the original Valibot plan. Reality now:
@@ -21,11 +52,11 @@ NodeNext` + explicit `.js` extensions on relative imports (the real fix for the
   broken ESM); `composite` project references give dependency-aware builds
   (`tsc -b` on one package builds its deps first). No `ignoreDeprecations` — TS7-safe.
 - **Packages (5):** `rest`, `client`, `imq`, `chkn`, `tools`.
-- **Done:** Phases 0–6, 8–12. Highlights: `_patch` serialization, Vitest,
+- **Done:** Phases 0–12. Highlights: `_patch` serialization, Vitest,
   `@imvu/rest` split, `tsc`/NodeNext ESM build, Changesets, dep bumps, and a full
   **Oxc toolchain** — **oxlint** (replaced ESLint) with **type-aware** linting via
   tsgo, **oxfmt** (replaced Prettier) — on **TypeScript 7** (native Go compiler). Node
-  floor is **>=22** (Node 20 is EOL). **Remaining:** CI (Phase 7). Per-phase notes below.
+  floor is **>=22** (Node 20 is EOL). Per-phase notes below.
 
 **Build tool: we tried tsup, then reverted to `tsc`.** tsup fixed the broken ESM by
 bundling, but its dts generator injects `baseUrl` (needs `ignoreDeprecations`, a TS7
@@ -440,7 +471,7 @@ dual-`tsc` scripts.
 ## Phase 4 — Tests: Jest → Vitest (no SWC) ✅ DONE (2026-07-06)
 
 Removed `jest`/`ts-jest`/`@types/jest` + `jest.config.ts`; added `vitest` +
-`@vitest/coverage-v8`; created root `vitest.config.ts` (`globals: true` so the
+`@vitest/coverage-v8`; created root `vitest.config.mts` (`globals: true` so the
 existing tests run unchanged — no `jest.*` APIs were used; `environment: 'node'`;
 `setupFiles: ['dotenv/config']` for IMVU creds; `fileParallelism: false` = the
 `--runInBand` equivalent honoring the cached-session rate-limit rule; v8 coverage;
@@ -457,7 +488,7 @@ Verified: build green; offline **46/46** under Vitest; live read-only subset 4-p
 
 1. Remove `jest`, `ts-jest`, `@types/jest`, `jest.config.ts`.
 2. Add `vitest`, `@vitest/coverage-v8`.
-3. Add `vitest.config.ts` (or `vitest.workspace.ts` for the monorepo):
+3. Add `vitest.config.mts` (or `vitest.workspace.ts` for the monorepo):
    - `test.coverage.provider = 'v8'`, `include` globs matching
      `packages/*/test/**/*.test.ts`.
    - `dotenv` loading: replicate the current `dotenv.config()` via a
@@ -555,7 +586,14 @@ still green.
 
 ---
 
-## Phase 7 — CI refresh
+## Phase 7 — CI refresh ✅ DONE 2026-09-29
+
+GitHub Actions now uses `checkout@v4`/`setup-node@v4`, runs on Node 22 and 24 with
+the npm cache, and gates every push/PR on build, test-source typechecking,
+type-aware lint, formatting, and the offline test suite. Live tests are intentionally
+not run in ordinary CI; they require an explicit local opt-in and credentials.
+
+### Original plan
 
 Update `.github/workflows/build.yml`:
 
@@ -576,7 +614,7 @@ Update `.github/workflows/build.yml`:
 
 ## Phase 8 — Dependency bumps ✅ DONE 2026-07-17
 
-Done ahead of CI (Phase 7 still pending). `npm audit` → **0 vulnerabilities**.
+Done ahead of CI (Phase 7, since completed). `npm audit` → **0 vulnerabilities**.
 
 - **`@imvu/rest` auth layer:** `tough-cookie` 4→6, `tough-cookie-file-store` 2→3,
   `axios-cookiejar-support` 4→7. Dropped now-obsolete `@types/tough-cookie` +
