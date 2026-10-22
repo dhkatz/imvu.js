@@ -1,21 +1,40 @@
-# To get started with Dependabot version updates, you'll need to specify which
-# package ecosystems to update and where the package manifests are located.
-# Please see the documentation for all configuration options:
-# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+# Dependabot version updates.
+# https://docs.github.com/code-security/dependabot/working-with-dependabot/dependabot-options-reference
 
 version: 2
 updates:
-  - package-ecosystem: 'npm' # See documentation for possible values
+  - package-ecosystem: 'npm'
     versioning-strategy: 'increase'
-    directory: '/' # Location of package manifests
-    schedule:
-      interval: 'daily'
-  - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: 'daily'
+    groups:
+      # Packages whose versions must match: bumped one at a time, npm ci fails.
+      vitest:
+        patterns: ['vitest', '@vitest/*']
+      oxlint:
+        patterns: ['oxlint', 'oxlint-tsgolint']
+    ignore:
+      # Types track the newest Node major CI tests on (24), not the newest Node
+      # release, so code can't type-check against APIs the tested runtimes lack.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
+
   - package-ecosystem: 'npm'
     versioning-strategy: 'increase'
     directory: '/docs'
+    schedule:
+      interval: 'daily'
+    groups:
+      typedoc:
+        patterns: ['typedoc', 'typedoc-*']
+    ignore:
+      # TypeDoc needs the TypeScript JavaScript API, which TypeScript 7 no longer
+      # ships; docs/ pins TypeScript 6 for TypeDoc only.
+      - dependency-name: 'typescript'
+        versions: ['>=7']
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
       interval: 'daily'
