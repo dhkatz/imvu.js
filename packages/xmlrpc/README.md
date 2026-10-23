@@ -65,30 +65,23 @@ cancelled.
 To retry automatically, pass a `proofOfWork` handler. The gateway calls it on
 fault 110, then retries the original call (up to `maxPowRetries`, default 3).
 
-> **Unverified sketch:** the endpoint, request body and response shape below are
-> guesses, not taken from a real exchange, and the requests need the REST
-> session's authentication, which this bare `fetch` does not send.
+The REST API's challenge flow is known from the web client: list `GET /pow`, read each
+challenge's `nonce`, solve it, and `POST {solution}` to the challenge URL. `@imvu/rest`
+implements it as `rest.solveChallenges()` (and retries `VERIFY-001` requests
+automatically), and `@imvu/client` wires fault 110 to it by default:
 
 ```ts
+import { REST } from '@imvu/rest';
 import { XmlRpcGateway, solveRswAsync } from '@imvu/xmlrpc';
 
+const rest = new REST({ proofOfWork: (nonce) => solveRswAsync(nonce) });
 const gateway = new XmlRpcGateway({
-  proofOfWork: async (session, fetch) => {
-    // 1. Request a challenge from the REST API
-    const res = await fetch(`https://api.imvu.com/user/user-${session.userId}/pow`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ algorithm: 'rsw', difficulty: 0.001 }),
-    });
-    const { id, denormalized } = await res.json();
-    const nonce: string = denormalized[id].data.nonce;
-
-    // 2. Solve and submit
-    await fetch(id, {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ solution: await solveRswAsync(nonce) }),
-    });
+  proofOfWork: async () => {
+    await rest.solveChallenges();
   },
 });
 ```
+
+> **Unverified:** that fault 110 is cleared by the same `/pow` challenges, and the
+> exact RSW nonce layout. The web client's solver (`imvupow::ChallengeRSWSimple` in
+> the Northstar WASM) confirms the RSW scheme, but no live challenge has been captured.

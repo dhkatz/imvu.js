@@ -42,7 +42,23 @@ export interface RESTOptions {
 	cookieStorage?: CookieStorage | null;
 	/** The `fetch` implementation to use. Defaults to the global `fetch`. */
 	fetch?: typeof fetch;
+	/**
+	 * Solves proof-of-work challenges, so requests rejected with `VERIFY-001` can be
+	 * retried (see {@link REST.solveChallenges}). Without one, `VERIFY-001` throws
+	 * like any other API error. `@imvu/client` supplies an RSW solver by default.
+	 */
+	proofOfWork?: ProofOfWorkSolver;
+	/** Times one request may be retried after solving challenges. Defaults to `3`. */
+	maxPowRetries?: number;
 }
+
+/** Turns a challenge nonce (e.g. `rsw,T,N,A,Cipher`) into its solution string. */
+export type ProofOfWorkSolver = (nonce: string) => Promise<string>;
+
+/** Error code the API returns when the session must solve proof-of-work challenges first. */
+export const POW_REQUIRED = 'VERIFY-001';
+/** Challenge already solved or withdrawn; nothing left to do for it. */
+const POW_ALREADY_CLEARED = new Set(['POW-003', 'POW-004']);
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 const MAX_REDIRECTS = 5;
@@ -69,6 +85,9 @@ export class REST {
 	public authenticated = false;
 
 	public readonly baseURL: string;
+	/** See {@link RESTOptions.proofOfWork}. Settable after construction. */
+	public proofOfWork?: ProofOfWorkSolver;
+	public readonly maxPowRetries: number;
 
 	protected username = '';
 	protected password = '';
@@ -78,9 +97,12 @@ export class REST {
 	private readonly cookieStorage: CookieStorage | null;
 	private jar?: Promise<CookieJar>;
 	private saving: Promise<void> = Promise.resolve();
+	private solving?: Promise<number>;
 
 	public constructor(options: RESTOptions = {}) {
 		this.baseURL = options.baseURL ?? 'https://api.imvu.com';
+		this.proofOfWork = options.proofOfWork;
+		this.maxPowRetries = options.maxPowRetries ?? 3;
 		this.fetchImpl = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
 		this.manageCookies = !browserManagesCookies();
 		this.cookieStorage = !this.manageCookies
@@ -219,6 +241,60 @@ export class REST {
 
 	/** Send a request and return the API's success envelope; API failures throw {@link IMVUAPIError}. */
 	public async request<T extends object = Record<string, any>>(
+		url: string,
+		options: RequestOptions = {}
+	): Promise<APISuccessResponse<T>> {
+		for (let attempt = 0; ; attempt++) {
+			try {
+				return await this.requestOnce<T>(url, options);
+			} catch (error) {
+				const retry =
+					error instanceof IMVUAPIError &&
+					error.apiCode === POW_REQUIRED &&
+					this.proofOfWork !== undefined &&
+					attempt < this.maxPowRetries;
+				if (!retry) throw error;
+				await this.solveChallenges();
+			}
+		}
+	}
+
+	/**
+	 * Solve every outstanding proof-of-work challenge for this session, the way the web
+	 * client does: list `/pow`, read each challenge's `nonce`, solve it with
+	 * {@link proofOfWork}, and POST `{solution}` back. Concurrent calls share one run.
+	 * Resolves to the number of challenges handled. Called automatically when a request
+	 * fails with `VERIFY-001`.
+	 */
+	public solveChallenges(): Promise<number> {
+		this.solving ??= this.solveOutstandingChallenges().finally(() => {
+			this.solving = undefined;
+		});
+		return this.solving;
+	}
+
+	private async solveOutstandingChallenges(): Promise<number> {
+		const solve = this.proofOfWork;
+		if (!solve) throw new Error('No proof-of-work solver is configured (RESTOptions.proofOfWork)');
+
+		const list = await this.requestOnce('/pow');
+		const challenges: string[] = list.denormalized[list.id]?.data?.items ?? [];
+		for (const challenge of challenges) {
+			try {
+				const document = await this.requestOnce(challenge);
+				const nonce = document.denormalized[document.id]?.data?.nonce;
+				if (typeof nonce !== 'string' || !nonce) throw new Error(`Challenge '${challenge}' has no nonce`);
+
+				await this.requestOnce(challenge, { method: 'POST', data: { solution: await solve(nonce) } });
+			} catch (error) {
+				if (error instanceof IMVUAPIError && POW_ALREADY_CLEARED.has(error.apiCode)) continue;
+				throw error;
+			}
+		}
+		return challenges.length;
+	}
+
+	private async requestOnce<T extends object = Record<string, any>>(
 		url: string,
 		options: RequestOptions = {}
 	): Promise<APISuccessResponse<T>> {

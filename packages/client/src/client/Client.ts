@@ -2,6 +2,7 @@ import type { Constructor } from '../types.js';
 import { EventEmitter } from 'events';
 
 import { REST, APIResource, APISuccessResponse, type RequestOptions } from '@imvu/rest';
+import { XmlRpcGateway, solveRswAsync } from '@imvu/xmlrpc';
 
 import { BaseController } from '../controllers/index.js';
 import { GetMatched, Product, Resource, Room, User, type CurrentUser } from '../resources/index.js';
@@ -39,10 +40,22 @@ export class Client extends EventEmitter {
 		super();
 
 		this.rest = rest;
+		// IMVU's challenges are RSW time-lock puzzles (imvupow::ChallengeRSWSimple in the web client).
+		this.rest.proofOfWork ??= (nonce) => solveRswAsync(nonce);
 		this.utils = new Utilities(this);
 		this.documents = new DocumentStore(this, options.maximumStrongDocuments);
 		this.realtime = new RealtimeCoordinator(this, options.realtimeManagerFactory);
-		this.xmlrpc = new XmlRpcCoordinator(options.xmlrpc);
+		this.xmlrpc = new XmlRpcCoordinator({
+			...options.xmlrpc,
+			// Fault 110 asks for proof of work; solve the session's REST challenges, then retry.
+			gateway:
+				options.xmlrpc?.gateway ??
+				new XmlRpcGateway({
+					proofOfWork: async () => {
+						await this.rest.solveChallenges();
+					},
+				}),
+		});
 	}
 
 	public get authenticated(): boolean {

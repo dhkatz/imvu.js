@@ -412,3 +412,17 @@ describe('structured gift results', () => {
 		});
 	});
 });
+
+describe('proof of work', () => {
+	it('gives REST an RSW solver unless one was supplied', async () => {
+		const rest = fakeRest();
+		new Client(rest);
+		// 2^(2^1) mod 3233 = 4, so cipher 104 unlocks to 100.
+		await expect(rest.proofOfWork?.('rsw,1,3233,2,104')).resolves.toBe('100');
+
+		const own = vi.fn();
+		const custom = fakeRest({ proofOfWork: own } as Partial<REST>);
+		new Client(custom);
+		expect(custom.proofOfWork).toBe(own);
+	});
+});
