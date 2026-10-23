@@ -30,14 +30,15 @@ session. Later watches share it.
 An invalidation carries no data. It increments the document's `revision` and sets
 `stale = true`, and leaves the next step to you:
 
-- **For a resource**, fetch it again. Because resources are
-  [canonical](/guide/concepts#resources), re-fetching updates the very object you
-  already hold, and `stale` resets to `false`:
+- **For a resource**, read it again with `refresh()`. Because resources are
+  [canonical](/guide/concepts#resources), that updates the very object you already
+  hold, and `stale` resets to `false`. A stale resource is also never served from the
+  [cache](/guide/caching), so a plain `fetch()` re-reads it too:
 
   ```ts
   const user = await client.users.fetch(id);
   const watch = await user.watch();
-  watch.on('invalidate', () => client.users.fetch(id)); // `user` is now fresh
+  watch.on('invalidate', () => user.refresh()); // `user` is now fresh
   ```
 
 - **For a collection**, read the range you care about again (`page()`, `count()` or
@@ -84,6 +85,17 @@ client.on('imqError', (error) => console.warn('IMQ:', error.message));
 
 Closing every watch on a document releases its subscription. `client.logout()`
 closes them all along with the connection.
+
+## Rooms
+
+Room presence and chat are built on the same connection: `chat.observe()` follows
+who is in a room, and `room.join()` takes part in it. See
+[Rooms and chat](/guide/rooms).
+
+For your own subscriptions on the shared connection, `client.realtime.listen(queue,
+mount, listener)` delivers every message on a mount (sender and payload), and
+`client.realtime.send()` sends one. `client.realtime.onReconnect(listener)` tells you
+when to resynchronize.
 
 ## Using `@imvu/imq` directly
 

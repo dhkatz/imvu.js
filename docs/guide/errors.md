@@ -43,6 +43,41 @@ Other errors you may see from the REST layer:
 - **`You must be logged into to access account information!`**: you read
   `client.account` before `login()` finished.
 
+### Error codes worth knowing
+
+| `apiCode`                     | Meaning                                                                                                     |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `VERIFY-001`                  | The session must solve a proof-of-work challenge first. Handled for you; see below.                         |
+| `RATE-001`                    | Too many messages too fast. Also returned with "verify email" when an unverified account messages non-friends. |
+| `CHAT_PARTICIPANT-001`/`-002` | The room is full. Room lists lag, so this happens even when it looked open.                                 |
+| `CHAT_PARTICIPANT-004`        | The room is unavailable.                                                                                    |
+
+### Proof of work
+
+When IMVU decides a session is busy, it rejects requests with `VERIFY-001` until the
+session solves a proof-of-work challenge: a time-lock puzzle that costs CPU time and
+can't be parallelized. `@imvu/client` handles this for you, the way the web client
+does:
+
+1. it lists the session's outstanding challenges (`GET /pow`);
+2. it solves each one;
+3. it posts the solutions back;
+4. it retries the original request, up to `maxPowRetries` (3) times.
+
+You'll only see `VERIFY-001` if solving keeps failing. With `@imvu/rest` alone, pass
+a solver to turn the same behaviour on:
+
+```ts
+import { REST } from '@imvu/rest';
+import { solveRswAsync } from '@imvu/xmlrpc';
+
+const rest = new REST({ proofOfWork: (nonce) => solveRswAsync(nonce) });
+await rest.solveChallenges(); // or solve on demand; resolves to how many were handled
+```
+
+The XML-RPC gateway's equivalent, fault `110`, is routed to the same challenges by
+`client.xmlrpc`.
+
 ## Gift results
 
 Sending a gift spends credits, so it never throws for an expected failure. It
@@ -71,6 +106,8 @@ See [Gifting](/recipes/gifting) for a complete flow.
 | -------------- | ---------------------------- | ---------------------------------------------------------------------- |
 | `@imvu/client` | `CollectionNotWatchableError` | `watch()` on a collection that publishes no updates.                  |
 | `@imvu/client` | `RangeError`                 | `page()` with a negative offset or a non-positive limit.               |
+| `@imvu/client` | `Error`                      | `session.send()` on a closed `ChatSession`, or IMQ rejecting a chat line. |
+| `@imvu/verify` | `RangeError`                 | A challenge secret shorter than 16 bytes.                              |
 | `@imvu/xmlrpc` | `XmlRpcFault`                | The gateway returned a fault. Compare `code` with `FaultCode`.         |
 | `@imvu/xmlrpc` | `XmlRpcHttpError`            | The gateway answered with a non-200 HTTP status.                       |
 | `@imvu/chkn`   | `ChknError`                  | A malformed CFL/CHKN archive, LZMA stream or product template.         |
@@ -86,7 +123,7 @@ if (error instanceof XmlRpcFault) {
     case FaultCode.InvalidLoginOrPassword: // 11
     case FaultCode.TwoFactorRequired: // 107
     case FaultCode.InvalidAuthData: // 30: session replaced by another login
-    case FaultCode.ProofOfWorkRequired: // 110: rate-limited; see @imvu/xmlrpc
+    case FaultCode.ProofOfWorkRequired: // 110: solved and retried by client.xmlrpc
   }
 }
 ```

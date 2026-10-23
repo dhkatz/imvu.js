@@ -23,6 +23,12 @@ features:
   - title: '@imvu/client'
     details: The high-level API — log in, look up users and products, friends, wishlists, gifting — with canonical resources and explicit realtime watches.
     link: /packages/client/
+  - title: '@imvu/bot'
+    details: Chat bots for one room or hundreds — commands with room roles and cooldowns, rate limiting, paced joins, rejoining — modeled on discord.js.
+    link: /packages/bot/
+  - title: '@imvu/verify'
+    details: Prove someone owns an IMVU account with a code in their tagline — stateless, signed challenges, no login needed to check.
+    link: /packages/verify/
   - title: '@imvu/rest'
     details: The low-level REST client — cookie-based auth, session reuse, and raw typed API envelopes on the standard fetch.
     link: /packages/rest/

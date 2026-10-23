@@ -1,6 +1,6 @@
 # @imvu/bot
 
-Build IMVU chat bots on top of [`@imvu/client`](../client), for one room or hundreds:
+Build IMVU chat bots on top of [`@imvu/client`](https://dhkatz.github.io/imvu.js/packages/client/), for one room or hundreds:
 commands with permissions and cooldowns, middleware, rate limiting per room and per
 account, paced joins, and rejoining when the server drops the bot.
 

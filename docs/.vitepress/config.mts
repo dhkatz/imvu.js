@@ -10,6 +10,8 @@ const apiSidebar: DefaultTheme.SidebarItem[] = existsSync(sidebarFile)
 
 const packages: DefaultTheme.NavItemWithLink[] = [
 	{ text: '@imvu/client', link: '/packages/client/' },
+	{ text: '@imvu/bot', link: '/packages/bot/' },
+	{ text: '@imvu/verify', link: '/packages/verify/' },
 	{ text: '@imvu/rest', link: '/packages/rest/' },
 	{ text: '@imvu/imq', link: '/packages/imq/' },
 	{ text: '@imvu/xmlrpc', link: '/packages/xmlrpc/' },
@@ -25,7 +27,9 @@ const guideSidebar: DefaultTheme.SidebarItem[] = [
 			{ text: 'Getting started', link: '/guide/getting-started' },
 			{ text: 'Core concepts', link: '/guide/concepts' },
 			{ text: 'Authentication and sessions', link: '/guide/authentication' },
+			{ text: 'Caching', link: '/guide/caching' },
 			{ text: 'Realtime updates', link: '/guide/realtime' },
+			{ text: 'Rooms and chat', link: '/guide/rooms' },
 			{ text: 'Handling errors', link: '/guide/errors' },
 			{ text: 'Running in the browser', link: '/guide/browser' },
 		],
@@ -36,6 +40,9 @@ const guideSidebar: DefaultTheme.SidebarItem[] = [
 			{ text: 'Users and profiles', link: '/recipes/users' },
 			{ text: 'Your account', link: '/recipes/account' },
 			{ text: 'Gifting', link: '/recipes/gifting' },
+			{ text: 'Watch a room', link: '/recipes/watch-room' },
+			{ text: 'Build a bot', link: '/recipes/bots' },
+			{ text: 'Verify account ownership', link: '/recipes/verify' },
 			{ text: 'Unmodeled endpoints', link: '/recipes/raw-api' },
 		],
 	},

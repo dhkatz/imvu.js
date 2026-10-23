@@ -34,7 +34,8 @@ export interface RealtimeSubscription {
 	close(): void;
 }
 
-type MessageListener = (message: RealtimeMessage) => void;
+/** Receives each message delivered on a mount subscribed with {@link RealtimeCoordinator.listen}. */
+export type MessageListener = (message: RealtimeMessage) => void;
 
 interface Binding {
 	mount: RealtimeMountLike;
