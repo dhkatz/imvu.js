@@ -1,8 +1,8 @@
 # @imvu/bot
 
-Build IMVU chat-room bots on top of [`@imvu/client`](../client): commands with
-permissions and cooldowns, middleware, a rate-limited outgoing queue, several rooms
-at once, and rejoining when the server drops the bot.
+Build IMVU chat bots on top of [`@imvu/client`](../client), for one room or hundreds:
+commands with permissions and cooldowns, middleware, rate limiting per room and per
+account, paced joins, and rejoining when the server drops the bot.
 
 ```ts
 import { Bot } from '@imvu/bot';
@@ -13,52 +13,89 @@ await client.login(username, password);
 
 const bot = new Bot({ client, admins: [myCid] });
 
-bot.command('ping', { description: 'Check the bot is alive' }, (ctx) => ctx.reply('pong'));
+bot.command('ping', (ctx) => ctx.reply('pong'));
 
-bot.command('skip', { permission: 'moderator', cooldown: 10_000 }, async (ctx) => {
-  await radio.skip();
-  await ctx.reply('Skipped.');
+bot.command('skip', { permission: 'moderator', sources: ['room'], cooldown: 10_000 }, async (ctx) => {
+  await radio.skip(ctx.source.id);
+  await ctx.reply(`Skipped for ${ctx.author.username}.`);
 });
 
-bot.on('join', (room) => void room.say('Welcome!'));
-bot.on('error', (error) => console.error(error));
+bot.on('participantJoin', (participant, room) => void room.say(`Welcome, ${participant.user?.username}!`));
+bot.on('error', (error, source) => console.error(source?.name, error));
 
-await bot.join('123456-1'); // a room id: the end of the room's URL
+const { joined, failed } = await bot.joinAll(['123456-1', '654321-2' /* … */]);
 ```
+
+## The model
+
+The comparison with discord.js:
+
+| discord.js                          | @imvu/bot                                                 |
+| ----------------------------------- | --------------------------------------------------------- |
+| `Client`                            | `Bot`: one logged-in account and one realtime connection  |
+| `Guild`, `client.guilds.cache`      | `BotRoom`, `bot.rooms` (a map by room id)                 |
+| `GuildMember`, `guild.members`      | `ChatParticipant`, `room.participants` (a map by user id) |
+| `message.author` / `message.member` | `message.author` (a full `User`) / `message.participant`  |
+| `message.guild` / `message.channel` | `message.source`: the room (IM conversations come next)   |
+
+- **`message.author` is always a full `User`.** Participant lists embed every user, so
+  authors come from the cache. A user is only fetched (once, shared) when a line
+  arrives before their join has been seen.
+- **`message.participant`** is the author's presence in the room: join time, seat,
+  outfit (`productIds`), `user`. It is null when not known yet, and for IMs.
+- **`message.source`** says where the message came from. `source.type` is `'room'`
+  today; IM conversations will be added to the union, so check it before relying on
+  room-only members.
 
 ## Commands
 
-- `!name arg "quoted words"`: `ctx.args` is `['arg', 'quoted words']` and
-  `ctx.argText` the raw text. The prefix is configurable (`prefix`, default `!`) and
-  names are case-insensitive. `aliases` add other names.
+- `!name arg "quoted words"` gives `ctx.args` `['arg', 'quoted words']`; `ctx.argText`
+  is the raw text. The prefix is configurable (`prefix`, default `!`), names are
+  case-insensitive, and `aliases` add more names.
 - **`ctx.reply(text)` answers in kind**: a whisper to the bot gets a whisper back,
-  public chat gets a public reply. `ctx.whisper(text)` always whispers.
-- **Permissions** are room roles, each including the ones below it: `everyone`,
-  `moderator` (the room's moderator list, re-read every `moderatorCacheMs`), `owner`
-  (the room owner), `admin` (your `admins`, in every room). Pass a function for
-  custom checks. Refusals emit `denied`.
-- **`cooldown`** (ms) limits how often each user can run a command; admins are exempt.
-- **Middleware** (`bot.use((ctx, next) => …)`) runs before every command, in order.
+  public chat a public reply. `ctx.whisper(text)` always whispers.
+- **`sources`** restricts where a command runs (`['room']`).
+- **Permissions** are roles in the message's room, each including the ones below:
+  - `everyone`;
+  - `moderator`: the room's moderator list, re-read every `moderatorCacheMs`;
+  - `owner`: the room owner;
+  - `admin`: your `admins`, everywhere.
+
+  Pass a function for custom checks. Refusals emit `denied`.
+
+- **`cooldown`** (ms) limits each user per command per room; admins are exempt.
+- **Middleware**, `bot.use((ctx, next) => …)`, runs before every command, in order.
   Skip `next()` to stop the command.
-- A built-in `help` lists the commands the caller may run (`help: false` to drop it).
-- Commands are recognised in arrival order per room; handlers run independently, so
-  a slow command doesn't hold up the next. Handler errors emit `commandError`, or
+- A built-in `help` lists what the caller may run there (`help: false` drops it).
+- Messages are handled in arrival order per room. Handlers run independently, so a
+  slow command doesn't hold up the next. Handler errors emit `commandError`, or
   `error` when nothing listens for that.
 
-## Rooms
+## Many rooms
 
-- `bot.join(roomIdOrRoom)` returns a `BotRoom` with `say`, `whisper`, `boot`,
-  `participants` and `roleOf(userId)`. `bot.leave(id)` and `bot.stop()` leave.
-- **Everything the bot says goes through a per-room queue**, by default 3 lines per
-  5 s with at most 20 waiting (`rateLimit`, `maxQueue`). IMVU rate-limits chat, and an
-  account that floods can be flagged. When the queue is full, sends reject instead of
-  backing up.
+- **`bot.joinAll(ids)`** joins through a paced queue (`joinInterval`, default 1.5 s)
+  and returns `{ joined, failed }`. Full rooms (`CHAT_PARTICIPANT-002`, common because
+  room-list occupancy lags) and missing rooms end up in `failed` rather than throwing.
+  `bot.join(id)` is the single-room form, and both return the existing room if the
+  bot is already there. `client.account.rooms.managed()` lists the rooms the account
+  moderates.
+- **Two budgets for everything the bot says**: per room (default 3 lines per 5 s, at
+  most `maxQueue` = 20 waiting) and per account across all rooms (`globalRateLimit`,
+  default 20 lines per 10 s). IMVU rate-limits chat, and an account that floods can be
+  flagged. When a room's queue is full, sends reject instead of backing up.
+- **Built to scale:**
+  - Presence keepalives start at random offsets, so rooms don't renew in lockstep.
+  - In joined rooms, outfit and seat changes come from the chat broadcasts everyone
+    already sends, not from re-reading participants.
+  - Authors come from the cache.
+  - All rooms share one realtime connection.
 - **Rejoining:** if the server drops the bot (expired presence, network trouble), it
-  rejoins after 5 s, 15 s and 60 s (`rejoin.delays`) and emits `rejoined`. After a
+  rejoins after 5 s, 15 s and 60 s (`rejoin.delays`) and emits `roomRejoin`. After a
   boot it stays out unless `rejoin.afterBoot` is set. When it is out for good it
-  emits `closed`.
-- Room events are forwarded with the room: `join`, `leave`, `update` (outfit/seat
-  changes), `outfit`, `message`, `booted`.
+  emits `roomLeave`.
+- **Room events**, each with the room: `participantJoin`, `participantLeave`,
+  `participantUpdate` (outfit and seat changes), `booted`, plus `message` for every
+  line.
 
 **Listen for `error`.** Errors are only reported through that event, so a bot
 without an `error` listener fails silently.

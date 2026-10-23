@@ -368,6 +368,26 @@ describe('ChatSession', () => {
 		await session.leave();
 	});
 
+	it('updates participants from outfit and seat broadcasts without re-reading them', async () => {
+		const h = harness({ '5': { look_url: lookUrl(1, 2), seat_number: 1, seat_furni_id: 7 } });
+		const session = await h.chat.join();
+		const updates: string[] = [];
+		session.on('update', (p, changes) => updates.push(`${p.userId} ${changes.join('+')}`));
+		const reads = h.rest.resource.mock.calls.length;
+		const chat = h.manager.mount('/chat/777', 'messages');
+
+		chat.deliver('5', { chatId: '777', message: '*putOnOutfit 1 2', to: 0 }); // unchanged
+		chat.deliver('5', { chatId: '777', message: '*putOnOutfit 1 3', to: 0 });
+		chat.deliver('5', { chatId: '777', message: '*msg SeatAssignment 3 5 2 7', to: 0 });
+		invalidation(h, 'updated', '5'); // a keepalive: not re-read inside a session
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		expect(updates).toEqual(['5 outfit', '5 seat']);
+		expect(session.participant(5)?.productIds).toEqual(['1', '3']);
+		expect(h.rest.resource.mock.calls.length).toBe(reads);
+		await session.leave();
+	});
+
 	it('sends public chat and whispers in the web wire format', async () => {
 		const h = harness();
 		const session = await h.chat.join();

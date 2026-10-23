@@ -62,7 +62,7 @@ export class ChatSession extends EventEmitter<ChatSessionEvents> {
 	readonly #options: Required<Pick<JoinOptions, 'ignoreOwnMessages' | 'leaveWhenBooted'>>;
 	#subscription?: RealtimeSubscription;
 	#observer?: ChatObserver;
-	#keepAlive?: ReturnType<typeof setInterval>;
+	#keepAlive?: ReturnType<typeof setTimeout>;
 	#closing?: Promise<void>;
 	#booted = false;
 
@@ -114,6 +114,11 @@ export class ChatSession extends EventEmitter<ChatSessionEvents> {
 		return this.#observer?.participants ?? [];
 	}
 
+	/** The participant with this user id, if present (and `observeParticipants` is on). */
+	public participant(userId: string | number): ChatParticipant | undefined {
+		return this.#observer?.get(userId);
+	}
+
 	/** Say something in public chat. Resolves when the server acknowledges it. */
 	public send(text: string): Promise<void> {
 		return this.sendLine(text, 0);
@@ -154,7 +159,9 @@ export class ChatSession extends EventEmitter<ChatSessionEvents> {
 		);
 
 		if (options.observeParticipants ?? true) {
-			this.#observer = await this.chat.observe(options);
+			// Outfit and seat changes arrive as chat lines (below), so the observer only needs
+			// joins and leaves; re-reading on every keepalive does not scale to many rooms.
+			this.#observer = await this.chat.observe({ trackChanges: false, ...options });
 			this.#observer.on('join', (participant) => this.emit('join', participant));
 			this.#observer.on('leave', (event) => {
 				this.emit('leave', event);
@@ -165,7 +172,11 @@ export class ChatSession extends EventEmitter<ChatSessionEvents> {
 		}
 
 		const interval = options.keepAliveInterval ?? 45_000;
-		this.#keepAlive = setInterval(() => void this.keepAlive(), interval);
+		// Start at a random offset so many sessions don't renew presence in lockstep.
+		this.#keepAlive = setTimeout(() => {
+			void this.keepAlive();
+			this.#keepAlive = setInterval(() => void this.keepAlive(), interval);
+		}, Math.random() * interval);
 	}
 
 	private async keepAlive(): Promise<void> {
@@ -204,10 +215,14 @@ export class ChatSession extends EventEmitter<ChatSessionEvents> {
 				break;
 			case 'outfit':
 				this.emit('outfit', { userId: sender, productIds: line.productIds });
+				this.applyToParticipant(sender, 'outfit', { look_url: lookUrlFor(line.productIds) });
 				break;
-			case 'seat':
-				this.emit('seat', { userId: line.userId || sender, seatNumber: line.seatNumber, furniId: line.furniId });
+			case 'seat': {
+				const userId = line.userId || sender;
+				this.emit('seat', { userId, seatNumber: line.seatNumber, furniId: line.furniId });
+				this.applyToParticipant(userId, 'seat', { seat_number: line.seatNumber, seat_furni_id: line.furniId });
 				break;
+			}
 			case 'command':
 				this.emit('command', { userId: sender, command: line.command, args: line.args });
 				break;
@@ -215,6 +230,17 @@ export class ChatSession extends EventEmitter<ChatSessionEvents> {
 				this.onBoot(line.booterId ?? sender, line.targetId);
 				break;
 		}
+	}
+
+	/** Keep the participant record current from chat broadcasts, and report real changes. */
+	private applyToParticipant(userId: string, change: ParticipantChange, data: Record<string, unknown>): void {
+		const participant = this.#observer?.get(userId);
+		if (!participant) return;
+
+		const before = state(participant, change);
+		participant._patch(data);
+		const after = state(participant, change);
+		if (after !== before) this.emit('update', participant, [change]);
 	}
 
 	private onBoot(booterId: string, targetId: string): void {
@@ -234,6 +260,7 @@ export class ChatSession extends EventEmitter<ChatSessionEvents> {
 
 	private close(reason: ChatSessionCloseReason): Promise<void> {
 		this.#closing ??= (async () => {
+			clearTimeout(this.#keepAlive);
 			clearInterval(this.#keepAlive);
 			this.#subscription?.close();
 			this.#observer?.close();
@@ -256,4 +283,16 @@ export class ChatSession extends EventEmitter<ChatSessionEvents> {
 	private emitError(error: Error): void {
 		if (this.listenerCount('error') > 0) this.emit('error', error);
 	}
+}
+
+/** The participant `look_url` for a product list, as the API writes it. */
+function lookUrlFor(productIds: string[]): string {
+	return `https://api.imvu.com/look/${productIds.join('%2C')}`;
+}
+
+/** Compare outfits by product ids, not URL formatting. */
+function state(participant: ChatParticipant, change: ParticipantChange): string {
+	return change === 'outfit'
+		? participant.productIds.join(',')
+		: `${participant.seatNumber}:${participant.seatFurniId}`;
 }

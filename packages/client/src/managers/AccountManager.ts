@@ -6,6 +6,7 @@ import {
 	BaseManager,
 	FollowerManager,
 	FriendManager,
+	RoomManager,
 	RouletteManager,
 	WalletManager,
 	WishlistManager,
@@ -19,6 +20,8 @@ export class AccountManager extends BaseManager {
 	public readonly wishlist: WishlistManager;
 	public readonly followers: FollowerManager;
 	public readonly gifts: GiftsManager;
+	/** Rooms the account owns, manages (moderates), favorited or visited recently. */
+	public readonly rooms: RoomManager;
 
 	public constructor(
 		client: Client,
@@ -32,6 +35,7 @@ export class AccountManager extends BaseManager {
 		this.wishlist = new WishlistManager(client);
 		this.followers = new FollowerManager(client);
 		this.gifts = new GiftsManager(client);
+		this.rooms = new RoomManager(client);
 	}
 
 	/**
