@@ -9,6 +9,7 @@ export * from './GetMatched.js';
 export * from './ProfileUser.js';
 
 export * from './Chat.js';
+export * from './ChatParticipant.js';
 export * from './Room.js';
 
 export * from './Album.js';

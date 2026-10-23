@@ -6,7 +6,7 @@ import { REST, APIResource, APISuccessResponse, type RequestOptions } from '@imv
 import { BaseController } from '../controllers/index.js';
 import { GetMatched, Product, Resource, Room, User, type CurrentUser } from '../resources/index.js';
 import { AccountManager } from '../managers/index.js';
-import { Collection } from '../collections/Collection.js';
+import { Collection, type CollectionOptions } from '../collections/Collection.js';
 import { Utilities } from './Utilities.js';
 import { DocumentStore } from './DocumentStore.js';
 import { RealtimeCoordinator, type RealtimeManagerFactory } from './RealtimeCoordinator.js';
@@ -95,18 +95,22 @@ export class Client extends EventEmitter {
 	}
 
 	/** Return the canonical sparse collection for a URL. */
-	public collection<T extends Resource>(url: string, itemType: Constructor<T>): Collection<T>;
+	public collection<T extends Resource>(
+		url: string,
+		itemType: Constructor<T>,
+		options?: CollectionOptions
+	): Collection<T>;
 	public collection<T = APIResource>(url: string): Collection<T>;
-	public collection<T>(url: string, itemType?: Constructor<Resource>): Collection<T> {
+	public collection<T>(url: string, itemType?: Constructor<Resource>, options: CollectionOptions = {}): Collection<T> {
 		const existing = this.documents.get<Collection<T>>(url, Collection);
 		if (existing) {
-			if (existing.itemType !== itemType) {
+			if (existing.itemType !== itemType || (existing.options.items ?? 'ref') !== (options.items ?? 'ref')) {
 				throw new TypeError(`Collection '${url}' is already registered with a different item type`);
 			}
 			return existing;
 		}
 
-		return this.documents.remember(new Collection<T>(this, url, itemType));
+		return this.documents.remember(new Collection<T>(this, url, itemType, options));
 	}
 
 	public request<T extends object = Record<string, any>>(

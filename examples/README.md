@@ -29,6 +29,8 @@ node --env-file=.env examples/rest-basic.ts
 node --env-file=.env examples/client-search.ts IMVU
 node --env-file=.env examples/imq-listen.ts
 node --env-file=.env examples/account-overview.ts
+node --env-file=.env examples/room-watch.ts
+node --env-file=.env examples/chat-bot.ts 123456-1
 node --env-file=.env examples/product-download.ts 53938393 --flatten
 node examples/cal3d-inspect.ts Room.MESH.xmf
 ```
@@ -46,5 +48,7 @@ node examples/cal3d-inspect.ts Room.MESH.xmf
 | `account-overview.ts` | `@imvu/client`                | Read-only tour of the account: wallet, friends, wishlist, inventory. |
 | `product-download.ts` | `@imvu/client` + `@imvu/chkn` | Resolve current revisions over XML-RPC and save a product as CHKN.   |
 | `cal3d-inspect.ts`    | `@imvu/cal3d`                 | Summarize any Cal3D file and convert between binary and XML.         |
+| `room-watch.ts`       | `@imvu/client`                | Follow a room's joins, leaves and outfit changes without joining it. |
+| `chat-bot.ts`         | `@imvu/client`                | Join a room and answer chat commands (`!ping`, `!outfit`).           |
 
 The [docs site](https://dhkatz.github.io/imvu.js/) walks through these and more.

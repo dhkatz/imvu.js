@@ -303,12 +303,16 @@ export class REST {
 				return response.denormalized[resourceUrl] ? this.normalizeResource(response, resourceUrl) : null;
 			})
 			.filter((resource): resource is APIResource => resource !== null);
+		const edges = itemUrls
+			.filter((itemUrl) => response.denormalized[itemUrl])
+			.map((itemUrl) => this.normalizeResource(response, itemUrl));
 
 		return {
 			url: response.id,
 			data: data as T,
 			itemUrls,
 			items,
+			edges,
 			totalCount,
 			relations: root.relations ?? {},
 			updates: updateTarget(root.updates),

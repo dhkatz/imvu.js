@@ -48,7 +48,13 @@ export interface APICollection<T extends object = Record<string, any>> {
 	url: string;
 	data: T;
 	itemUrls: string[];
+	/** Each item resolved through its edge's `ref` (e.g. the products on a wishlist). */
 	items: APIResource[];
+	/**
+	 * The edge documents themselves, for collections whose edges carry their own data
+	 * (e.g. chat participants: seat, outfit, join time, with `ref` → the user).
+	 */
+	edges?: APIResource[];
 	totalCount: number;
 	relations: APIRelations;
 	updates: APIUpdateTarget | null;

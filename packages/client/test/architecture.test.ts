@@ -203,6 +203,7 @@ class FakeRealtimeManager extends EventEmitter implements RealtimeManagerLike {
 		this.subscriptions++;
 		return this.mount;
 	}
+	public sendMessage(): void {}
 }
 
 describe('wishlist realtime invalidation', () => {

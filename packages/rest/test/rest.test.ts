@@ -62,6 +62,27 @@ describe('REST document normalization', () => {
 		expect(page.totalCount).toBe(10);
 		expect(page.updates).toEqual(updates);
 		expect(page.items).toEqual([expect.objectContaining({ url: productUrl, id: '2', data: { product_name: 'Gift' } })]);
+		expect(page.edges).toEqual([expect.objectContaining({ url: edgeUrl, relations: { ref: productUrl } })]);
+	});
+
+	it('keeps edges that carry their own data, such as chat participants', async () => {
+		const collectionUrl = 'https://api.imvu.com/chat/chat-1-2/participants';
+		const edgeUrl = `${collectionUrl}/user-7`;
+		const userUrl = 'https://api.imvu.com/user/user-7';
+		const rest = restWithResponse(
+			response(collectionUrl, {
+				[collectionUrl]: { data: { items: [edgeUrl], total_count: 1 }, relations: null, updates: null },
+				[edgeUrl]: { data: { seat_number: 3, look_url: 'x' }, relations: { ref: userUrl }, updates: null },
+				[userUrl]: { data: { username: 'seven' }, relations: null, updates: null },
+			})
+		);
+
+		const page = await rest.collection(collectionUrl);
+
+		expect(page.items).toEqual([expect.objectContaining({ url: userUrl })]);
+		expect(page.edges).toEqual([
+			expect.objectContaining({ url: edgeUrl, id: '7', data: { seat_number: 3, look_url: 'x' } }),
+		]);
 	});
 });
 
