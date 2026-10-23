@@ -148,12 +148,24 @@ bundle only.
 
 ## Plan
 
-**Status (2026-10-22):**
+**Status (2026-10-23):**
 
-- **Step 1 (`@imvu/verify`):** built and verified live (a tagline change is visible to the anonymous read immediately).
-- **Step 2:** the room-chat core is built and verified live: `Room.chat()/join()`, `Chat.participants()/observe()/join()`, `ChatParticipant`, `ChatSession`, `Resource.refresh()`, and `User.tagline` plus the other new user fields.
-- **Not started:** IMs, moderator management, the PoW (`VERIFY-001`) handler, live rooms, and steps 3–4.
-- **Fixed along the way:** `rest.collection()` followed edge `ref`s, which drops participant data. Collections can now keep edges (`{ items: 'edge' }`).
+- **Done, and checked against the live service:**
+  - `@imvu/verify`
+  - room chat in `@imvu/client`: observe, join and `ChatSession`
+  - `Resource.refresh()`
+  - proof-of-work handling: `VERIFY-001` → `/pow` → RSW solver → retry (fault 110 on XML-RPC as well)
+  - `@imvu/bot`
+- **Next:**
+  - IMs (`client.account.conversations`)
+  - room moderator management
+  - live (audience) rooms
+  - the `apps/` workspace with example bots
+  - Chronicle
+- **Open questions:**
+  - Has a live `/pow` nonce ever been captured? So far the test account has had no outstanding challenges.
+  - Do users who hide their room location still appear in participant lists? Chronicle's privacy rules depend on it.
+- **Practical note:** `room_list` occupancy can be stale, so `join()` may fail with `CHAT_PARTICIPANT-002` (full). Callers should move on to the next room.
 
 ### 1. Verification → `@imvu/verify` (independent, ship first)
 
