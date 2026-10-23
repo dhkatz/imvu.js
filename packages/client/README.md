@@ -1,6 +1,9 @@
 # @imvu/client
 
-The client library for interacting with the IMVU API. (log in, gifting, messaging, etc.)
+The client library for interacting with the IMVU API: log in, look up users and
+products, and manage friends, follows, wishlists and gifts. The
+[guide](https://dhkatz.github.io/imvu.js/guide/concepts) explains the model, and the
+[recipes](https://dhkatz.github.io/imvu.js/recipes/users) show common tasks.
 
 ## Wishlists, gifting, and updates
 

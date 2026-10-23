@@ -21,4 +21,6 @@ session when the username matches, so repeated runs don't log in again.
 
 ---
 
+See also: [Authentication and sessions](/guide/authentication), [Calling unmodeled endpoints](/recipes/raw-api), [Running in the browser](/guide/browser).
+
 Every export is listed in the [API reference](/api/@imvu/rest/).

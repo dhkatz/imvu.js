@@ -18,6 +18,37 @@ const packages: DefaultTheme.NavItemWithLink[] = [
 	{ text: '@imvu/tools', link: '/packages/tools/' },
 ];
 
+const guideSidebar: DefaultTheme.SidebarItem[] = [
+	{
+		text: 'Guide',
+		items: [
+			{ text: 'Getting started', link: '/guide/getting-started' },
+			{ text: 'Core concepts', link: '/guide/concepts' },
+			{ text: 'Authentication and sessions', link: '/guide/authentication' },
+			{ text: 'Realtime updates', link: '/guide/realtime' },
+			{ text: 'Handling errors', link: '/guide/errors' },
+			{ text: 'Running in the browser', link: '/guide/browser' },
+		],
+	},
+	{
+		text: 'Recipes: the API',
+		items: [
+			{ text: 'Users and profiles', link: '/recipes/users' },
+			{ text: 'Your account', link: '/recipes/account' },
+			{ text: 'Gifting', link: '/recipes/gifting' },
+			{ text: 'Unmodeled endpoints', link: '/recipes/raw-api' },
+		],
+	},
+	{
+		text: 'Recipes: product files',
+		items: [
+			{ text: 'Download products', link: '/recipes/download-products' },
+			{ text: 'Read and edit Cal3D', link: '/recipes/cal3d' },
+			{ text: 'Render with three.js', link: '/recipes/rendering' },
+		],
+	},
+];
+
 export default defineConfig({
 	title: 'imvu.js',
 	description: 'TypeScript libraries for the IMVU API, its realtime IMQ service, and IMVU product files.',
@@ -29,11 +60,13 @@ export default defineConfig({
 	themeConfig: {
 		nav: [
 			{ text: 'Guide', link: '/guide/getting-started', activeMatch: '/guide/' },
+			{ text: 'Recipes', link: '/recipes/users', activeMatch: '/recipes/' },
 			{ text: 'Packages', items: packages, activeMatch: '/packages/' },
 			{ text: 'API', link: '/api/', activeMatch: '/api/' },
 		],
 		sidebar: {
-			'/guide/': [{ text: 'Guide', items: [{ text: 'Getting started', link: '/guide/getting-started' }] }],
+			'/guide/': guideSidebar,
+			'/recipes/': guideSidebar,
 			'/packages/': [{ text: 'Packages', items: packages }],
 			'/api/': [{ text: 'API reference', link: '/api/', items: apiSidebar }],
 		},

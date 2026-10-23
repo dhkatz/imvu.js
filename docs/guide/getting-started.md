@@ -51,5 +51,14 @@ folder has runnable scripts. Here is the high-level client one:
 
 <<< ../../examples/client-search.ts
 
-The [package pages](/packages/client/) cover each package in more depth, and the
-[API reference](/api/) lists every export.
+## Next steps
+
+- **Learn the model.** [Core concepts](/guide/concepts) covers resources, collections
+  and paging, then [Authentication](/guide/authentication),
+  [Realtime updates](/guide/realtime) and [Handling errors](/guide/errors).
+- **Do something specific.** The recipes cover [users and profiles](/recipes/users),
+  [your account](/recipes/account), [gifting](/recipes/gifting),
+  [downloading products](/recipes/download-products),
+  [Cal3D files](/recipes/cal3d) and [rendering with three.js](/recipes/rendering).
+- **Look something up.** The [package pages](/packages/client/) describe each package,
+  and the [API reference](/api/) lists every export.

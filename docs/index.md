@@ -10,6 +10,9 @@ hero:
       text: Get started
       link: /guide/getting-started
     - theme: alt
+      text: Recipes
+      link: /recipes/users
+    - theme: alt
       text: API reference
       link: /api/
     - theme: alt
@@ -18,7 +21,7 @@ hero:
 
 features:
   - title: '@imvu/client'
-    details: The high-level API — log in, search users, wishlists, gifting, messaging — with canonical resources and explicit realtime watches.
+    details: The high-level API — log in, look up users and products, friends, wishlists, gifting — with canonical resources and explicit realtime watches.
     link: /packages/client/
   - title: '@imvu/rest'
     details: The low-level REST client — cookie-based auth, session reuse, and raw typed API envelopes on the standard fetch.

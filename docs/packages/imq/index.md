@@ -20,4 +20,6 @@ subscriptions only when you ask for them.
 
 ---
 
+See also: [Realtime updates](/guide/realtime), which covers watching resources through `@imvu/client`.
+
 Every export is listed in the [API reference](/api/@imvu/imq/).
