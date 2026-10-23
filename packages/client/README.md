@@ -65,6 +65,19 @@ session.on('message', (message) => message.text === '!ping' && void session.send
 See [Rooms and chat](https://dhkatz.github.io/imvu.js/guide/rooms). For bots, use
 [`@imvu/bot`](https://dhkatz.github.io/imvu.js/packages/bot/).
 
+## IMs
+
+```ts
+const observer = await client.account.conversations.observe();
+observer.on('message', (message, conversation) => {
+  if (message.text === '!ping') void conversation.send('pong');
+});
+
+await client.account.conversations.send(12345678, 'hi'); // start a conversation
+```
+
+See [IMs](https://dhkatz.github.io/imvu.js/guide/ims).
+
 ## Legacy XML-RPC gateway
 
 `client.xmlrpc` exposes IMVU's XML-RPC gateway (see `@imvu/xmlrpc`) — for example to

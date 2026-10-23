@@ -2,7 +2,15 @@ import { EventEmitter } from 'node:events';
 
 import type { ChatMessage, ChatParticipant, ChatSession, Client, Room } from '@imvu/client';
 
-import { Bot, RateLimiter, parseCommand, type BotMessage, type BotOptions } from '../src/index.js';
+import {
+	Bot,
+	RateLimiter,
+	parseCommand,
+	type BotConversation,
+	type BotMessage,
+	type BotOptions,
+	type BotRoom,
+} from '../src/index.js';
 
 class FakeSession extends EventEmitter {
 	public readonly said: string[] = [];
@@ -77,14 +85,41 @@ function setup(options: Partial<BotOptions> = {}, roomIds = ['100-1']) {
 	);
 	const cachedUsers = new Map<string, unknown>([['5', user('5')]]);
 	const fetchUser = vi.fn(async (id: string) => user(id));
+	const ims = new EventEmitter();
+	const imsSent: Array<[string, string]> = [];
 	const client = {
+		rest: { cid: '1' },
 		rooms: { fetch: vi.fn(async (id: string) => rooms.get(id)?.room ?? null) },
 		users: { resolve: (id: string) => cachedUsers.get(id), fetch: fetchUser },
 		utils: { id: async (url: string) => url.split('user-')[1] },
+		account: {
+			conversations: {
+				observe: vi.fn(async () => Object.assign(ims, { close: vi.fn() })),
+				send: vi.fn(async (to: string | number, text: string) => void imsSent.push([String(to), text])),
+			},
+		},
 	} as unknown as Client;
+	// One object per conversation, as the client's cache guarantees.
+	const conversations = new Map<string, { conversation: unknown; sent: string[] }>();
+	/** An incoming IM in a conversation with the bot (cid 1) and `members`. */
+	const im = (conversationId: string, from: string, text: string, members = [from]) => {
+		let entry = conversations.get(conversationId);
+		if (!entry) {
+			const sent: string[] = [];
+			const conversation = {
+				id: conversationId,
+				others: () => members.map((userId) => ({ userId, name: `name${userId}`, trust: 'trusted' })),
+				send: vi.fn(async (reply: string) => void sent.push(reply)),
+			};
+			entry = { conversation, sent };
+			conversations.set(conversationId, entry);
+		}
+		ims.emit('message', { senderId: from, text, created: new Date().toISOString() }, entry.conversation);
+		return entry;
+	};
 	const bot = new Bot({ client, rateLimit: { messages: 100, perMs: 1000 }, joinInterval: 0, ...options });
 	const session = (id = roomIds[0]) => sessions.get(id)!.at(-1)!;
-	return { bot, rooms, sessions, session, fetchUser, join: rooms.get(roomIds[0])!.join };
+	return { bot, rooms, sessions, session, fetchUser, join: rooms.get(roomIds[0])!.join, im, imsSent };
 }
 
 /** Let the bot's async message handling run. */
@@ -178,13 +213,20 @@ describe('Bot commands', () => {
 
 	it('limits commands to the sources they declare', async () => {
 		const { bot, session } = setup();
-		bot.command('here', { sources: ['room'] }, (ctx) => ctx.reply(`in ${ctx.source.type} ${ctx.source.name}`));
+		bot.command('here', { sources: ['room'] }, (ctx) => {
+			// `sources` narrows the context: room-only members need no checks.
+			expectTypeOf(ctx.source).toEqualTypeOf<BotRoom>();
+			return ctx.reply(`in ${ctx.source.type} ${ctx.source.name} with ${ctx.source.participants.size}`);
+		});
+		bot.command('any', (ctx) => {
+			expectTypeOf(ctx.source).toEqualTypeOf<BotRoom | BotConversation>();
+		});
 		await bot.join('100-1');
 
 		session().hear('5', '!here');
 		await settle();
 
-		expect(session().said).toEqual(['in room Room 100-1']);
+		expect(session().said).toEqual(['in room Room 100-1 with 1']);
 	});
 
 	it('applies per-user cooldowns and runs middleware in order', async () => {
@@ -348,5 +390,48 @@ describe('Bot rooms', () => {
 		} finally {
 			vi.useRealTimers();
 		}
+	});
+});
+
+describe('Bot IMs', () => {
+	it('runs commands from IMs and replies in the conversation', async () => {
+		const { bot, im } = setup({ admins: ['7'] });
+		const seen: string[] = [];
+		bot.on('message', (message) => seen.push(`${message.source.type}:${message.author.id}:${message.text}`));
+		bot.command('ping', (ctx) => ctx.reply(`pong (${ctx.role}, ${ctx.source.type})`));
+		bot.command('here', { sources: ['room'] }, (ctx) => ctx.reply('room only'));
+		await bot.start();
+
+		const first = im('c1', '5', '!ping');
+		const second = im('c2', '7', '!ping');
+		const third = im('c1', '5', '!here');
+		await settle();
+
+		expect(seen).toEqual(['conversation:5:!ping', 'conversation:7:!ping', 'conversation:5:!here']);
+		// c1 got one reply: !ping answered, the room-only !here ignored.
+		expect(first.sent).toEqual(['pong (everyone, conversation)']);
+		expect(third).toBe(first);
+		expect(second.sent).toEqual(['pong (admin, conversation)']);
+		expect([...bot.conversations.keys()]).toEqual(['c1', 'c2']);
+		expect(bot.conversations.get('c1')?.name).toBe('name5');
+	});
+
+	it('whispers privately from a group conversation', async () => {
+		const { bot, im, imsSent } = setup();
+		bot.command('secret', (ctx) => ctx.whisper('just for you'));
+		await bot.start();
+
+		const group = im('g1', '5', '!secret', ['5', '6']);
+		await settle();
+
+		expect(bot.conversations.get('g1')?.group).toBe(true);
+		expect(group.sent).toEqual([]);
+		expect(imsSent).toEqual([['5', 'just for you']]);
+	});
+
+	it('can leave IMs alone', async () => {
+		const { bot } = setup({ ims: false });
+		await bot.start();
+		expect(bot.conversations.size).toBe(0);
 	});
 });

@@ -1,7 +1,8 @@
 # Build a bot
 
-[`@imvu/bot`](/packages/bot/) runs a chat bot in one room or hundreds. It handles
-commands, permissions and rate limits so your code only says what each command does.
+[`@imvu/bot`](/packages/bot/) runs a chat bot in one room or hundreds, and answers IMs
+with the same commands. It handles permissions and rate limits so your code only says
+what each command does.
 The bot account is visible in every room it joins, and everyone sees what it says.
 
 ## A complete bot
@@ -17,9 +18,10 @@ Run it with `node --env-file=.env examples/bot.ts 123456-1 654321-2`, or
 
 - `author`, the sender's full `User`, from the [cache](/guide/caching);
 - `participant`, their presence in the room (outfit, seat, join time);
-- `source`, the room it came from.
+- `source`, the room or IM conversation it came from (`source.type`).
 
-`message.reply()` answers in kind: a whisper gets a whisper back.
+`message.reply()` answers in kind: a room whisper gets a whisper back, and an IM gets
+an answer in its conversation.
 
 ```ts
 bot.on('message', (message) => {
@@ -70,8 +72,20 @@ bot.on('participantUpdate', (participant, changes, room) => {
 bot.on('booted', (room, by) => console.log(`Booted from ${room.name} by ${by}`));
 ```
 
-## Coming next
+## IMs
 
-IMs (private messages) are planned as a second `source` type, so the same commands
-will work in both. Until then, `source.type` is always `'room'`. Check it anyway, so
-your code keeps working when IMs arrive.
+The bot answers IMs out of the box. Every command runs in both rooms and IMs unless
+you limit it:
+
+```ts
+bot.command('help-me', { sources: ['conversation'] }, (ctx) => ctx.reply('A moderator will be in touch.'));
+
+bot.on('message', (message) => {
+  if (message.source.type === 'conversation') console.log(`IM from ${message.author.username}: ${message.text}`);
+});
+
+await bot.start(); // only needed for a bot that joins no rooms
+```
+
+In IMs the author's role is `admin` or `everyone`, because there are no room roles.
+See [IMs](/guide/ims) for the client-level API.

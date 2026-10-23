@@ -6,6 +6,9 @@ import type {
 	ChatSession,
 	ChatSessionCloseReason,
 	Client,
+	Conversation,
+	ConversationMessage,
+	ConversationObserver,
 	JoinOptions,
 	ParticipantChange,
 	ParticipantLeave,
@@ -20,11 +23,8 @@ import { RateLimiter, type RateLimit } from './RateLimiter.js';
 export type Role = 'everyone' | 'moderator' | 'owner' | 'admin';
 const RANK: Record<Role, number> = { everyone: 0, moderator: 1, owner: 2, admin: 3 };
 
-/**
- * Where a message came from. Rooms today; IM conversations will join this union, so
- * check `source.type` rather than assuming a room.
- */
-export type MessageSource = BotRoom;
+/** Where a message came from: a room, or an IM conversation. Check `source.type`. */
+export type MessageSource = BotRoom | BotConversation;
 export type SourceType = MessageSource['type'];
 
 export interface BotOptions {
@@ -52,6 +52,8 @@ export interface BotOptions {
 	moderatorCacheMs?: number;
 	/** Passed to every `room.join()`. */
 	join?: JoinOptions;
+	/** Answer IMs (private and group conversations) as well as room chat. Default `true`. */
+	ims?: boolean;
 }
 
 /** A chat line the bot received, with its author resolved. */
@@ -59,40 +61,48 @@ export interface BotMessage {
 	text: string;
 	/** The sender. Resolved from the cache (participant reads embed users), fetched only on a miss. */
 	author: User;
-	/** The sender's presence in the room; null when not (yet) known, and for IMs. */
+	/** The sender's presence in the room; null for IMs, and when not known yet. */
 	participant: ChatParticipant | null;
 	source: MessageSource;
 	/** `/me …` narration. */
 	action: boolean;
-	/** Whispered to the bot rather than said publicly. */
+	/** Whispered to the bot rather than said publicly. Always false for IMs. */
 	whisper: boolean;
 	receivedAt: Date;
-	/** The underlying chat message. */
-	raw: ChatMessage;
+	/** The underlying room chat line or IM. */
+	raw: ChatMessage | ConversationMessage;
 	/** Answer in kind: a whisper gets a whisper back, public chat a public reply. */
 	reply(text: string): Promise<void>;
 }
 
-export interface CommandOptions {
+/** The source type for a `type`: `SourceOf<'room'>` is `BotRoom`. */
+export type SourceOf<T extends SourceType> = Extract<MessageSource, { type: T }>;
+
+export interface CommandOptions<T extends SourceType = SourceType> {
 	description?: string;
 	/** Shown by `help <command>`, e.g. `<user> [reason]`. */
 	usage?: string;
 	aliases?: string[];
 	/** Minimum role, or a custom check. Default `'everyone'`. */
-	permission?: Role | ((context: CommandContext) => boolean | Promise<boolean>);
+	permission?: Role | ((context: CommandContext<SourceOf<T>>) => boolean | Promise<boolean>);
 	/** Per-user cooldown in milliseconds (per source). */
 	cooldown?: number;
-	/** Where the command may run. Default: everywhere. */
-	sources?: SourceType[];
+	/**
+	 * Where the command may run. Default: everywhere. Also narrows `ctx.source` in the
+	 * handler: with `['room']` it is a `BotRoom`.
+	 */
+	sources?: T[];
 }
 
-export type CommandHandler = (context: CommandContext) => void | Promise<void>;
+export type CommandHandler<S extends MessageSource = MessageSource> = (
+	context: CommandContext<S>
+) => void | Promise<void>;
 export type Middleware = (context: CommandContext, next: () => Promise<void>) => void | Promise<void>;
 
-export interface CommandContext {
+export interface CommandContext<S extends MessageSource = MessageSource> {
 	bot: Bot;
 	message: BotMessage;
-	source: MessageSource;
+	source: S;
 	author: User;
 	participant: ChatParticipant | null;
 	/** The canonical command name (not the alias that was typed). */
@@ -221,7 +231,83 @@ export class BotRoom {
 }
 
 /**
- * A chat bot for any number of rooms: routes `!commands` to handlers with permissions,
+ * One IM conversation the bot is part of (the counterpart of a discord.js DM channel,
+ * or a group DM). Created when its first message arrives.
+ */
+export class BotConversation {
+	public readonly type = 'conversation' as const;
+	readonly #limiter: RateLimiter;
+
+	public constructor(
+		private readonly bot: Bot,
+		public conversation: Conversation,
+		limit: RateLimit,
+		maxQueue: number
+	) {
+		this.#limiter = new RateLimiter(limit, maxQueue);
+		Object.defineProperty(this, 'bot', { enumerable: false });
+	}
+
+	public get id(): string {
+		return this.conversation.id;
+	}
+
+	/** The other members' names, e.g. for logs. */
+	public get name(): string {
+		return this.conversation
+			.others(this.bot.client.rest.cid)
+			.map((member) => member.name)
+			.join(', ');
+	}
+
+	/** True for a conversation with more than one other person. */
+	public get group(): boolean {
+		return this.conversation.others(this.bot.client.rest.cid).length > 1;
+	}
+
+	/** Send a message to the conversation (rate limited per conversation and per account). */
+	public say(text: string): Promise<void> {
+		return this.#limiter.schedule(() => this.bot._send(() => this.conversation.send(text)));
+	}
+
+	/**
+	 * Message one member privately: the conversation itself when it is one-to-one, a
+	 * separate one-to-one IM when it is a group.
+	 */
+	public whisper(userId: string | number, text: string): Promise<void> {
+		if (!this.group) return this.say(text);
+		return this.#limiter.schedule(() => this.bot._send(() => this.bot.client.account.conversations.send(userId, text)));
+	}
+
+	/** In IMs there are no room roles: bot admins are `admin`, everyone else `everyone`. */
+	public async roleOf(userId: string | number): Promise<Role> {
+		return this.bot.isAdmin(userId) ? 'admin' : 'everyone';
+	}
+
+	/** Conversations have no participants in the room sense. */
+	public participant(): undefined {
+		return undefined;
+	}
+
+	/** @internal */
+	public _stop(): void {
+		this.#limiter.stop();
+	}
+}
+
+/** What the bot heard, from either source, before its author is resolved. */
+interface Incoming {
+	userId: string;
+	text: string;
+	action: boolean;
+	whisper: boolean;
+	toMe: boolean;
+	receivedAt: Date;
+	raw: ChatMessage | ConversationMessage;
+}
+
+/**
+ * A chat bot for any number of rooms and IM conversations: routes `!commands` to handlers with permissions,
  * cooldowns and middleware, rate-limits what it says per room and per account, paces
  * its joins, and rejoins when the server drops it.
  *
@@ -247,6 +333,8 @@ export class Bot extends EventEmitter<BotEvents> {
 	readonly #options: BotOptions;
 	readonly #global: RateLimiter;
 	readonly #joining = new Map<string, Promise<BotRoom>>();
+	readonly #conversations = new Map<string, BotConversation>();
+	#ims?: Promise<ConversationObserver | undefined>;
 	#joinQueue: Promise<unknown> = Promise.resolve();
 	#lastJoinAt = 0;
 
@@ -271,15 +359,38 @@ export class Bot extends EventEmitter<BotEvents> {
 		return this.#rooms;
 	}
 
+	/** IM conversations the bot has heard from, by conversation id. */
+	public get conversations(): ReadonlyMap<string, BotConversation> {
+		return this.#conversations;
+	}
+
+	/**
+	 * Start answering IMs (unless `ims: false`). Joining a room does this too, so call
+	 * it yourself only for a bot that is in no rooms. Safe to call more than once.
+	 */
+	public async start(): Promise<void> {
+		this.#ims ??= this.startIms();
+		await this.#ims;
+	}
+
 	public isAdmin(userId: string | number): boolean {
 		return this.#admins.has(String(userId));
 	}
 
 	public command(name: string, handler: CommandHandler): this;
-	public command(name: string, options: CommandOptions, handler: CommandHandler): this;
-	public command(name: string, optionsOrHandler: CommandOptions | CommandHandler, maybeHandler?: CommandHandler): this {
-		const options = typeof optionsOrHandler === 'function' ? {} : optionsOrHandler;
-		const handler = typeof optionsOrHandler === 'function' ? optionsOrHandler : maybeHandler!;
+	public command<T extends SourceType = SourceType>(
+		name: string,
+		options: CommandOptions<T>,
+		handler: CommandHandler<SourceOf<T>>
+	): this;
+	public command(
+		name: string,
+		optionsOrHandler: CommandOptions<any> | CommandHandler<any>,
+		maybeHandler?: CommandHandler<any>
+	): this {
+		// The handler only ever runs for the declared sources, so the narrowed types hold.
+		const options = (typeof optionsOrHandler === 'function' ? {} : optionsOrHandler) as CommandOptions;
+		const handler = (typeof optionsOrHandler === 'function' ? optionsOrHandler : maybeHandler!) as CommandHandler;
 		const key = name.toLowerCase();
 
 		this.#commands.set(key, { name: key, options, handler });
@@ -301,6 +412,8 @@ export class Bot extends EventEmitter<BotEvents> {
 		const key = typeof target === 'string' ? target : target.id;
 		const existing = this.#rooms.get(key);
 		if (existing) return Promise.resolve(existing);
+
+		this.start().catch((error: Error) => this.emitError(error));
 
 		let pending = this.#joining.get(key);
 		if (!pending) {
@@ -334,10 +447,44 @@ export class Bot extends EventEmitter<BotEvents> {
 		await botRoom.session.leave();
 	}
 
-	/** Leave every room. */
+	/** Leave every room and stop answering IMs. */
 	public async stop(): Promise<void> {
+		const ims = this.#ims;
+		this.#ims = undefined;
+		(await ims?.catch(() => undefined))?.close();
+		for (const conversation of this.#conversations.values()) conversation._stop();
+		this.#conversations.clear();
 		await Promise.all([...this.#rooms.keys()].map((id) => this.leave(id)));
 		this.#global.stop();
+	}
+
+	private async startIms(): Promise<ConversationObserver | undefined> {
+		if (this.#options.ims === false) return undefined;
+		const observer = await this.client.account.conversations.observe();
+		observer.on('message', (message, conversation) => {
+			let source = this.#conversations.get(conversation.id);
+			if (source) source.conversation = conversation;
+			else {
+				source = new BotConversation(
+					this,
+					conversation,
+					this.#options.rateLimit ?? { messages: 3, perMs: 5_000 },
+					this.#options.maxQueue ?? 20
+				);
+				this.#conversations.set(conversation.id, source);
+			}
+			this.enqueue(source, {
+				userId: message.senderId,
+				text: message.text,
+				action: false,
+				whisper: false,
+				toMe: true,
+				receivedAt: new Date(message.created),
+				raw: message,
+			});
+		});
+		observer.on('error', (error) => this.emitError(error));
+		return observer;
 	}
 
 	/** @internal Every outgoing line passes the account-wide budget. */
@@ -375,7 +522,19 @@ export class Bot extends EventEmitter<BotEvents> {
 	}
 
 	private attach(botRoom: BotRoom, session: ChatSession): void {
-		session.on('message', (message) => this.enqueue(botRoom, message));
+		session.on('message', (message) => {
+			// Whispers between other people are not for us.
+			if (message.whisper && !message.toMe) return;
+			this.enqueue(botRoom, {
+				userId: message.userId,
+				text: message.text,
+				action: message.action,
+				whisper: message.whisper,
+				toMe: message.toMe,
+				receivedAt: message.receivedAt,
+				raw: message,
+			});
+		});
 		session.on('join', (participant) => this.emit('participantJoin', participant, botRoom));
 		session.on('leave', (event) => this.emit('participantLeave', event, botRoom));
 		session.on('update', (participant, changes) => this.emit('participantUpdate', participant, changes, botRoom));
@@ -422,31 +581,31 @@ export class Bot extends EventEmitter<BotEvents> {
 	 * async), then each command handler runs on its own so a slow one doesn't hold up
 	 * the next.
 	 */
-	private enqueue(source: MessageSource, raw: ChatMessage): void {
-		// Whispers between other people are not for us.
-		if (raw.whisper && !raw.toMe) return;
+	private enqueue(source: MessageSource, incoming: Incoming): void {
 		const previous = this.#dispatch.get(source) ?? Promise.resolve();
 		this.#dispatch.set(
 			source,
-			previous.then(() => this.onMessage(source, raw))
+			previous.then(() => this.onMessage(source, incoming))
 		);
 	}
 
-	private async onMessage(source: MessageSource, raw: ChatMessage): Promise<void> {
+	private async onMessage(source: MessageSource, incoming: Incoming): Promise<void> {
 		try {
-			const author = this.client.users.resolve(raw.userId) ?? (await this.client.users.fetch(raw.userId));
-			if (!author) throw new Error(`Could not resolve the author ${raw.userId}`);
+			const author = this.client.users.resolve(incoming.userId) ?? (await this.client.users.fetch(incoming.userId));
+			if (!author) throw new Error(`Could not resolve the author ${incoming.userId}`);
 
 			const message: BotMessage = {
-				text: raw.text,
+				text: incoming.text,
 				author,
-				participant: source.participant(raw.userId) ?? null,
+				participant: source.participant(incoming.userId) ?? null,
 				source,
-				action: raw.action,
-				whisper: raw.whisper,
-				receivedAt: raw.receivedAt,
-				raw,
-				reply: (text) => (raw.toMe ? source.whisper(raw.userId, text) : source.say(text)),
+				action: incoming.action,
+				whisper: incoming.whisper,
+				receivedAt: incoming.receivedAt,
+				raw: incoming.raw,
+				// Rooms: a whisper is answered with a whisper. IMs: the answer goes to the conversation.
+				reply: (text) =>
+					source.type === 'room' && incoming.toMe ? source.whisper(incoming.userId, text) : source.say(text),
 			};
 			this.emit('message', message);
 			await this.dispatchCommand(message);

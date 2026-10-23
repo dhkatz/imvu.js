@@ -32,7 +32,7 @@ A `Client` groups the API by what you are working with:
 | `client.users`         | Look up users: `fetch(id)`, `resolve(id)` (cache only) and `search({ username })`. |
 | `client.products`      | Look up products: `fetch(id)`, `resolve(id)`.                                  |
 | `client.rooms`         | Look up rooms: `fetch(id)`, `resolve(id)`. See [Rooms and chat](/guide/rooms). |
-| `client.account`       | The logged-in account: wallet, friends, wishlist, gifts, rooms, inventory, and so on. |
+| `client.account`       | The logged-in account: wallet, friends, wishlist, gifts, rooms, [IMs](/guide/ims), inventory, and so on. |
 | `client.xmlrpc`        | The legacy XML-RPC gateway (current product revisions).                        |
 | `client.request()` etc | Escape hatches for endpoints the client doesn't model yet. See [Raw API](/recipes/raw-api). |
 

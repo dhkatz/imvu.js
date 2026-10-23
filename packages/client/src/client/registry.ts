@@ -1,5 +1,5 @@
 import type { ResourceConstructor } from '../resources/Resource.js';
-import { Chat, ChatParticipant, Product, Room, User } from '../resources/index.js';
+import { Chat, ChatParticipant, Conversation, ConversationMessage, Product, Room, User } from '../resources/index.js';
 
 /**
  * Canonical URL shapes of the resources the client builds from embedded documents
@@ -12,6 +12,8 @@ const RESOURCE_TYPES: ReadonlyArray<[RegExp, () => ResourceConstructor]> = [
 	[/\/room\/room-[^/?#]+$/, () => Room],
 	[/\/chat\/chat-[^/?#]+$/, () => Chat],
 	[/\/chat\/chat-[^/?#]+\/participants\/user-[^/?#]+$/, () => ChatParticipant],
+	[/\/conversation\/conversation-[^/?#]+$/, () => Conversation],
+	[/\/message\/message-[^/?#]+$/, () => ConversationMessage],
 ];
 
 export function resourceTypeFor(url: string): ResourceConstructor | undefined {

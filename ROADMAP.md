@@ -151,21 +151,27 @@ bundle only.
 **Status (2026-10-23):**
 
 - **Done, and checked against the live service:**
-  - `@imvu/verify`
-  - room chat in `@imvu/client`: observe, join and `ChatSession`
-  - `Resource.refresh()`
-  - proof-of-work handling: `VERIFY-001` → `/pow` → RSW solver → retry (fault 110 on XML-RPC as well)
-  - `@imvu/bot`
+  - `@imvu/verify`;
+  - room chat (observe, join, `ChatSession`);
+  - IMs (`client.account.conversations`, `ConversationObserver`);
+  - cache-first fetch fed by embedded documents;
+  - proof-of-work handling;
+  - `@imvu/bot` (many rooms plus IMs, discord.js-style `source`, `author`, `participant`).
 - **Next:**
-  - IMs (`client.account.conversations`)
-  - room moderator management
-  - live (audience) rooms
-  - the `apps/` workspace with example bots
-  - Chronicle
-- **Open questions:**
-  - Has a live `/pow` nonce ever been captured? So far the test account has had no outstanding challenges.
-  - Do users who hide their room location still appear in participant lists? Chronicle's privacy rules depend on it.
-- **Practical note:** `room_list` occupancy can be stale, so `join()` may fail with `CHAT_PARTICIPANT-002` (full). Callers should move on to the next room.
+  - room moderator management;
+  - live (audience) rooms;
+  - the `apps/` workspace with example bots;
+  - Chronicle.
+- **Still open:**
+  - A live `/pow` nonce has never been captured.
+  - Whether users who hide their room location still appear in participant lists.
+  - `managed_rooms` returns `REST_DISCOVER_001` for the test account.
+- **IM wire format (captured live):**
+  - Each IM triggers `created` / `updated` notifications on `inv:/profile/<cid>`, mount `edge:conversations`, plus `messageReceived {from, time}` on the `/user/<cid>` queue's `web_msg` mount.
+  - Conversations are `/conversation/conversation-<id>` with `participants [{user, name, trust}]` and updates on `inv:/conversation/<id>` (`node`, `edge:messages`).
+  - Messages are `/message/message-<conv>-<n>` with `payloads`, `created` and `sent_by`.
+  - Responses do not embed users.
+- **Practical note:** `room_list` occupancy can be stale, so `join()` may fail with `CHAT_PARTICIPANT-002`.
 
 ### 1. Verification → `@imvu/verify` (independent, ship first)
 

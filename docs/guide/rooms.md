@@ -142,4 +142,5 @@ them, and it needs owner or moderator rights in the room.
 
 - [Watch a room](/recipes/watch-room): a runnable observer.
 - [Build a bot](/recipes/bots): commands and many rooms with `@imvu/bot`.
+- [IMs](/guide/ims): private and group conversations.
 - [Realtime updates](/guide/realtime): how IMQ and invalidation work underneath.

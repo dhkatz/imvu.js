@@ -1,10 +1,11 @@
 /**
- * @imvu/bot — one bot in many rooms: commands with permissions and cooldowns, rate
- * limiting per room and per account, paced joins, rejoining. Everyone in those rooms
- * sees the bot and what it says.
+ * @imvu/bot — one bot in many rooms and in IMs: the same commands in both, with
+ * permissions and cooldowns, rate limiting, paced joins, rejoining. Everyone in those
+ * rooms sees the bot and what it says.
  *
  *   node --env-file=.env examples/bot.ts <roomId> [roomId …]
  *   node --env-file=.env examples/bot.ts --managed        # every room the account moderates
+ *   node --env-file=.env examples/bot.ts --ims            # IMs only, no rooms
  *
  * Set BOT_ADMINS to a comma-separated list of cids allowed every command.
  */
@@ -16,7 +17,7 @@ const password = process.env.IMVU_PASSWORD ?? '';
 const args = process.argv.slice(2);
 
 if (!username || args.length === 0) {
-  console.error('Usage: node --env-file=.env examples/bot.ts <roomId …> | --managed — see examples/README.md');
+  console.error('Usage: node --env-file=.env examples/bot.ts <roomId …> | --managed | --ims — see examples/README.md');
   process.exit(1);
 }
 
@@ -53,14 +54,22 @@ bot.on('roomLeave', (room, reason) => console.log(`- ${room.name}: ${reason}`));
 bot.on('participantJoin', (participant, room) =>
   console.log(`  ${participant.user?.username ?? participant.userId} joined ${room.name}`)
 );
+bot.on('message', (message) => {
+  if (message.source.type === 'conversation') console.log(`  IM from ${message.author.username}: ${message.text}`);
+});
 bot.on('denied', (ctx) => console.log(`  ${ctx.author.username} may not run !${ctx.command} in ${ctx.source.name}`));
 bot.on('error', (error, source) => console.error(`error${source ? ` in ${source.name}` : ''}:`, error.message));
 
-const targets = args.includes('--managed') ? await managedRooms() : args;
-const { joined, failed } = await bot.joinAll(targets);
-console.log(`Joined ${joined.length} rooms.`);
-for (const { target, error } of failed)
-  console.log(`Could not join ${typeof target === 'string' ? target : target.id}: ${error.message}`);
+await bot.start(); // answer IMs, even with no rooms
+console.log('Answering IMs.');
+
+const targets = args.includes('--managed') ? await managedRooms() : args.filter((arg) => !arg.startsWith('--'));
+if (targets.length > 0) {
+  const { joined, failed } = await bot.joinAll(targets);
+  console.log(`Joined ${joined.length} rooms.`);
+  for (const { target, error } of failed)
+    console.log(`Could not join ${typeof target === 'string' ? target : target.id}: ${error.message}`);
+}
 
 process.on('SIGINT', () => {
   void bot.stop().then(() => process.exit(0));

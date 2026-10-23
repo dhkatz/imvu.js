@@ -30,6 +30,7 @@ const guideSidebar: DefaultTheme.SidebarItem[] = [
 			{ text: 'Caching', link: '/guide/caching' },
 			{ text: 'Realtime updates', link: '/guide/realtime' },
 			{ text: 'Rooms and chat', link: '/guide/rooms' },
+			{ text: 'IMs', link: '/guide/ims' },
 			{ text: 'Handling errors', link: '/guide/errors' },
 			{ text: 'Running in the browser', link: '/guide/browser' },
 		],
