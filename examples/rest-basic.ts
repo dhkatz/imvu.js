@@ -21,4 +21,4 @@ const me = await rest.request('/login/me');
 const login = me.denormalized[me.id];
 
 console.log('session source:', login.data.source);
-console.log('IMQ endpoint:', login.relations.imq);
+console.log('IMQ endpoint:', login.relations?.imq);

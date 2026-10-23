@@ -26,9 +26,15 @@ console.log(`Logged in as ${username} (cid ${rest.cid})`);
 // 2. The IMQ url + session token live on /login/me.
 const me = await rest.request('/login/me');
 const login = me.denormalized[me.id];
+const imqUrl = login.relations?.imq;
+
+if (!imqUrl) {
+  console.error('This session does not expose an IMQ endpoint');
+  process.exit(1);
+}
 
 const manager = new IMQManager({
-  url: login.relations.imq,
+  url: imqUrl,
   userId: String(rest.cid),
   sessionId: login.data.session_id,
   metadata: { app: 'imvu_next', platform_type: 'big' },

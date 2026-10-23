@@ -28,6 +28,9 @@ The examples are plain TypeScript, run with Node's built-in type stripping and `
 node --env-file=.env examples/rest-basic.ts
 node --env-file=.env examples/client-search.ts IMVU
 node --env-file=.env examples/imq-listen.ts
+node --env-file=.env examples/account-overview.ts
+node --env-file=.env examples/product-download.ts 53938393 --flatten
+node examples/cal3d-inspect.ts Room.MESH.xmf
 ```
 
 - **Node 24+**: runs as shown.
@@ -35,8 +38,13 @@ node --env-file=.env examples/imq-listen.ts
 
 ## What's here
 
-| File               | Packages                   | Shows                                                               |
-| ------------------ | -------------------------- | ------------------------------------------------------------------- |
-| `rest-basic.ts`    | `@imvu/rest`               | Authenticate and read raw, un-modeled API JSON.                     |
-| `client-search.ts` | `@imvu/client`             | The high-level modeled API (resource classes + managers).           |
-| `imq-listen.ts`    | `@imvu/rest` + `@imvu/imq` | Authenticate, open a live IMQ connection, and subscribe to a queue. |
+| File                  | Packages                      | Shows                                                                |
+| --------------------- | ----------------------------- | -------------------------------------------------------------------- |
+| `rest-basic.ts`       | `@imvu/rest`                  | Authenticate and read raw, un-modeled API JSON.                      |
+| `client-search.ts`    | `@imvu/client`                | The high-level modeled API (resource classes + managers).            |
+| `imq-listen.ts`       | `@imvu/rest` + `@imvu/imq`    | Authenticate, open a live IMQ connection, and subscribe to a queue.  |
+| `account-overview.ts` | `@imvu/client`                | Read-only tour of the account: wallet, friends, wishlist, inventory. |
+| `product-download.ts` | `@imvu/client` + `@imvu/chkn` | Resolve current revisions over XML-RPC and save a product as CHKN.   |
+| `cal3d-inspect.ts`    | `@imvu/cal3d`                 | Summarize any Cal3D file and convert between binary and XML.         |
+
+The [docs site](https://dhkatz.github.io/imvu.js/) walks through these and more.
