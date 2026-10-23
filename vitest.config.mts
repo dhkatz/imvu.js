@@ -17,6 +17,7 @@ export default defineConfig({
       '@imvu/rest': fileURLToPath(new URL('./packages/rest/src/index.ts', import.meta.url)),
       '@imvu/imq': fileURLToPath(new URL('./packages/imq/src/index.ts', import.meta.url)),
       '@imvu/xmlrpc': fileURLToPath(new URL('./packages/xmlrpc/src/index.ts', import.meta.url)),
+      '@imvu/client': fileURLToPath(new URL('./packages/client/src/index.ts', import.meta.url)),
       '@imvu/verify': fileURLToPath(new URL('./packages/verify/src/index.ts', import.meta.url)),
       '@imvu/cal3d': fileURLToPath(new URL('./packages/cal3d/src/index.ts', import.meta.url)),
     },
