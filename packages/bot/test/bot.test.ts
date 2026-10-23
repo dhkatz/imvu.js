@@ -11,8 +11,8 @@ class FakeSession extends EventEmitter {
 	public readonly present = new Map<string, ChatParticipant>();
 	public closed = false;
 	public userId = '1';
-	public get participants(): ChatParticipant[] {
-		return [...this.present.values()];
+	public get participants(): ReadonlyMap<string, ChatParticipant> {
+		return this.present;
 	}
 	public participant(userId: string | number): ChatParticipant | undefined {
 		return this.present.get(String(userId));

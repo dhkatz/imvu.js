@@ -28,8 +28,8 @@ if (!room || !chat) {
 
 const observer = await chat.observe();
 const time = () => new Date().toLocaleTimeString();
-console.log(`Watching "${room.name}" — ${observer.participants.length} present:`);
-for (const participant of observer.participants) {
+console.log(`Watching "${room.name}" — ${observer.participants.size} present:`);
+for (const participant of observer.participants.values()) {
   // participant.user comes from the documents embedded in the participant list: no extra request.
   const name = participant.user?.username ?? participant.userId;
   console.log(`  ${name} since ${participant.created}, ${participant.productIds.length} products worn`);

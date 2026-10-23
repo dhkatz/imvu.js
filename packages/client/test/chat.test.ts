@@ -263,7 +263,8 @@ describe('ChatObserver', () => {
 		observer.on('leave', (e) => events.push(`leave ${e.userId} ${e.participant.productIds.join(',')}`));
 		observer.on('update', (p, changes) => events.push(`update ${p.userId} ${changes.join('+')}`));
 
-		expect(observer.participants.map((p) => p.userId)).toEqual(['1']);
+		expect([...observer.participants.keys()]).toEqual(['1']);
+		const live = observer.participants;
 
 		h.people.set('2', { look_url: lookUrl(20), seat_number: 2, seat_furni_id: 5 });
 		invalidation(h, 'created', '2');
@@ -278,6 +279,9 @@ describe('ChatObserver', () => {
 		await observer.idle();
 
 		expect(events).toEqual(['join 2', 'update 1 outfit+seat', 'leave 2 20']);
+		// The same live map throughout: reading it never copies.
+		expect(observer.participants).toBe(live);
+		expect(live.get('1')?.productIds).toEqual(['11']);
 		expect(observer.has(1)).toBe(true);
 		expect(observer.has(2)).toBe(false);
 	});
@@ -363,7 +367,14 @@ describe('ChatSession', () => {
 			['5', 'waves', true, true, true],
 		]);
 		expect(outfits).toEqual([{ userId: '5', productIds: ['1', '2', '3'] }]);
-		expect(session.participants.map((p) => p.userId).sort()).toEqual(['5', '9']);
+		// Iterator helpers (ES2025) work on the live map without copying it to an array first.
+		expect(
+			session.participants
+				.values()
+				.map((p) => p.userId)
+				.toArray()
+				.sort()
+		).toEqual(['5', '9']);
 
 		await session.leave();
 	});

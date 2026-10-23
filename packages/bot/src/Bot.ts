@@ -159,9 +159,9 @@ export class BotRoom {
 		return this.room.name;
 	}
 
-	/** Everyone present, by user id (the counterpart of `guild.members.cache`). */
+	/** Everyone present, by user id (the counterpart of `guild.members.cache`). A live view, not a copy. */
 	public get participants(): ReadonlyMap<string, ChatParticipant> {
-		return new Map(this.session.participants.map((participant) => [participant.userId, participant]));
+		return this.session.participants;
 	}
 
 	public participant(userId: string | number): ChatParticipant | undefined {

@@ -27,7 +27,7 @@ if (!room) {
 }
 
 const session = await room.join();
-console.log(`Joined "${room.name}" with ${session.participants.length} people present.`);
+console.log(`Joined "${room.name}" with ${session.participants.size} people present.`);
 
 session.on('message', (message) => {
   if (message.whisper && !message.toMe) return;
@@ -37,7 +37,7 @@ session.on('message', (message) => {
   let answer: string | undefined;
   if (message.text === '!ping') answer = 'pong';
   if (message.text === '!outfit') {
-    const products = session.participants.find((p) => p.userId === message.userId)?.productIds ?? [];
+    const products = session.participant(message.userId)?.productIds ?? [];
     answer = `You are wearing ${products.length} products.`;
   }
   if (answer) reply(answer).catch((error: Error) => console.error('reply failed:', error.message));

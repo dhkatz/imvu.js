@@ -46,6 +46,7 @@ interface Snapshot {
  * resynchronizes from REST after IMQ reconnects. Events are delivered in order.
  */
 export class ChatObserver extends EventEmitter<ChatObserverEvents> {
+	/** Present participants by user id. Kept live; exposed read-only as {@link participants}. */
 	readonly #members = new Map<string, ChatParticipant>();
 	/** Strong references to present participants' users, so the cache keeps them while they are here. */
 	readonly #users = new Map<string, User>();
@@ -74,9 +75,9 @@ export class ChatObserver extends EventEmitter<ChatObserverEvents> {
 		return observer;
 	}
 
-	/** Everyone currently present. */
-	public get participants(): ChatParticipant[] {
-		return [...this.#members.values()];
+	/** Everyone currently present, by user id. A live view: no copy is made per access. */
+	public get participants(): ReadonlyMap<string, ChatParticipant> {
+		return this.#members;
 	}
 
 	public get closed(): boolean {
@@ -84,11 +85,11 @@ export class ChatObserver extends EventEmitter<ChatObserverEvents> {
 	}
 
 	public get(userId: string | number): ChatParticipant | undefined {
-		return this.participants.find((participant) => participant.userId === String(userId));
+		return this.#members.get(String(userId));
 	}
 
 	public has(userId: string | number): boolean {
-		return this.get(userId) !== undefined;
+		return this.#members.has(String(userId));
 	}
 
 	/** Resolves once all events received so far have been handled (useful in tests). */
@@ -134,13 +135,15 @@ export class ChatObserver extends EventEmitter<ChatObserverEvents> {
 		for (const url of event.objects) {
 			if (typeof url !== 'string' || !url.includes('/participants/')) continue;
 
-			if (event.action === 'deleted') this.remove(url);
-			else if (event.action === 'created' || !this.#members.has(url) || this.#trackChanges) await this.refresh(url);
+			const userId = participantUserId(url);
+			if (event.action === 'deleted') this.remove(userId, url);
+			else if (event.action === 'created' || !this.#members.has(userId) || this.#trackChanges) await this.refresh(url);
 		}
 	}
 
 	private async refresh(url: string): Promise<void> {
-		const existing = this.#members.get(url);
+		const userId = participantUserId(url);
+		const existing = this.#members.get(userId);
 		const before = existing && snapshot(existing);
 
 		let participant: ChatParticipant;
@@ -148,55 +151,55 @@ export class ChatObserver extends EventEmitter<ChatObserverEvents> {
 			participant = await this.client.resource(url, ChatParticipant, { force: true });
 		} catch (error) {
 			// The participant is gone by the time we read it (left right after an update).
-			if (error instanceof IMVUAPIError) return this.remove(url);
+			if (error instanceof IMVUAPIError) return this.remove(userId, url);
 			throw error;
 		}
 		if (this.#closed) return;
 
-		this.track(url, participant);
+		this.track(participant);
 		if (!before) this.emit('join', participant);
 		else this.emitChanges(participant, before);
 	}
 
-	private remove(url: string): void {
-		const participant = this.#members.get(url);
+	private remove(userId: string, url: string): void {
+		const participant = this.#members.get(userId);
 		// Someone we never saw arrive (joined and left between reads) is not news.
 		if (!participant) return;
-		this.untrack(url);
-		this.emit('leave', { userId: participantUserId(url), url, participant });
+		this.untrack(userId);
+		this.emit('leave', { userId, url, participant });
 	}
 
 	/** Re-read the whole list; with `emit`, report the differences as events. */
 	private async sync(emit: boolean): Promise<void> {
-		const before = new Map([...this.#members].map(([url, participant]) => [url, snapshot(participant)]));
+		const before = new Map([...this.#members].map(([userId, participant]) => [userId, snapshot(participant)]));
 		const present = new Map<string, ChatParticipant>();
-		for await (const participant of this.#collection) present.set(participant.url, participant);
+		for await (const participant of this.#collection) present.set(participant.userId, participant);
 		if (this.#closed) return;
 
-		for (const url of [...this.#members.keys()]) {
-			if (!present.has(url)) {
-				if (emit) this.remove(url);
-				else this.untrack(url);
+		for (const [userId, participant] of [...this.#members]) {
+			if (!present.has(userId)) {
+				if (emit) this.remove(userId, participant.url);
+				else this.untrack(userId);
 			}
 		}
-		for (const [url, participant] of present) {
-			this.track(url, participant);
+		for (const [userId, participant] of present) {
+			this.track(participant);
 			if (!emit) continue;
-			const previous = before.get(url);
+			const previous = before.get(userId);
 			if (!previous) this.emit('join', participant);
 			else this.emitChanges(participant, previous);
 		}
 	}
 
-	private track(url: string, participant: ChatParticipant): void {
-		this.#members.set(url, participant);
+	private track(participant: ChatParticipant): void {
+		this.#members.set(participant.userId, participant);
 		const user = participant.user;
-		if (user) this.#users.set(url, user);
+		if (user) this.#users.set(participant.userId, user);
 	}
 
-	private untrack(url: string): void {
-		this.#members.delete(url);
-		this.#users.delete(url);
+	private untrack(userId: string): void {
+		this.#members.delete(userId);
+		this.#users.delete(userId);
 	}
 
 	private emitChanges(participant: ChatParticipant, before: Snapshot): void {
@@ -209,7 +212,8 @@ export class ChatObserver extends EventEmitter<ChatObserverEvents> {
 }
 
 function snapshot(participant: ChatParticipant): Snapshot {
-	return { look: participant.lookUrl, seat: `${participant.seatNumber}:${participant.seatFurniId}` };
+	// Compare outfits by product ids, not URL formatting.
+	return { look: participant.productIds.join(','), seat: `${participant.seatNumber}:${participant.seatFurniId}` };
 }
 
 function safeParse(text: string): unknown {

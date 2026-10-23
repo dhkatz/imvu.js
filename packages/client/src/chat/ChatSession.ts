@@ -109,9 +109,9 @@ export class ChatSession extends EventEmitter<ChatSessionEvents> {
 		return this.#closing !== undefined;
 	}
 
-	/** Everyone present (empty when `observeParticipants` is off). */
-	public get participants(): ChatParticipant[] {
-		return this.#observer?.participants ?? [];
+	/** Everyone present, by user id; a live view (empty when `observeParticipants` is off). */
+	public get participants(): ReadonlyMap<string, ChatParticipant> {
+		return this.#observer?.participants ?? EMPTY;
 	}
 
 	/** The participant with this user id, if present (and `observeParticipants` is on). */
@@ -284,6 +284,8 @@ export class ChatSession extends EventEmitter<ChatSessionEvents> {
 		if (this.listenerCount('error') > 0) this.emit('error', error);
 	}
 }
+
+const EMPTY: ReadonlyMap<string, ChatParticipant> = new Map();
 
 /** The participant `look_url` for a product list, as the API writes it. */
 function lookUrlFor(productIds: string[]): string {
