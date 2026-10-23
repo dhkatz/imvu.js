@@ -96,6 +96,8 @@ function harness(initial: Record<string, Record<string, unknown>> = {}): Harness
 	const notFound = () =>
 		new IMVUAPIError('NOT-FOUND', 'gone', { status: 'failure', error: 'NOT-FOUND', message: 'gone' } as never);
 
+	// Declared first so the fakes can report responses through it, as the real REST does.
+	let transport = {} as REST;
 	const rest = {
 		request: vi.fn(async (url: string, options?: { method?: string }) => {
 			if (url === '/login/me') return login;
@@ -117,8 +119,19 @@ function harness(initial: Record<string, Record<string, unknown>> = {}): Harness
 		}),
 		collection: vi.fn(async () => {
 			// Like the real API: `items` follow each edge's ref to the user; `edges` are the participants.
-			const edges = [...people].map(([cid, data]) => node(participantUrl(cid), data));
+			const edges = [...people].map(([cid, data]) =>
+				node(participantUrl(cid), data, { ref: `${API}/user/user-${cid}` })
+			);
 			const items = [...people.keys()].map((cid) => node(`${API}/user/user-${cid}`, { username: `u${cid}` }));
+			// The real REST reports every response's embedded documents through onResponse.
+			transport.onResponse?.({
+				status: 'success',
+				id: PARTICIPANTS,
+				denormalized: Object.fromEntries(
+					[...edges, ...items].map((doc) => [doc.url, { data: doc.data, relations: doc.relations, updates: null }])
+				),
+				http: {},
+			});
 			return {
 				url: PARTICIPANTS,
 				data: {},
@@ -136,8 +149,9 @@ function harness(initial: Record<string, Record<string, unknown>> = {}): Harness
 		}),
 	};
 
+	transport = { authenticated: true, cid: '9', ...rest } as unknown as REST;
 	const factory: RealtimeManagerFactory = () => manager;
-	const client = new Client({ authenticated: true, cid: '9', ...rest } as unknown as REST, {
+	const client = new Client(transport, {
 		realtimeManagerFactory: factory,
 	});
 	const chat = client.utils.deserialize(
@@ -266,6 +280,15 @@ describe('ChatObserver', () => {
 		expect(events).toEqual(['join 2', 'update 1 outfit+seat', 'leave 2 20']);
 		expect(observer.has(1)).toBe(true);
 		expect(observer.has(2)).toBe(false);
+	});
+
+	it('gives participants their full user from the embedded documents, without a request', async () => {
+		const h = harness({ '1': { look_url: lookUrl(10) } });
+		const observer = await h.chat.observe();
+
+		expect(observer.get(1)?.user).toMatchObject({ username: 'u1' });
+		expect(h.client.users.resolve('1')).toBe(observer.get(1)?.user);
+		expect(h.rest.resource).not.toHaveBeenCalled();
 	});
 
 	it('can skip re-reading on updates', async () => {

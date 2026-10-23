@@ -7,6 +7,7 @@ import type { RealtimeSubscription } from '../client/RealtimeCoordinator.js';
 import { CollectionNotWatchableError, type Collection } from '../collections/Collection.js';
 import type { Chat } from '../resources/Chat.js';
 import { ChatParticipant, participantUserId } from '../resources/ChatParticipant.js';
+import type { User } from '../resources/User.js';
 
 export interface ObserveOptions {
 	/**
@@ -46,6 +47,8 @@ interface Snapshot {
  */
 export class ChatObserver extends EventEmitter<ChatObserverEvents> {
 	readonly #members = new Map<string, ChatParticipant>();
+	/** Strong references to present participants' users, so the cache keeps them while they are here. */
+	readonly #users = new Map<string, User>();
 	readonly #trackChanges: boolean;
 	readonly #collection: Collection<ChatParticipant>;
 	#queue: Promise<void> = Promise.resolve();
@@ -142,7 +145,7 @@ export class ChatObserver extends EventEmitter<ChatObserverEvents> {
 
 		let participant: ChatParticipant;
 		try {
-			participant = await this.client.resource(url, ChatParticipant);
+			participant = await this.client.resource(url, ChatParticipant, { force: true });
 		} catch (error) {
 			// The participant is gone by the time we read it (left right after an update).
 			if (error instanceof IMVUAPIError) return this.remove(url);
@@ -150,7 +153,7 @@ export class ChatObserver extends EventEmitter<ChatObserverEvents> {
 		}
 		if (this.#closed) return;
 
-		this.#members.set(url, participant);
+		this.track(url, participant);
 		if (!before) this.emit('join', participant);
 		else this.emitChanges(participant, before);
 	}
@@ -159,7 +162,7 @@ export class ChatObserver extends EventEmitter<ChatObserverEvents> {
 		const participant = this.#members.get(url);
 		// Someone we never saw arrive (joined and left between reads) is not news.
 		if (!participant) return;
-		this.#members.delete(url);
+		this.untrack(url);
 		this.emit('leave', { userId: participantUserId(url), url, participant });
 	}
 
@@ -173,16 +176,27 @@ export class ChatObserver extends EventEmitter<ChatObserverEvents> {
 		for (const url of [...this.#members.keys()]) {
 			if (!present.has(url)) {
 				if (emit) this.remove(url);
-				else this.#members.delete(url);
+				else this.untrack(url);
 			}
 		}
 		for (const [url, participant] of present) {
-			this.#members.set(url, participant);
+			this.track(url, participant);
 			if (!emit) continue;
 			const previous = before.get(url);
 			if (!previous) this.emit('join', participant);
 			else this.emitChanges(participant, previous);
 		}
+	}
+
+	private track(url: string, participant: ChatParticipant): void {
+		this.#members.set(url, participant);
+		const user = participant.user;
+		if (user) this.#users.set(url, user);
+	}
+
+	private untrack(url: string): void {
+		this.#members.delete(url);
+		this.#users.delete(url);
 	}
 
 	private emitChanges(participant: ChatParticipant, before: Snapshot): void {

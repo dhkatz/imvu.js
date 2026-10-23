@@ -1,6 +1,7 @@
 import { Client } from '../client/index.js';
 import { APIResource } from '../types.js';
 import type { Constructor } from '../types.js';
+import type { FetchOptions } from '../client/Client.js';
 import { Collection, type CollectionOptions } from '../collections/Collection.js';
 import { RemoteDocument } from './RemoteDocument.js';
 
@@ -33,6 +34,9 @@ export abstract class Resource<
 	public get id(): string {
 		return this._id;
 	}
+
+	/** When this instance last received data from the API (ms since epoch); 0 if never. */
+	public fetchedAt = 0;
 
 	/**
 	 * @internal
@@ -70,6 +74,7 @@ export abstract class Resource<
 		this.relations = (node.relations ?? {}) as Partial<TRelations>;
 		this.updates = (node.updates ?? {}) as Partial<TUpdates>;
 		this._applyRemoteMetadata(node.url, node.updates);
+		this.fetchedAt = Date.now();
 	}
 
 	/**
@@ -104,10 +109,11 @@ export abstract class Resource<
 
 	protected async relationship<T extends Resource, K extends keyof TRelations>(
 		relation: K,
-		cls: Constructor<T>
+		cls: Constructor<T>,
+		options?: FetchOptions
 	): Promise<T | null> {
 		if (this.relations && relation in this.relations) {
-			return this.client.resource<T>(`${this.relations[relation]}`, cls, undefined);
+			return this.client.resource<T>(`${this.relations[relation]}`, cls, options);
 		}
 
 		return null;

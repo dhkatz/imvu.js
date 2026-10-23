@@ -50,6 +50,8 @@ export interface RESTOptions {
 	proofOfWork?: ProofOfWorkSolver;
 	/** Times one request may be retried after solving challenges. Defaults to `3`. */
 	maxPowRetries?: number;
+	/** See {@link REST.onResponse}. */
+	onResponse?: (response: APISuccessResponse) => void;
 }
 
 /** Turns a challenge nonce (e.g. `rsw,T,N,A,Cipher`) into its solution string. */
@@ -88,6 +90,11 @@ export class REST {
 	/** See {@link RESTOptions.proofOfWork}. Settable after construction. */
 	public proofOfWork?: ProofOfWorkSolver;
 	public readonly maxPowRetries: number;
+	/**
+	 * Called with every successful API response, including all the documents it embeds
+	 * (`denormalized`). `@imvu/client` uses it to keep its cache current.
+	 */
+	public onResponse?: (response: APISuccessResponse) => void;
 
 	protected username = '';
 	protected password = '';
@@ -103,6 +110,7 @@ export class REST {
 		this.baseURL = options.baseURL ?? 'https://api.imvu.com';
 		this.proofOfWork = options.proofOfWork;
 		this.maxPowRetries = options.maxPowRetries ?? 3;
+		this.onResponse = options.onResponse;
 		this.fetchImpl = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
 		this.manageCookies = !browserManagesCookies();
 		this.cookieStorage = !this.manageCookies
@@ -246,7 +254,9 @@ export class REST {
 	): Promise<APISuccessResponse<T>> {
 		for (let attempt = 0; ; attempt++) {
 			try {
-				return await this.requestOnce<T>(url, options);
+				const response = await this.requestOnce<T>(url, options);
+				this.onResponse?.(response as APISuccessResponse);
+				return response;
 			} catch (error) {
 				const retry =
 					error instanceof IMVUAPIError &&
@@ -411,14 +421,26 @@ export class REST {
 			throw new Error(`The response does not contain the resource '${url}'`);
 		}
 
-		return {
-			url,
-			id: resourceId(url, node.data),
-			data: node.data,
-			relations: node.relations ?? {},
-			updates: updateTarget(node.updates),
-		};
+		return normalizeDocument(url, node);
 	}
+}
+
+/**
+ * Turn one entry of a response's `denormalized` map into a normalized document: the
+ * canonical URL, an opaque id derived from it, and the raw data, relations and update
+ * target.
+ */
+export function normalizeDocument<T extends object = Record<string, any>>(
+	url: string,
+	node: APIResourceNode<T>
+): APIResource<T> {
+	return {
+		url,
+		id: resourceId(url, node.data),
+		data: node.data,
+		relations: node.relations ?? {},
+		updates: updateTarget(node.updates),
+	};
 }
 
 function updateTarget(value: Partial<APIUpdateTarget> | null): APIUpdateTarget | null {

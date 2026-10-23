@@ -1,5 +1,6 @@
 import { Resource } from './Resource.js';
 import { User } from './User.js';
+import type { FetchOptions } from '../client/Client.js';
 
 /**
  * Someone in a classic room's chat: `<chat>/participants/user-<cid>`. Readable by any
@@ -45,8 +46,20 @@ export class ChatParticipant extends Resource<ChatParticipantRelations> {
 		return productIdsFromLookUrl(this.lookUrl);
 	}
 
-	public async user(): Promise<User | null> {
-		return this.relationship('ref', User);
+	/**
+	 * The participant's user, from the cache. Participant reads embed the full user, so
+	 * this is normally set without any request. Use {@link fetchUser} when it is not.
+	 */
+	public get user(): User | undefined {
+		const url = this.relations.ref ?? `/user/user-${this.userId}`;
+		return this.client.cached(url, User, Infinity);
+	}
+
+	/** The participant's user, read from the API only if it is not cached. */
+	public async fetchUser(options?: FetchOptions): Promise<User> {
+		const user = await this.client.users.fetch(this.userId, options);
+		if (!user) throw new Error(`User ${this.userId} was not found`);
+		return user;
 	}
 }
 

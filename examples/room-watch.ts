@@ -30,10 +30,14 @@ const observer = await chat.observe();
 const time = () => new Date().toLocaleTimeString();
 console.log(`Watching "${room.name}" — ${observer.participants.length} present:`);
 for (const participant of observer.participants) {
-  console.log(`  ${participant.userId} since ${participant.created}, ${participant.productIds.length} products worn`);
+  // participant.user comes from the documents embedded in the participant list: no extra request.
+  const name = participant.user?.username ?? participant.userId;
+  console.log(`  ${name} since ${participant.created}, ${participant.productIds.length} products worn`);
 }
 
-observer.on('join', (participant) => console.log(`${time()} + ${participant.userId} joined`));
+observer.on('join', (participant) =>
+  console.log(`${time()} + ${participant.user?.username ?? participant.userId} joined`)
+);
 observer.on('leave', ({ userId, participant }) =>
   console.log(`${time()} - ${userId} left (joined ${participant.created})`)
 );

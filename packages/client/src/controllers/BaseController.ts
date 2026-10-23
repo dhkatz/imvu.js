@@ -1,7 +1,7 @@
 import type { Constructor } from '../types.js';
 
 import { Resource } from '../resources/index.js';
-import { Client } from '../client/index.js';
+import { Client, type FetchOptions } from '../client/index.js';
 import { APIResource } from '../types.js';
 
 export class BaseController<
@@ -20,13 +20,23 @@ export class BaseController<
 	 * This is a lot faster than searching, so fetch with an ID if you can.
 	 * @param id Request ID
 	 */
-	public async fetch(id: string | number): Promise<TResponse | null> {
+	public async fetch(id: string | number, options?: FetchOptions): Promise<TResponse | null> {
 		id = await this.client.utils.id(id);
+		const path = `/${this.base}/${this.base}-${id}`;
 
-		return (await this.client.resource(
-			`/${this.base}/${this.base}-${id}`,
-			this.model as Constructor<Resource>
-		)) as TResponse | null;
+		if (!this.model) return (await this.client.resource(path)) as TResponse;
+		return (await this.client.resource(path, this.model as Constructor<Resource>, options)) as TResponse | null;
+	}
+
+	/**
+	 * The cached instance for an id, without any request (`undefined` if not cached or
+	 * no longer fresh). The equivalent of discord.js `manager.cache.get(id)`.
+	 */
+	public resolve(id: string | number): TResponse | undefined {
+		if (!this.model) return undefined;
+		return this.client.cached(`/${this.base}/${this.base}-${id}`, this.model as Constructor<Resource>) as
+			| TResponse
+			| undefined;
 	}
 
 	/**
