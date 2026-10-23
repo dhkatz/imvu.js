@@ -20,6 +20,9 @@
       "path": "./packages/xmlrpc"
     },
     {
+      "path": "./packages/verify"
+    },
+    {
       "path": "./packages/tools"
     }
   ]
