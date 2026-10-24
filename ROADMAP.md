@@ -171,6 +171,8 @@ bundle only.
   - Conversations are `/conversation/conversation-<id>` with `participants [{user, name, trust}]` and updates on `inv:/conversation/<id>` (`node`, `edge:messages`).
   - Messages are `/message/message-<conv>-<n>` with `payloads`, `created` and `sent_by`.
   - Responses do not embed users.
+  - For a brand-new conversation, `messageReceived` (sometimes twice) arrived before the list updates.
+  - Verified live 2026-10-24: the default-settings bot answered `!ping` once each in an existing conversation and in a brand-new one.
 - **Practical note:** `room_list` occupancy can be stale, so `join()` may fail with `CHAT_PARTICIPANT-002`.
 
 ### 1. Verification → `@imvu/verify` (independent, ship first)
