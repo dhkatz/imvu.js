@@ -11,6 +11,11 @@ export interface ConversationObserveOptions {
 	includeOwn?: boolean;
 	/** How many recent conversations to read at start (to know what is already seen). Default 50. */
 	initialConversations?: number;
+	/**
+	 * Also re-check recent conversations on this interval (ms), as a safety net for a
+	 * missed notification. Default 60 s; `0` turns it off.
+	 */
+	pollInterval?: number;
 }
 
 export interface ConversationObserverEvents {
@@ -23,11 +28,17 @@ export interface ConversationObserverEvents {
 const PAGE = 20;
 
 /**
- * Follows the account's IMs. It listens to the conversation list's IMQ updates, reads
- * the new messages of each conversation that changed, and emits them in order. History
- * is never replayed: at start it notes the latest message of the recent conversations,
- * and for a conversation it has not seen, only messages sent after it started count.
- * After an IMQ reconnect it re-checks the recent conversations, so nothing is missed.
+ * Follows the account's IMs and emits each new message once, in order within its
+ * conversation. History is never replayed: at start it notes the latest message of the
+ * recent conversations, and for a conversation it has not seen, only messages sent
+ * after it started count.
+ *
+ * Several signals lead to the same "what is new since I last looked" check, so a
+ * missed one costs nothing and duplicates are harmless:
+ * - the conversation list's IMQ updates (`created`/`updated` for one conversation);
+ * - `messageReceived` on the account's `/user/<id>` queue (`web_msg` mount);
+ * - IMQ reconnects;
+ * - a re-check every `pollInterval`.
  */
 export class ConversationObserver extends EventEmitter<ConversationObserverEvents> {
 	readonly #lastSeen = new Map<string, number>();
@@ -35,7 +46,10 @@ export class ConversationObserver extends EventEmitter<ConversationObserverEvent
 	readonly #startedAt = Date.now();
 	#queue: Promise<void> = Promise.resolve();
 	#subscription?: RealtimeSubscription;
+	#userSubscription?: RealtimeSubscription;
 	#stopReconnect?: () => void;
+	#poll?: ReturnType<typeof setInterval>;
+	#recheckQueued = false;
 	#closed = false;
 
 	private constructor(
@@ -47,6 +61,7 @@ export class ConversationObserver extends EventEmitter<ConversationObserverEvent
 		this.#options = {
 			includeOwn: options.includeOwn ?? false,
 			initialConversations: options.initialConversations ?? 50,
+			pollInterval: options.pollInterval ?? 60_000,
 		};
 		Object.defineProperty(this, 'client', { enumerable: false });
 	}
@@ -75,7 +90,9 @@ export class ConversationObserver extends EventEmitter<ConversationObserverEvent
 		if (this.#closed) return;
 		this.#closed = true;
 		this.#subscription?.close();
+		this.#userSubscription?.close();
 		this.#stopReconnect?.();
+		clearInterval(this.#poll);
 		this.removeAllListeners();
 	}
 
@@ -89,7 +106,30 @@ export class ConversationObserver extends EventEmitter<ConversationObserverEvent
 		this.#subscription = await this.client.realtime.listen(target.queue, target.mount, ({ message }) =>
 			this.enqueue(() => this.onInvalidation(message))
 		);
-		this.#stopReconnect = this.client.realtime.onReconnect(() => this.enqueue(() => this.recheck()));
+		// Captured live: every incoming IM also produces `messageReceived {"from":…}` here.
+		this.#userSubscription = await this.client.realtime.listen(
+			`/user/${this.client.rest.cid}`,
+			'web_msg',
+			({ message }) => {
+				if (typeof message === 'string' && message.startsWith('messageReceived')) this.scheduleRecheck();
+			}
+		);
+		this.#stopReconnect = this.client.realtime.onReconnect(() => this.scheduleRecheck());
+
+		if (this.#options.pollInterval > 0) {
+			this.#poll = setInterval(() => this.scheduleRecheck(), this.#options.pollInterval);
+			this.#poll.unref?.();
+		}
+	}
+
+	/** Queue one re-check of recent conversations, unless one is already waiting. */
+	private scheduleRecheck(): void {
+		if (this.#recheckQueued) return;
+		this.#recheckQueued = true;
+		this.enqueue(async () => {
+			this.#recheckQueued = false;
+			await this.recheck();
+		});
 	}
 
 	private enqueue(task: () => Promise<void>): void {
@@ -116,7 +156,7 @@ export class ConversationObserver extends EventEmitter<ConversationObserverEvent
 		for (const id of ids) await this.check(id);
 	}
 
-	/** After a reconnect: re-read the recent conversations and check any with newer messages. */
+	/** Re-read the recent conversations and check any with messages newer than we have seen. */
 	private async recheck(): Promise<void> {
 		for (const conversation of await this.list.page({ limit: this.#options.initialConversations })) {
 			const latest = conversation.lastMessage?.order ?? 0;

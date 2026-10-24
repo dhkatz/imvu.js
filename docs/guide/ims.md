@@ -64,11 +64,21 @@ conversation.
 - **Missed messages are caught up.** After an IMQ reconnect it re-checks recent
   conversations, so messages sent while it was offline are still reported.
 
-How it works: IMVU announces every IM as a change to your conversation list (on IMQ
-queue `inv:/profile/<id>`, mount `edge:conversations`). The observer then reads that
-conversation's latest messages. Conversations don't embed full user documents, so
-`message.sender` may be empty the first time someone writes; `fetchSender()` reads
-them once and caches them.
+How it works: IMVU announces every IM twice over IMQ:
+- as a change to your conversation list (queue `inv:/profile/<id>`, mount
+  `edge:conversations`);
+- as `messageReceived {"from": <cid>}` on your own `/user/<id>` queue (mount
+  `web_msg`).
+
+Each signal makes the observer read the latest messages of the conversations that
+changed. It also re-checks recent conversations every minute (`pollInterval`; `0`
+turns it off) as a safety net. In live testing the first message of a brand-new
+conversation once went unreported, which is why there is more than one signal. All
+the signals lead to the same check of what is new, so a message is never reported
+twice.
+
+Conversations don't embed full user documents, so `message.sender` may be empty the
+first time someone writes; `fetchSender()` reads them once and caches them.
 
 For bots, [`@imvu/bot`](/packages/bot/) answers IMs with the same commands it runs in
 rooms; see [Build a bot](/recipes/bots).

@@ -260,6 +260,38 @@ describe('ConversationObserver', () => {
 		expect(seen).toEqual(['first IM']);
 	});
 
+	it('also hears about IMs from messageReceived, without reporting them twice', async () => {
+		const h = harness();
+		const observer = await h.client.account.conversations.observe();
+		const seen: string[] = [];
+		observer.on('message', (message) => seen.push(message.text));
+
+		// A brand-new conversation announced only on the user queue (no list update).
+		h.add('3', [ME, '7']);
+		h.conversations.get('3')!.messages.push({ order: 1, sender: '7', text: 'hi', created: new Date().toISOString() });
+		h.manager.mounts.get(`/user/${ME}/web_msg`)!.deliver('messageReceived {"from":7,"time":1}');
+		await observer.idle();
+		// The list update arriving late must not repeat it.
+		h.receive('3', '7', 'again');
+		await observer.idle();
+
+		expect(seen).toEqual(['hi', 'again']);
+	});
+
+	it('re-checks on an interval as a safety net', async () => {
+		const h = harness();
+		h.add('1', [ME, '5'], [[1, '5', 'old']]);
+		const observer = await h.client.account.conversations.observe({ pollInterval: 10 });
+		const seen: string[] = [];
+		observer.on('message', (message) => seen.push(message.text));
+
+		h.conversations
+			.get('1')!
+			.messages.push({ order: 2, sender: '5', text: 'no signal', created: new Date().toISOString() });
+		await vi.waitFor(() => expect(seen).toEqual(['no signal']));
+		observer.close();
+	});
+
 	it('catches up after an IMQ reconnect', async () => {
 		const h = harness();
 		h.add('1', [ME, '5'], [[1, '5', 'old']]);
