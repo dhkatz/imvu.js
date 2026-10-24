@@ -1,6 +1,6 @@
 {
 	"name": "@imvu/bot",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Build IMVU chat bots: commands, permissions, rate limiting and rejoining on top of @imvu/client.",
 	"author": "dhkatz",
 	"license": "MIT",
@@ -33,7 +33,7 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@imvu/client": "^0.0.0"
+		"@imvu/client": "^0.1.0"
 	},
 	"homepage": "https://dhkatz.github.io/imvu.js/packages/bot/",
 	"bugs": {

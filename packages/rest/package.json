@@ -1,6 +1,6 @@
 {
 	"name": "@imvu/rest",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Low-level IMVU REST client: auth, HTTP, cookie jar, and API types.",
 	"author": "dhkatz",
 	"license": "MIT",

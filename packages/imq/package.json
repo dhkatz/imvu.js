@@ -1,6 +1,6 @@
 {
 	"name": "@imvu/imq",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
 	"author": "dhkatz",
 	"license": "MIT",

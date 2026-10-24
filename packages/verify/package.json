@@ -1,6 +1,6 @@
 {
 	"name": "@imvu/verify",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Stateless proofs that someone owns an IMVU account (a code in their tagline).",
 	"author": "dhkatz",
 	"license": "MIT",

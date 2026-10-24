@@ -1,6 +1,6 @@
 {
 	"name": "@imvu/xmlrpc",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Client for IMVU's legacy XML-RPC gateway (product authorization, classic-client calls).",
 	"author": "dhkatz",
 	"license": "MIT",
