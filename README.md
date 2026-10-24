@@ -66,15 +66,16 @@ One-time setup:
 - **Allow the workflow to open pull requests:** repository Settings → Actions →
   General → Workflow permissions → _Allow GitHub Actions to create and approve pull
   requests_.
-- **The first publish needs a token**, because npm only lets you configure trusted
-  publishing on packages that already exist. Create a granular access token on
-  npmjs.com with read and write access to the `@imvu` packages (or the whole
-  organization) and _Bypass 2FA_ enabled, and save it as the repository secret
-  `NPM_TOKEN`.
-- **Then switch to trusted publishing:** for each published package, go to npmjs.com
-  → the package → Settings → _Trusted Publisher_ → GitHub Actions. Set repository
-  `dhkatz/imvu.js` and workflow `release.yml`, then delete the `NPM_TOKEN` secret.
-  Publishing then needs no long-lived secret.
+- **Trusted publishing:** the workflow publishes with npm trusted publishing (OIDC),
+  so no npm token is stored. Each package needs a trusted publisher on npmjs.com:
+  the package → Settings → _Trusted Publisher_ → GitHub Actions, with repository
+  `dhkatz/imvu.js` and workflow `release.yml`.
+- **A new package** can't have a trusted publisher until it exists on npm, so its
+  first version has to be published another way. Either publish it once from your
+  machine (`npm publish` in its folder), or temporarily give the publish step a
+  token: add `registry-url: 'https://registry.npmjs.org'` to `setup-node` and
+  `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}` to the publish step's environment.
+  Then add the trusted publisher and remove the token.
 
 ## License
 
