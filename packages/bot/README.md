@@ -61,8 +61,9 @@ it; a bot that is in no rooms calls `await bot.start()`.
   one-to-one IM when the conversation is a group.
 - **Roles in IMs:** there are no room roles, so the author is `admin` (your `admins`)
   or `everyone`.
-- Accounts without a verified email can only start conversations with friends, but
-  replying in a conversation someone else started works.
+- Accounts without a verified email can only start conversations with friends
+  (`RATE-001`). Bot accounts should verify their email. Whether an unverified account
+  may reply in a conversation someone else started hasn't been tested.
 
 ## Commands
 
