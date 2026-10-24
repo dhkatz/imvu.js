@@ -22,17 +22,17 @@ of libraries is intended to be a more modern, more complete, and more correct im
 The `@imvu` mono-repository contains the following packages. The
 [documentation site](https://dhkatz.github.io/imvu.js/) covers each one.
 
-| Package        | What it is                                                                     |
-| -------------- | ------------------------------------------------------------------------------ |
-| `@imvu/client` | The modeled API: users, the account, wishlists, gifts, rooms and chat, IMs.    |
-| `@imvu/bot`    | Chat bots across many rooms and IMs: commands, permissions, rate limits.       |
-| `@imvu/verify` | Stateless proofs that someone owns an IMVU account (a code in their tagline).  |
-| `@imvu/rest`   | The low-level REST client: authentication, sessions, raw API documents.        |
-| `@imvu/imq`    | IMVU's IMQ realtime websocket service (queues, mounts).                        |
-| `@imvu/xmlrpc` | The classic client's XML-RPC gateway (e.g. current product revisions).         |
-| `@imvu/cal3d`  | Read and write the Cal3D model files products are made of.                     |
-| `@imvu/chkn`   | Load products: CFL/CHKN archives and `index.xml` templates. Not published yet. |
-| `@imvu/tools`  | Command-line tools for working with products. Not published.                   |
+| Package        | What it is                                                                    |
+| -------------- | ----------------------------------------------------------------------------- |
+| `@imvu/client` | The modeled API: users, the account, wishlists, gifts, rooms and chat, IMs.   |
+| `@imvu/bot`    | Chat bots across many rooms and IMs: commands, permissions, rate limits.      |
+| `@imvu/verify` | Stateless proofs that someone owns an IMVU account (a code in their tagline). |
+| `@imvu/rest`   | The low-level REST client: authentication, sessions, raw API documents.       |
+| `@imvu/imq`    | IMVU's IMQ realtime websocket service (queues, mounts).                       |
+| `@imvu/xmlrpc` | The classic client's XML-RPC gateway (e.g. current product revisions).        |
+| `@imvu/cal3d`  | Read and write the Cal3D model files products are made of.                    |
+| `@imvu/chkn`   | Load products: CFL/CHKN archives and `index.xml` templates.                   |
+| `@imvu/tools`  | Command-line tools for working with products. Not published.                  |
 
 ### Testing
 
