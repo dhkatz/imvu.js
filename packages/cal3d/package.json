@@ -1,6 +1,6 @@
 {
 	"name": "@imvu/cal3d",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Read and write the Cal3D model files IMVU products use (skeletons, meshes, materials, animations, morph animations).",
 	"author": "dhkatz",
 	"license": "MIT",

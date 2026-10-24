@@ -1,7 +1,7 @@
 {
 	"name": "@imvu/tools",
 	"private": true,
-	"version": "0.0.0",
+	"version": "0.0.1",
 	"description": "A JavaScript/TypeScript library for interacting with the IMVU web API.",
 	"author": "dhkatz",
 	"license": "MIT",
@@ -34,7 +34,7 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@imvu/client": "^0.0.0",
+		"@imvu/client": "^0.1.0",
 		"commander": "^15.0.0",
 		"image-type": "^6.1.0",
 		"jszip": "^3.10.1"
