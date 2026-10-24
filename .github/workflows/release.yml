@@ -32,7 +32,6 @@ jobs:
           # Node 24 ships npm 11, which supports trusted publishing.
           node-version: 24
           cache: 'npm'
-          registry-url: 'https://registry.npmjs.org'
 
       # Trusted publishing needs npm 11.5.1+; don't rely on the version bundled with Node.
       - name: 'Update npm'
@@ -51,17 +50,15 @@ jobs:
           npm run lint
           npm run test
 
+      # v2 understands Changesets v3 output; v1 published but missed it, so it pushed no
+      # tags and created no GitHub releases. npm authenticates with trusted publishing
+      # (OIDC, `id-token: write` above): no npm token is stored anywhere.
       - name: 'Version PR or publish'
-        uses: changesets/action@v1
+        uses: changesets/action@v2
         with:
-          version: npm run version-packages
-          publish: npm run release
-          commit: 'chore: version packages'
-          title: 'chore: version packages'
-          createGithubReleases: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Until trusted publishing is set up for every package (see README → Releasing),
-          # publishing authenticates with this token. Once it is, delete the secret.
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
+          version-script: npm run version-packages
+          publish-script: npm run release
+          commit-message: 'chore: version packages'
+          pr-title: 'chore: version packages'
+          create-github-releases: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
