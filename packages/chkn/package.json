@@ -1,7 +1,7 @@
 {
 	"name": "@imvu/chkn",
 	"private": true,
-	"version": "0.1.0",
+	"version": "0.0.0",
 	"description": "Read IMVU product packages: CFL/CHKN archives, index.xml templates with inheritance, and their Cal3D models.",
 	"author": "dhkatz",
 	"license": "MIT",
