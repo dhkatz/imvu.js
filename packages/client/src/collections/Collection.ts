@@ -6,6 +6,14 @@ import type { DocumentWatch } from '../client/DocumentWatch.js';
 import type { Resource } from '../resources/Resource.js';
 import { RemoteDocument } from '../resources/RemoteDocument.js';
 
+export interface CollectionOptions {
+	/**
+	 * What each item is: `'ref'` (default) follows each edge to the resource it points
+	 * at; `'edge'` keeps the edge document itself, for edges with their own data.
+	 */
+	items?: 'ref' | 'edge';
+}
+
 export interface PageOptions {
 	offset?: number;
 	limit?: number;
@@ -33,7 +41,9 @@ export class Collection<T = APIResource> extends RemoteDocument implements Async
 		client: Client,
 		url: string,
 		/** @internal The model used to hydrate each normalized item, if any. */
-		public readonly itemType?: Constructor<Resource>
+		public readonly itemType?: Constructor<Resource>,
+		/** @internal */
+		public readonly options: CollectionOptions = {}
 	) {
 		super(client, url);
 	}
@@ -87,9 +97,8 @@ export class Collection<T = APIResource> extends RemoteDocument implements Async
 		this.applyMetadata(document.totalCount, document.updates);
 
 		const itemType = this.itemType;
-		const items = itemType
-			? document.items.map((item) => this.client.utils.deserialize(itemType, item))
-			: document.items;
+		const nodes = this.options.items === 'edge' ? (document.edges ?? []) : document.items;
+		const items = itemType ? nodes.map((item) => this.client.utils.deserialize(itemType, item)) : nodes;
 
 		return {
 			items: items as T[],

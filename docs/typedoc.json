@@ -4,6 +4,8 @@
 	"entryPoints": [
 		"../packages/client",
 		"../packages/rest",
+		"../packages/bot",
+		"../packages/verify",
 		"../packages/imq",
 		"../packages/xmlrpc",
 		"../packages/cal3d",

@@ -19,6 +19,18 @@ Log in and read the raw `/login/me` envelope
 with `cookiePath`, or `cookieStorage: null` for memory only) and reuses a cached
 session when the username matches, so repeated runs don't log in again.
 
+`REST` also:
+
+- **solves proof-of-work challenges** when given a solver
+  (`new REST({ proofOfWork })`), retrying requests rejected with `VERIFY-001`. See
+  [Handling errors](/guide/errors#proof-of-work).
+- **reports every successful response** through `onResponse`, including the documents
+  it embeds; `@imvu/client` builds its [cache](/guide/caching) from these.
+  `normalizeDocument(url, node)` turns one embedded entry into a document.
+- **returns edges with collections.** `rest.collection()` returns `items` (each edge
+  followed to its target) and `edges` (the edge documents themselves, which some
+  collections, like chat participants, keep their data on).
+
 ---
 
 See also: [Authentication and sessions](/guide/authentication), [Calling unmodeled endpoints](/recipes/raw-api), [Running in the browser](/guide/browser).

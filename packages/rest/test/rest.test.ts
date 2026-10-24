@@ -62,6 +62,27 @@ describe('REST document normalization', () => {
 		expect(page.totalCount).toBe(10);
 		expect(page.updates).toEqual(updates);
 		expect(page.items).toEqual([expect.objectContaining({ url: productUrl, id: '2', data: { product_name: 'Gift' } })]);
+		expect(page.edges).toEqual([expect.objectContaining({ url: edgeUrl, relations: { ref: productUrl } })]);
+	});
+
+	it('keeps edges that carry their own data, such as chat participants', async () => {
+		const collectionUrl = 'https://api.imvu.com/chat/chat-1-2/participants';
+		const edgeUrl = `${collectionUrl}/user-7`;
+		const userUrl = 'https://api.imvu.com/user/user-7';
+		const rest = restWithResponse(
+			response(collectionUrl, {
+				[collectionUrl]: { data: { items: [edgeUrl], total_count: 1 }, relations: null, updates: null },
+				[edgeUrl]: { data: { seat_number: 3, look_url: 'x' }, relations: { ref: userUrl }, updates: null },
+				[userUrl]: { data: { username: 'seven' }, relations: null, updates: null },
+			})
+		);
+
+		const page = await rest.collection(collectionUrl);
+
+		expect(page.items).toEqual([expect.objectContaining({ url: userUrl })]);
+		expect(page.edges).toEqual([
+			expect.objectContaining({ url: edgeUrl, id: '7', data: { seat_number: 3, look_url: 'x' } }),
+		]);
 	});
 });
 
@@ -238,5 +259,75 @@ describe('cookie jar restoration', () => {
 		const jar = await restoreCookieJar('not json');
 
 		expect(await jar.getCookieString('https://api.imvu.com/')).toBe('');
+	});
+});
+
+describe('REST proof of work', () => {
+	const failure = (error: string) => json({ status: 'failure', error, message: error }, { status: 403 });
+	const powList = (...items: string[]) =>
+		json({
+			status: 'success',
+			id: 'https://api.imvu.com/pow',
+			denormalized: { 'https://api.imvu.com/pow': { data: { items, total_count: items.length } } },
+			http: {},
+		});
+	const challenge = (url: string, nonce: string) =>
+		json({ status: 'success', id: url, denormalized: { [url]: { data: { nonce } } }, http: {} });
+	const c1 = 'https://api.imvu.com/pow/pow-1';
+
+	it('solves outstanding challenges on VERIFY-001 and retries the request', async () => {
+		const { fetch, calls } = scriptedFetch(
+			failure('VERIFY-001'),
+			powList(c1),
+			challenge(c1, 'rsw,1,3233,2,100'),
+			ok(c1),
+			ok('https://api.imvu.com/user/user-1')
+		);
+		const proofOfWork = vi.fn(async (nonce: string) => `solved:${nonce}`);
+		const rest = new REST({ fetch, cookieStorage: null, proofOfWork });
+
+		await expect(rest.request('/user/user-1')).resolves.toMatchObject({ id: 'https://api.imvu.com/user/user-1' });
+
+		expect(proofOfWork).toHaveBeenCalledWith('rsw,1,3233,2,100');
+		expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
+			'GET https://api.imvu.com/user/user-1',
+			'GET https://api.imvu.com/pow',
+			`GET ${c1}`,
+			`POST ${c1}`,
+			'GET https://api.imvu.com/user/user-1',
+		]);
+		expect(JSON.parse(calls[3].body!)).toEqual({ solution: 'solved:rsw,1,3233,2,100' });
+	});
+
+	it('skips challenges that were already cleared', async () => {
+		const c2 = 'https://api.imvu.com/pow/pow-2';
+		const { fetch } = scriptedFetch(powList(c1, c2), failure('POW-004'), challenge(c2, 'n2'), ok(c2));
+		const rest = new REST({ fetch, cookieStorage: null, proofOfWork: async () => 's' });
+
+		await expect(rest.solveChallenges()).resolves.toBe(2);
+	});
+
+	it('gives up after maxPowRetries and without a solver', async () => {
+		const always = scriptedFetch(failure('VERIFY-001'), powList(), failure('VERIFY-001'));
+		const limited = new REST({
+			fetch: always.fetch,
+			cookieStorage: null,
+			maxPowRetries: 1,
+			proofOfWork: async () => 's',
+		});
+		await expect(limited.request('/x')).rejects.toMatchObject({ apiCode: 'VERIFY-001' });
+
+		const bare = scriptedFetch(failure('VERIFY-001'));
+		await expect(new REST({ fetch: bare.fetch, cookieStorage: null }).request('/x')).rejects.toMatchObject({
+			apiCode: 'VERIFY-001',
+		});
+		expect(bare.calls).toHaveLength(1);
+	});
+
+	it('shares one solve between concurrent callers', async () => {
+		const { fetch } = scriptedFetch(powList());
+		const rest = new REST({ fetch, cookieStorage: null, proofOfWork: async () => 's' });
+
+		await expect(Promise.all([rest.solveChallenges(), rest.solveChallenges()])).resolves.toEqual([0, 0]);
 	});
 });

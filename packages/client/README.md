@@ -1,7 +1,7 @@
 # @imvu/client
 
 The client library for interacting with the IMVU API: log in, look up users and
-products, and manage friends, follows, wishlists and gifts. The
+products, manage friends, follows, wishlists and gifts, and watch or join chat rooms. The
 [guide](https://dhkatz.github.io/imvu.js/guide/concepts) explains the model, and the
 [recipes](https://dhkatz.github.io/imvu.js/recipes/users) show common tasks.
 
@@ -39,11 +39,44 @@ watch.on('invalidate', ({ document }) => {
 watch.close();
 ```
 
-Fetching the same canonical URL through a controller, relationship, or collection
-returns the same resource object while it remains in use. Re-fetching hydrates that
-object in place. Realtime subscriptions are always explicit; ordinary fetches do not
-open IMQ connections. Calling `watch()` on a collection whose response advertises
+Fetching the same canonical URL through a controller, relationship, collection, or
+as a document embedded in another response gives the same resource object while it
+remains in use, updated in place. `fetch()` is cache-first: a usable cached copy is
+returned without a request (`{ force: true }` or `resource.refresh()` re-reads; see
+[Caching](https://dhkatz.github.io/imvu.js/guide/caching)). Realtime subscriptions are
+always explicit; ordinary fetches do not open IMQ connections. Calling `watch()` on a collection whose response advertises
 `updates: null` throws `CollectionNotWatchableError`.
+
+## Rooms and chat
+
+Watch a room without joining it, or join it as your account:
+
+```ts
+const room = await client.rooms.fetch('123456-1');
+const chat = await room.chat();
+
+const observer = await chat!.observe(); // invisible to the room
+observer.on('join', (participant) => console.log(participant.user?.username, participant.productIds));
+
+const session = await room.join(); // everyone in the room sees you
+session.on('message', (message) => message.text === '!ping' && void session.send('pong'));
+```
+
+See [Rooms and chat](https://dhkatz.github.io/imvu.js/guide/rooms). For bots, use
+[`@imvu/bot`](https://dhkatz.github.io/imvu.js/packages/bot/).
+
+## IMs
+
+```ts
+const observer = await client.account.conversations.observe();
+observer.on('message', (message, conversation) => {
+  if (message.text === '!ping') void conversation.send('pong');
+});
+
+await client.account.conversations.send(12345678, 'hi'); // start a conversation
+```
+
+See [IMs](https://dhkatz.github.io/imvu.js/guide/ims).
 
 ## Legacy XML-RPC gateway
 

@@ -1,6 +1,6 @@
 {
 	"name": "@imvu/rest",
-	"version": "0.1.0",
+	"version": "0.0.0",
 	"description": "Low-level IMVU REST client: auth, HTTP, cookie jar, and API types.",
 	"author": "dhkatz",
 	"license": "MIT",
@@ -13,10 +13,16 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"src",
+		"README.md"
+	],
 	"sideEffects": false,
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/dhkatz/imvu.js.git"
+		"url": "git+https://github.com/dhkatz/imvu.js.git",
+		"directory": "packages/rest"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -28,5 +34,12 @@
 	},
 	"dependencies": {
 		"tough-cookie": "^6.0.0"
+	},
+	"homepage": "https://dhkatz.github.io/imvu.js/packages/rest/",
+	"bugs": {
+		"url": "https://github.com/dhkatz/imvu.js/issues"
+	},
+	"engines": {
+		"node": ">=22"
 	}
 }

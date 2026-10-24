@@ -16,14 +16,14 @@
     "format:check": "oxfmt --check",
     "docs:build": "npm --prefix docs run build",
     "test": "vitest run",
-    "test:typecheck": "tsc -p packages/rest/tsconfig.spec.json --noEmit && tsc -p packages/client/tsconfig.spec.json --noEmit && tsc -p packages/imq/tsconfig.spec.json --noEmit && tsc -p packages/xmlrpc/tsconfig.spec.json --noEmit && tsc -p packages/tools/tsconfig.spec.json --noEmit && tsc -p packages/cal3d/tsconfig.spec.json --noEmit && tsc -p packages/chkn/tsconfig.spec.json --noEmit && tsc -p examples/tsconfig.json",
+    "test:typecheck": "tsc -p packages/rest/tsconfig.spec.json --noEmit && tsc -p packages/client/tsconfig.spec.json --noEmit && tsc -p packages/imq/tsconfig.spec.json --noEmit && tsc -p packages/xmlrpc/tsconfig.spec.json --noEmit && tsc -p packages/tools/tsconfig.spec.json --noEmit && tsc -p packages/cal3d/tsconfig.spec.json --noEmit && tsc -p packages/chkn/tsconfig.spec.json --noEmit && tsc -p packages/verify/tsconfig.spec.json --noEmit && tsc -p packages/bot/tsconfig.spec.json --noEmit && tsc -p examples/tsconfig.json",
     "test:watch": "vitest",
     "tool": "node --import tsx --env-file-if-exists=.env packages/tools/src/index.ts",
     "changeset": "changeset",
-    "version": "changeset version",
     "release": "npm run build && changeset publish",
     "docs:dev": "npm --prefix docs run dev",
-    "docs:preview": "npm --prefix docs run preview"
+    "docs:preview": "npm --prefix docs run preview",
+    "version-packages": "changeset version && npm install --package-lock-only --ignore-scripts"
   },
   "files": [
     "packages",

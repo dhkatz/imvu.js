@@ -7,10 +7,13 @@ ideas, the rest of the API is predictable.
 ## How the packages fit together
 
 ```
-@imvu/client ── modeled API: resources, collections, managers
-   ├── @imvu/rest     HTTP + cookie session (api.imvu.com)
-   ├── @imvu/imq      realtime websocket (used only when you watch something)
-   └── @imvu/xmlrpc   legacy gateway (logged in only when you call it)
+@imvu/bot ── chat bots across many rooms
+   └── @imvu/client ── modeled API: resources, collections, managers, rooms and chat
+         ├── @imvu/rest     HTTP + cookie session (api.imvu.com)
+         ├── @imvu/imq      realtime websocket (used only when you watch or join something)
+         └── @imvu/xmlrpc   legacy gateway (logged in only when you call it)
+
+@imvu/verify ── account-ownership proofs (standalone; plain fetch)
 
 @imvu/chkn ── product archives and templates
    └── @imvu/cal3d    the 3D model files inside them
@@ -26,10 +29,10 @@ A `Client` groups the API by what you are working with:
 
 | Member                 | What it is                                                                     |
 | ---------------------- | ------------------------------------------------------------------------------ |
-| `client.users`         | Look up users: `fetch(id)` and `search({ username })`.                         |
-| `client.products`      | Look up products: `fetch(id)`.                                                 |
-| `client.rooms`         | Look up rooms: `fetch(id)`.                                                    |
-| `client.account`       | The logged-in account: wallet, friends, wishlist, gifts, inventory, and so on. |
+| `client.users`         | Look up users: `fetch(id)`, `resolve(id)` (cache only) and `search({ username })`. |
+| `client.products`      | Look up products: `fetch(id)`, `resolve(id)`.                                  |
+| `client.rooms`         | Look up rooms: `fetch(id)`, `resolve(id)`. See [Rooms and chat](/guide/rooms). |
+| `client.account`       | The logged-in account: wallet, friends, wishlist, gifts, rooms, [IMs](/guide/ims), inventory, and so on. |
 | `client.xmlrpc`        | The legacy XML-RPC gateway (current product revisions).                        |
 | `client.request()` etc | Escape hatches for endpoints the client doesn't model yet. See [Raw API](/recipes/raw-api). |
 
@@ -65,13 +68,16 @@ Two rules hold for every resource:
 - **`id` is an opaque string.** Treat it as an identifier, not a number, even when it
   looks numeric. Most methods accept a resource, a numeric id or a string id
   interchangeably.
-- **`url` is its identity.** Fetching the same resource again, whether directly,
-  through a relation, or as part of a collection, gives you **the same object**,
-  updated in place. Anything holding a reference to it sees the fresh data.
+- **`url` is its identity.** Getting the same resource again, whether directly,
+  through a relation, as part of a collection, or embedded in another response, gives
+  you **the same object**, updated in place. Anything holding a reference to it sees
+  the fresh data.
 
-Recently used resources are kept in memory (1,000 by default; see the
-`maximumStrongDocuments` option of `Client`). Older ones are kept only while your code
-still references them.
+`fetch()` answers from memory when it already has the resource, so asking twice costs
+one request. `resource.refresh()` or `fetch(id, { force: true })` re-reads it. Recently
+used resources are kept (1,000 by default; see `maximumStrongDocuments`), and older
+ones only while your code still references them. [Caching](/guide/caching) has the
+details.
 
 ## Collections
 

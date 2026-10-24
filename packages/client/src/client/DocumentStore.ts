@@ -1,8 +1,9 @@
-import type { APIResource } from '@imvu/rest';
+import { normalizeDocument, type APIResource, type APIResourceNode, type APISuccessResponse } from '@imvu/rest';
 
 import type { Client } from './Client.js';
 import { RemoteDocument } from '../resources/RemoteDocument.js';
 import { Resource, type ResourceConstructor } from '../resources/Resource.js';
+import { resourceTypeFor } from './registry.js';
 
 /**
  * Per-client canonical identity registry. Weak references preserve identity while
@@ -72,6 +73,26 @@ export class DocumentStore {
 		return this.remember(cls.build(this.client, node));
 	}
 
+	/**
+	 * Absorb every document a response embeds: update instances we already hold, and
+	 * build known resource types we don't, so later reads can come from the cache.
+	 */
+	public ingest(response: APISuccessResponse): void {
+		for (const [url, node] of Object.entries(response.denormalized ?? {})) {
+			if (!isResourceNode(node)) continue;
+
+			const existing = this.get(url);
+			if (existing instanceof Resource) {
+				existing._hydrate(normalizeDocument(url, node));
+				continue;
+			}
+			if (existing) continue;
+
+			const type = resourceTypeFor(url);
+			if (type) this.remember(type.build(this.client, normalizeDocument(url, node)));
+		}
+	}
+
 	public clear(): void {
 		this.identities.clear();
 		this.strong.clear();
@@ -87,4 +108,11 @@ export class DocumentStore {
 			this.strong.delete(oldest);
 		}
 	}
+}
+
+/** A data node (not a collection page, not a bare edge without data). */
+function isResourceNode(node: unknown): node is APIResourceNode {
+	if (!node || typeof node !== 'object') return false;
+	const data = (node as { data?: unknown }).data;
+	return typeof data === 'object' && data !== null && !Array.isArray((data as { items?: unknown }).items);
 }

@@ -14,10 +14,16 @@
       "path": "./packages/client"
     },
     {
+      "path": "./packages/bot"
+    },
+    {
       "path": "./packages/imq"
     },
     {
       "path": "./packages/xmlrpc"
+    },
+    {
+      "path": "./packages/verify"
     },
     {
       "path": "./packages/tools"

@@ -60,7 +60,7 @@ describe('canonical resource identity', () => {
 		expect(resource).toHaveBeenCalledWith('/user', { params: { username: 'Bob' } });
 	});
 
-	it('patches and returns the same resource instance for a canonical URL', async () => {
+	it('answers fetch from the cache, and re-reads with force', async () => {
 		const url = 'https://api.imvu.com/product/product-2';
 		const resource = vi
 			.fn()
@@ -69,10 +69,59 @@ describe('canonical resource identity', () => {
 		const client = new Client(fakeRest({ resource } as Partial<REST>));
 
 		const before = await client.products.fetch('2');
-		const after = await client.products.fetch('2');
+		const cached = await client.products.fetch('2');
+		expect(cached).toBe(before);
+		expect(resource).toHaveBeenCalledTimes(1);
+		expect(client.products.resolve('2')).toBe(before);
 
+		const after = await client.products.fetch('2', { force: true });
 		expect(after).toBe(before);
 		expect(after?.name).toBe('After');
+	});
+
+	it('re-reads stale or expired copies and shares concurrent requests', async () => {
+		const url = 'https://api.imvu.com/product/product-3';
+		const resource = vi
+			.fn()
+			.mockResolvedValueOnce(document(url, '3', { product_name: 'One' }))
+			.mockResolvedValueOnce(document(url, '3', { product_name: 'Two' }));
+		const client = new Client(fakeRest({ resource } as Partial<REST>), { cacheMaxAge: 60_000 });
+
+		const [first, second] = await Promise.all([client.products.fetch('3'), client.products.fetch('3')]);
+		expect(first).toBe(second);
+		expect(resource).toHaveBeenCalledTimes(1);
+
+		first!._invalidate();
+		expect(client.products.resolve('3')).toBeUndefined();
+		expect((await client.products.fetch('3'))?.name).toBe('Two');
+		expect(resource).toHaveBeenCalledTimes(2);
+
+		first!.fetchedAt = Date.now() - 120_000;
+		expect(client.products.resolve('3')).toBeUndefined();
+		expect(client.cached(url, Product, Infinity)).toBe(first);
+	});
+
+	it('caches documents embedded in any response', async () => {
+		const userUrl = 'https://api.imvu.com/user/user-8';
+		const participantUrl = 'https://api.imvu.com/chat/chat-1-2/participants/user-8';
+		const resource = vi.fn();
+		const rest = fakeRest({ resource } as Partial<REST>);
+		const client = new Client(rest);
+
+		rest.onResponse?.({
+			status: 'success',
+			id: participantUrl,
+			denormalized: {
+				[participantUrl]: { data: { seat_number: 1 }, relations: { ref: userUrl }, updates: null },
+				[userUrl]: { data: { username: 'eight', tagline: 'hi' }, relations: {}, updates: null },
+				'https://api.imvu.com/x/list': { data: { items: [], total_count: 0 }, relations: {}, updates: null },
+			},
+			http: {},
+		});
+
+		expect(client.users.resolve('8')).toMatchObject({ username: 'eight', tagline: 'hi' });
+		await expect(client.users.fetch('8')).resolves.toMatchObject({ username: 'eight' });
+		expect(resource).not.toHaveBeenCalled();
 	});
 
 	it('keeps the normalized opaque id authoritative over legacy payload fields', () => {
@@ -203,6 +252,7 @@ class FakeRealtimeManager extends EventEmitter implements RealtimeManagerLike {
 		this.subscriptions++;
 		return this.mount;
 	}
+	public sendMessage(): void {}
 }
 
 describe('wishlist realtime invalidation', () => {
@@ -409,5 +459,19 @@ describe('structured gift results', () => {
 				cause: networkError,
 			},
 		});
+	});
+});
+
+describe('proof of work', () => {
+	it('gives REST an RSW solver unless one was supplied', async () => {
+		const rest = fakeRest();
+		new Client(rest);
+		// 2^(2^1) mod 3233 = 4, so cipher 104 unlocks to 100.
+		await expect(rest.proofOfWork?.('rsw,1,3233,2,104')).resolves.toBe('100');
+
+		const own = vi.fn();
+		const custom = fakeRest({ proofOfWork: own } as Partial<REST>);
+		new Client(custom);
+		expect(custom.proofOfWork).toBe(own);
 	});
 });

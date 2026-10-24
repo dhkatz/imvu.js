@@ -5,7 +5,9 @@ the others are its building blocks or work with IMVU's product files.
 
 | Package                             | Use it for                                                             |
 | ----------------------------------- | ---------------------------------------------------------------------- |
-| [`@imvu/client`](/packages/client/) | The modeled API: users, the current account, wishlists, gifts, chat.   |
+| [`@imvu/client`](/packages/client/) | The modeled API: users, the current account, wishlists, gifts, rooms and chat. |
+| [`@imvu/bot`](/packages/bot/)       | Chat bots: commands, permissions and rate limits across many rooms.    |
+| [`@imvu/verify`](/packages/verify/) | Proving someone owns an IMVU account (a code in their tagline).        |
 | [`@imvu/rest`](/packages/rest/)     | Raw REST requests with IMVU authentication, when you want plain JSON.  |
 | [`@imvu/imq`](/packages/imq/)       | The IMQ websocket service directly (realtime queues and mounts).       |
 | [`@imvu/xmlrpc`](/packages/xmlrpc/) | The classic client's XML-RPC gateway (e.g. current product revisions). |

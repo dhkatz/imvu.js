@@ -22,6 +22,12 @@ export class User<TRelations extends UserRelations = UserRelations> extends Reso
 	public isAdult = false;
 	public isAgeVerified = false;
 	public isStaff = false;
+	/** Short public profile text (labelled "BIO" on the web; 100 characters there). */
+	public tagline = '';
+	public interests = '';
+	public online = false;
+	/** `'Available'`, or `'DoNotDisturb'` when the user hides their online status. */
+	public availability = '';
 
 	public _patch(data: Record<string, any>): void {
 		super._patch(data);
@@ -41,6 +47,10 @@ export class User<TRelations extends UserRelations = UserRelations> extends Reso
 		if ('is_adult' in data) this.isAdult = data.is_adult;
 		if ('is_ageverified' in data) this.isAgeVerified = data.is_ageverified;
 		if ('is_staff' in data) this.isStaff = data.is_staff;
+		if ('tagline' in data) this.tagline = data.tagline ?? '';
+		if ('interests' in data) this.interests = data.interests ?? '';
+		if ('online' in data) this.online = data.online;
+		if ('availability' in data) this.availability = data.availability ?? '';
 	}
 
 	public wishlist(): Collection<Product> {

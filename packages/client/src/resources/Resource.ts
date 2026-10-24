@@ -1,7 +1,8 @@
 import { Client } from '../client/index.js';
 import { APIResource } from '../types.js';
 import type { Constructor } from '../types.js';
-import { Collection } from '../collections/Collection.js';
+import type { FetchOptions } from '../client/Client.js';
+import { Collection, type CollectionOptions } from '../collections/Collection.js';
 import { RemoteDocument } from './RemoteDocument.js';
 
 export interface ResourceOptions {}
@@ -33,6 +34,9 @@ export abstract class Resource<
 	public get id(): string {
 		return this._id;
 	}
+
+	/** When this instance last received data from the API (ms since epoch); 0 if never. */
+	public fetchedAt = 0;
 
 	/**
 	 * @internal
@@ -70,6 +74,7 @@ export abstract class Resource<
 		this.relations = (node.relations ?? {}) as Partial<TRelations>;
 		this.updates = (node.updates ?? {}) as Partial<TUpdates>;
 		this._applyRemoteMetadata(node.url, node.updates);
+		this.fetchedAt = Date.now();
 	}
 
 	/**
@@ -83,6 +88,19 @@ export abstract class Resource<
 		if ('_id' in data && data._id !== null && data._id !== undefined) this._id = String(data._id);
 	}
 
+	/**
+	 * Re-read this resource from REST and update it in place. Resolves to the same
+	 * instance, so references held elsewhere see the fresh data and `stale` clears.
+	 */
+	public async refresh(): Promise<this> {
+		if (!this.url) throw new Error(`Cannot refresh a ${this.constructor.name} that has no canonical URL`);
+
+		const node = await this.client.resource(this.url);
+		this._hydrate(node);
+		this.client.documents.remember(this);
+		return this;
+	}
+
 	protected authenticated(): void {
 		if (!this.client.authenticated) {
 			throw new Error('Cannot retrieve data without user authentication!');
@@ -91,10 +109,11 @@ export abstract class Resource<
 
 	protected async relationship<T extends Resource, K extends keyof TRelations>(
 		relation: K,
-		cls: Constructor<T>
+		cls: Constructor<T>,
+		options?: FetchOptions
 	): Promise<T | null> {
 		if (this.relations && relation in this.relations) {
-			return this.client.resource<T>(`${this.relations[relation]}`, cls, undefined);
+			return this.client.resource<T>(`${this.relations[relation]}`, cls, options);
 		}
 
 		return null;
@@ -102,11 +121,12 @@ export abstract class Resource<
 
 	protected collectionRelationship<T extends Resource, K extends keyof TRelations>(
 		relation: K,
-		cls: Constructor<T>
+		cls: Constructor<T>,
+		options?: CollectionOptions
 	): Collection<T> {
 		const url = this.relations[relation];
 		if (!url) throw new Error(`Resource '${this.url}' does not expose the '${String(relation)}' collection`);
 
-		return this.client.collection(String(url), cls);
+		return this.client.collection(String(url), cls, options);
 	}
 }
