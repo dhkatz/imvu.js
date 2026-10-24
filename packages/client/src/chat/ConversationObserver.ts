@@ -9,7 +9,11 @@ import type { ConversationMessage } from '../resources/ConversationMessage.js';
 export interface ConversationObserveOptions {
 	/** Also report messages the logged-in account sent. Default `false`. */
 	includeOwn?: boolean;
-	/** How many recent conversations to read at start (to know what is already seen). Default 50. */
+	/**
+	 * How many recent conversations to read at start, to know what is already seen.
+	 * Default 50. With `0`, every conversation counts as new: only messages sent after
+	 * the observer started are reported.
+	 */
 	initialConversations?: number;
 	/**
 	 * Also re-check recent conversations on this interval (ms), as a safety net for a
@@ -26,6 +30,8 @@ export interface ConversationObserverEvents {
 
 /** Recent messages read per notification; more than this between two notifications is unusual. */
 const PAGE = 20;
+/** Recent conversations re-read by a re-check. */
+const RECHECK = 50;
 
 /**
  * Follows the account's IMs and emits each new message once, in order within its
@@ -97,8 +103,12 @@ export class ConversationObserver extends EventEmitter<ConversationObserverEvent
 	}
 
 	private async open(): Promise<void> {
-		for (const conversation of await this.list.page({ limit: this.#options.initialConversations })) {
-			this.#lastSeen.set(conversation.id, conversation.lastMessage?.order ?? 0);
+		if (this.#options.initialConversations > 0) {
+			for (const conversation of await this.list.page({ limit: this.#options.initialConversations })) {
+				this.#lastSeen.set(conversation.id, conversation.lastMessage?.order ?? 0);
+			}
+		} else {
+			await this.list.count(); // only to learn the update target
 		}
 
 		const target = this.list.updateTarget;
@@ -158,7 +168,7 @@ export class ConversationObserver extends EventEmitter<ConversationObserverEvent
 
 	/** Re-read the recent conversations and check any with messages newer than we have seen. */
 	private async recheck(): Promise<void> {
-		for (const conversation of await this.list.page({ limit: this.#options.initialConversations })) {
+		for (const conversation of await this.list.page({ limit: RECHECK })) {
 			const latest = conversation.lastMessage?.order ?? 0;
 			if (latest > (this.#lastSeen.get(conversation.id) ?? 0)) await this.check(conversation.id);
 		}

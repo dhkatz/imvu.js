@@ -278,6 +278,20 @@ describe('ConversationObserver', () => {
 		expect(seen).toEqual(['hi', 'again']);
 	});
 
+	it('can treat every conversation as new', async () => {
+		const h = harness();
+		h.add('1', [ME, '5'], [[1, '5', 'old']]);
+		const observer = await h.client.account.conversations.observe({ initialConversations: 0 });
+		const seen: string[] = [];
+		observer.on('message', (message) => seen.push(message.text));
+
+		h.receive('1', '5', 'fresh');
+		await observer.idle();
+
+		// 'old' predates the observer, so only the new message counts.
+		expect(seen).toEqual(['fresh']);
+	});
+
 	it('re-checks on an interval as a safety net', async () => {
 		const h = harness();
 		h.add('1', [ME, '5'], [[1, '5', 'old']]);
