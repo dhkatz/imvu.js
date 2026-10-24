@@ -37,7 +37,7 @@
 		"@imvu/client": "^0.1.0",
 		"commander": "^15.0.0",
 		"image-type": "^6.1.0",
-		"jszip": "^3.10.1"
+		"jszip": "^3.10.2"
 	},
 	"homepage": "https://dhkatz.github.io/imvu.js/packages/tools/",
 	"bugs": {
