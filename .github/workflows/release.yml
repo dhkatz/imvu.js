@@ -34,6 +34,10 @@ jobs:
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
+      # Trusted publishing needs npm 11.5.1+; don't rely on the version bundled with Node.
+      - name: 'Update npm'
+        run: npm install -g npm@^11.5.1
+
       - name: 'Install'
         run: npm ci
 
