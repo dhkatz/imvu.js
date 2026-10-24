@@ -1,6 +1,6 @@
 {
 	"name": "@imvu/cal3d",
-	"version": "0.1.0",
+	"version": "0.0.0",
 	"description": "Read and write the Cal3D model files IMVU products use (skeletons, meshes, materials, animations, morph animations).",
 	"author": "dhkatz",
 	"license": "MIT",
@@ -13,10 +13,16 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"src",
+		"README.md"
+	],
 	"sideEffects": false,
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/dhkatz/imvu.js.git"
+		"url": "git+https://github.com/dhkatz/imvu.js.git",
+		"directory": "packages/cal3d"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -25,5 +31,12 @@
 		"build": "tsc -b",
 		"clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
 		"test": "vitest run"
+	},
+	"homepage": "https://dhkatz.github.io/imvu.js/packages/cal3d/",
+	"bugs": {
+		"url": "https://github.com/dhkatz/imvu.js/issues"
+	},
+	"engines": {
+		"node": ">=22"
 	}
 }

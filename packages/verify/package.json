@@ -13,10 +13,16 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"src",
+		"README.md"
+	],
 	"sideEffects": false,
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/dhkatz/imvu.js.git"
+		"url": "git+https://github.com/dhkatz/imvu.js.git",
+		"directory": "packages/verify"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -25,5 +31,12 @@
 		"build": "tsc -b",
 		"clean": "node -e \"fs.rmSync('dist', { recursive: true, force: true })\"",
 		"test": "vitest run"
+	},
+	"homepage": "https://dhkatz.github.io/imvu.js/packages/verify/",
+	"bugs": {
+		"url": "https://github.com/dhkatz/imvu.js/issues"
+	},
+	"engines": {
+		"node": ">=22"
 	}
 }

@@ -14,10 +14,16 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"src",
+		"README.md"
+	],
 	"sideEffects": false,
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/dhkatz/imvu.js.git"
+		"url": "git+https://github.com/dhkatz/imvu.js.git",
+		"directory": "packages/chkn"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -28,6 +34,13 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@imvu/cal3d": "^0.1.0"
+		"@imvu/cal3d": "^0.0.0"
+	},
+	"homepage": "https://dhkatz.github.io/imvu.js/packages/chkn/",
+	"bugs": {
+		"url": "https://github.com/dhkatz/imvu.js/issues"
+	},
+	"engines": {
+		"node": ">=22"
 	}
 }

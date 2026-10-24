@@ -19,14 +19,20 @@ of libraries is intended to be a more modern, more complete, and more correct im
 
 ### Packages
 
-The `@imvu` mono-repository contains the following packages:
+The `@imvu` mono-repository contains the following packages. The
+[documentation site](https://dhkatz.github.io/imvu.js/) covers each one.
 
-- `@imvu/client`: The client library for interacting with the IMVU API. (log in, gifting, messaging, etc.)
-- `@imvu/imq`: Library for interacting with the IMVU IMQ websocket server (chat, notifications, etc).
-- `@imvu/chkn`: Load products (CFL/CHKN archives, `index.xml` templates with inheritance), assemble their models, and export or flatten CHKN files.
-- `@imvu/cal3d`: Read and write the Cal3D model files products are made of (skeletons, meshes, materials, animations).
-- `@imvu/studio`: Library for interacting with IMVU Studio services (product publishing, editing, etc).
-- `@imvu/tools`: A collection of tools for interacting with IMVU's API (product downloading, etc).
+| Package        | What it is                                                                     |
+| -------------- | ------------------------------------------------------------------------------ |
+| `@imvu/client` | The modeled API: users, the account, wishlists, gifts, rooms and chat, IMs.    |
+| `@imvu/bot`    | Chat bots across many rooms and IMs: commands, permissions, rate limits.       |
+| `@imvu/verify` | Stateless proofs that someone owns an IMVU account (a code in their tagline).  |
+| `@imvu/rest`   | The low-level REST client: authentication, sessions, raw API documents.        |
+| `@imvu/imq`    | IMVU's IMQ realtime websocket service (queues, mounts).                        |
+| `@imvu/xmlrpc` | The classic client's XML-RPC gateway (e.g. current product revisions).         |
+| `@imvu/cal3d`  | Read and write the Cal3D model files products are made of.                     |
+| `@imvu/chkn`   | Load products: CFL/CHKN archives and `index.xml` templates. Not published yet. |
+| `@imvu/tools`  | Command-line tools for working with products. Not published.                   |
 
 ### Testing
 
@@ -41,6 +47,34 @@ Live read-only integration tests require `IMVU_RUN_LIVE_TESTS=true` plus the
 `IMVU_USERNAME` and `IMVU_PASSWORD` environment variables. State-changing tests are
 separately gated behind `IMVU_RUN_MUTATION_TESTS=true`; use a dedicated test account
 if you deliberately enable them.
+
+### Releasing
+
+Releases are automated with [Changesets](https://github.com/changesets/changesets) and
+the `Release` workflow:
+
+1. Every change to a published package includes a changeset (`npx changeset`), saying
+   which packages it affects and how (patch, minor or major).
+2. On every push to `master`, the workflow runs the checks. If there are pending
+   changesets, it opens or updates a **"chore: version packages"** pull request that
+   bumps versions and writes the changelogs.
+3. **Merging that pull request publishes** the new versions to npm (with provenance),
+   tags them, and creates GitHub releases.
+
+One-time setup:
+
+- **Allow the workflow to open pull requests:** repository Settings → Actions →
+  General → Workflow permissions → _Allow GitHub Actions to create and approve pull
+  requests_.
+- **The first publish needs a token**, because npm only lets you configure trusted
+  publishing on packages that already exist. Create a granular access token on
+  npmjs.com with read and write access to the `@imvu` packages (or the whole
+  organization) and _Bypass 2FA_ enabled, and save it as the repository secret
+  `NPM_TOKEN`.
+- **Then switch to trusted publishing:** for each published package, go to npmjs.com
+  → the package → Settings → _Trusted Publisher_ → GitHub Actions. Set repository
+  `dhkatz/imvu.js` and workflow `release.yml`, then delete the `NPM_TOKEN` secret.
+  Publishing then needs no long-lived secret.
 
 ## License
 

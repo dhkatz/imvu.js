@@ -14,10 +14,16 @@
 	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"src",
+		"README.md"
+	],
 	"sideEffects": false,
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/dhkatz/imvu.js.git"
+		"url": "git+https://github.com/dhkatz/imvu.js.git",
+		"directory": "packages/tools"
 	},
 	"publishConfig": {
 		"access": "public"
@@ -28,9 +34,16 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@imvu/client": "^0.1.0",
+		"@imvu/client": "^0.0.0",
 		"commander": "^15.0.0",
 		"image-type": "^6.1.0",
 		"jszip": "^3.10.1"
+	},
+	"homepage": "https://dhkatz.github.io/imvu.js/packages/tools/",
+	"bugs": {
+		"url": "https://github.com/dhkatz/imvu.js/issues"
+	},
+	"engines": {
+		"node": ">=22"
 	}
 }

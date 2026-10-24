@@ -1,0 +1,63 @@
+name: 'Release'
+
+# Changesets release flow:
+# - Pending changesets on master → open/update a "Version Packages" PR (versions + changelogs).
+# - Merging that PR (no changesets left) → publish the new versions to npm, tag them,
+#   and create GitHub releases.
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# Never run two releases at once; let a running one finish.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: 'Version or publish'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the version branch, tags and GitHub releases
+      pull-requests: write # open the "Version Packages" PR
+      id-token: write # npm provenance and trusted publishing (OIDC)
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v7
+
+      - name: 'Node'
+        uses: actions/setup-node@v7
+        with:
+          # Node 24 ships npm 11, which supports trusted publishing.
+          node-version: 24
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: 'Install'
+        run: npm ci
+
+      - name: 'Build'
+        run: npm run build
+
+      # Never publish something that doesn't pass the same checks as CI.
+      - name: 'Check'
+        run: |
+          npm run test:typecheck
+          npm run lint
+          npm run test
+
+      - name: 'Version PR or publish'
+        uses: changesets/action@v1
+        with:
+          version: npm run version-packages
+          publish: npm run release
+          commit: 'chore: version packages'
+          title: 'chore: version packages'
+          createGithubReleases: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Until trusted publishing is set up for every package (see README → Releasing),
+          # publishing authenticates with this token. Once it is, delete the secret.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'

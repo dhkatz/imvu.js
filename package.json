@@ -20,10 +20,10 @@
     "test:watch": "vitest",
     "tool": "node --import tsx --env-file-if-exists=.env packages/tools/src/index.ts",
     "changeset": "changeset",
-    "version": "changeset version",
     "release": "npm run build && changeset publish",
     "docs:dev": "npm --prefix docs run dev",
-    "docs:preview": "npm --prefix docs run preview"
+    "docs:preview": "npm --prefix docs run preview",
+    "version-packages": "changeset version && npm install --package-lock-only --ignore-scripts"
   },
   "files": [
     "packages",
