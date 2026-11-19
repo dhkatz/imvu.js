@@ -38,6 +38,12 @@ console.log(`${await friends.count()} friends`);
 for await (const friend of friends) console.log(friend.username);
 
 await client.account.friends.add('Alice'); // friend request
+
+// Requests others sent you, and yours still waiting
+for await (const user of client.account.friends.requests()) {
+  await client.account.friends.accept(user); // or decline(user)
+}
+for await (const user of client.account.friends.sent()) console.log('waiting on', user.username);
 await client.account.friends.remove(someUser);
 ```
 
