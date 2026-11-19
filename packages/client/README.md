@@ -60,6 +60,10 @@ observer.on('join', (participant) => console.log(participant.user?.username, par
 
 const session = await room.join(); // everyone in the room sees you
 session.on('message', (message) => message.text === '!ping' && void session.send('pong'));
+
+const radio = await room.radio(); // the room's stream; owners and moderators can change it
+await radio?.setStation('https://example.com/stream.mp3');
+await radio?.start(); // On Air
 ```
 
 See [Rooms and chat](https://dhkatz.github.io/imvu.js/guide/rooms). For bots, use

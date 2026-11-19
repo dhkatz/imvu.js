@@ -1,6 +1,7 @@
 import { Resource } from './Resource.js';
 import { User } from './User.js';
 import { Chat } from './Chat.js';
+import { RoomRadio } from './RoomRadio.js';
 import type { ChatSession, JoinOptions } from '../chat/ChatSession.js';
 
 export class Room extends Resource<RoomRelations> {
@@ -59,6 +60,19 @@ export class Room extends Resource<RoomRelations> {
 		if (!chat) throw new Error(`Room '${this.id}' has no classic chat to join (live rooms are not supported yet)`);
 		return chat.join(options);
 	}
+
+	/**
+	 * The room's radio (see {@link RoomRadio}), or null when the room has none. Rooms
+	 * get one through their media experience; live (audience) rooms may not have it.
+	 */
+	public async radio(): Promise<RoomRadio | null> {
+		const experience = this.relations.media_experience;
+		if (!experience) return null;
+		const players = (await this.client.resource(experience)).relations?.media_players;
+		if (!players) return null;
+		const found = await this.client.resources(String(players), RoomRadio);
+		return found.find((player) => player.provider === 'web_radio') ?? null;
+	}
 }
 
 export interface RoomRelations {
@@ -66,4 +80,6 @@ export interface RoomRelations {
 	chat: string;
 	moderators: string;
 	scene: string;
+	/** The room's media players (its radio), at `/experience/experience-<id>`. */
+	media_experience: string;
 }

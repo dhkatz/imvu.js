@@ -125,6 +125,38 @@ when it sees itself named. Sessions do: they emit `booted` and leave, unless you
 deletes the target's participant record. That last step is what actually removes
 them, and it needs owner or moderator rights in the room.
 
+## The room's radio
+
+A room's radio is the stream every visitor's client plays while it's On Air.
+`room.radio()` returns it, or `null` for a room without one:
+
+```ts
+const radio = await room.radio();
+radio.stationUrl; // the stream, '' when none was set
+radio.stationName; // often ''
+radio.playing; // On Air; `radio.status` is 'playing' or 'stopped'
+```
+
+The room's owner and its moderators can change it, as in IMVU's own client. Each
+call updates `radio` in place:
+
+```ts
+await radio.setStation('https://example.com/stream.mp3'); // stays On Air or off as it was
+await radio.start(); // On Air: everyone's client starts playing it
+await radio.stop();
+```
+
+- **MP3 only.** IMVU's player is mpg123, so a stream in another format stays silent.
+- **Every visitor connects to the stream themselves.** The stream's server sees one
+  listener per person in the room, not one per room.
+- **To follow changes** others make, watch it and refresh on `invalidate` (see
+  [Realtime updates](/guide/realtime)):
+
+  ```ts
+  const watch = await radio.watch();
+  watch.on('invalidate', () => radio.refresh());
+  ```
+
 ## Things to expect
 
 - **Full rooms.** Room lists show occupancy that can lag, so a join can fail with
