@@ -9,7 +9,7 @@ failure is a normal outcome for them:
 | ------------------------------------------------------------ | ------------------------------------------- |
 | Lookups, `request()`, `resource()`, collection reads         | Throw                                       |
 | `account.gifts.send()`                                       | Returns `{ ok: false, error }`              |
-| `account.friends.add()` / `.remove()`                        | Returns `false`                             |
+| `account.friends.add()`, `.remove()`, `.accept()`, `.decline()` | Returns `false`                          |
 | `account.wishlist.add()` / `.remove()`                       | Returns `false`                             |
 | `account.followers.follow()` / `.unfollow()`                 | Returns `false` when the API refuses; other errors throw |
 | `relation()` methods such as `user.profile()`, `product.parent()` | Return `null` when the relation doesn't exist |

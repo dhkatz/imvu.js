@@ -35,6 +35,41 @@ export class FriendManager extends BaseManager {
 		return true;
 	}
 
+	/** People who sent this account a friend request it hasn't answered yet. */
+	public requests(): Collection<User> {
+		return this.client.collection(`/user/user-${this.client.account.id}/inbound_friend_requests`, User);
+	}
+
+	/** People this account sent a friend request that they haven't answered yet. */
+	public sent(): Collection<User> {
+		return this.client.collection(`/user/user-${this.client.account.id}/outbound_friend_requests`, User);
+	}
+
+	/** Accept someone's friend request (see {@link requests}). `false` if there's none from them, or IMVU refuses. */
+	public async accept(user: User | string | number): Promise<boolean> {
+		return this.answer(user, 'accept');
+	}
+
+	/** Decline someone's friend request. `false` if there's none from them, or IMVU refuses. */
+	public async decline(user: User | string | number): Promise<boolean> {
+		return this.answer(user, 'reject');
+	}
+
+	private async answer(user: User | string | number, status: 'accept' | 'reject'): Promise<boolean> {
+		const id = await this.client.utils.id(user, true);
+
+		try {
+			await this.client.request(`/user/user-${this.client.account.id}/inbound_friend_requests/user-${id}`, {
+				method: 'POST',
+				data: { status },
+			});
+		} catch {
+			return false;
+		}
+
+		return true;
+	}
+
 	public async remove(user: User): Promise<boolean>;
 	public async remove(username: string): Promise<boolean>;
 	public async remove(id: number): Promise<boolean>;
