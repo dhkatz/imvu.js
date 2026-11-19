@@ -13,6 +13,7 @@ export * from './ChatParticipant.js';
 export * from './Conversation.js';
 export * from './ConversationMessage.js';
 export * from './Room.js';
+export * from './RoomRadio.js';
 
 export * from './Album.js';
 export * from './Creator.js';
