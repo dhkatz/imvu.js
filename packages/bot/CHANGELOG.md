@@ -1,5 +1,12 @@
 # @imvu/bot
 
+## 0.1.2
+
+### Patch Changes
+
+- Updated dependencies [0b9f9f9]
+  - @imvu/client@0.3.0
+
 ## 0.1.1
 
 ### Patch Changes

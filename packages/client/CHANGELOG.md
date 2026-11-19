@@ -1,5 +1,11 @@
 # @imvu/client
 
+## 0.3.0
+
+### Minor Changes
+
+- 0b9f9f9: `account.friends.requests()` and `.sent()` list friend requests not yet answered; `.accept(user)` and `.decline(user)` answer one, as IMVU's client does.
+
 ## 0.2.0
 
 ### Minor Changes
